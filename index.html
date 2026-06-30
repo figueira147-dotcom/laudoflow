@@ -192,6 +192,22 @@
     outline: none; transition: border-color 0.15s; background: var(--off-white); color: var(--text);
   }
   .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--green); background: var(--white); }
+
+  /* ── SAVED LIST ── */
+  .saved-list { display: flex; flex-direction: column; gap: 0; }
+  .saved-group-hdr { font-size: 11px; font-weight: 700; color: var(--text-muted); letter-spacing: 1px; text-transform: uppercase; padding: 10px 0 6px; border-bottom: 1px solid var(--border); margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+  .saved-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .saved-row:last-child { border-bottom: none; }
+  .saved-name { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 3px; }
+  .saved-meta { font-size: 12px; color: var(--text-muted); }
+  .saved-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+  /* ── EDIT BANNER ── */
+  .edit-banner { display:none; background:var(--amber-pale); border:0.5px solid #f0d9a8; border-radius:8px; padding:12px 16px; margin-bottom:12px; font-size:13px; color:var(--amber); align-items:center; justify-content:space-between; gap:12px; }
+
+  /* ── SEC SCREEN ── */
+  #screen-sec { flex-direction: column; min-height: 100vh; }
+  #screen-sec .app-header { background: var(--green); }
 </style>
 </head>
 <body>
@@ -229,6 +245,144 @@
       <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password">
     </div>
     <button class="btn btn-primary" onclick="doLogin()">Entrar</button>
+  </div>
+</div>
+
+<!-- TELA SECRETÁRIA -->
+<div id="screen-sec" class="screen">
+  <header class="app-header">
+    <div class="app-header-left">
+      <div>
+        <div class="app-logo">LaudoFlow</div>
+        <div id="sec-clinic-name" class="app-clinic"></div>
+      </div>
+    </div>
+    <div class="app-header-right">
+      <span id="sec-badge" class="doctor-badge"></span>
+      <button class="btn-logout" onclick="doLogout()">Sair</button>
+    </div>
+  </header>
+
+  <nav id="sec-nav">
+    <div class="tab active" onclick="showSecTab('nova-fila', this)">
+      <i class="ti ti-plus"></i> Nova Fila
+    </div>
+    <div class="tab" onclick="showSecTab('fila', this)">
+      <i class="ti ti-hourglass"></i> Fila Pendente
+      <span class="tab-badge" id="sec-pending-count" style="background:#d97706">0</span>
+    </div>
+    <div class="tab" onclick="showSecTab('concluidos', this)">
+      <i class="ti ti-file-check"></i> Concluídos
+    </div>
+  </nav>
+
+  <!-- TAB NOVA FILA -->
+  <div id="sec-tab-nova-fila" class="app-main">
+
+    <!-- Banner de edição -->
+    <div id="sec-edit-banner" class="edit-banner">
+      <span>✏️ Editando: <strong id="sec-edit-banner-nome"></strong></span>
+      <button class="btn btn-outline" style="padding:5px 12px;font-size:12px;flex-shrink:0" onclick="resetSecForm()">✕ Cancelar</button>
+    </div>
+
+    <!-- Dados do paciente -->
+    <div class="card">
+      <div class="card-hdr">
+        <div class="card-ico"><i class="ti ti-user"></i></div>
+        <div class="card-title">Dados do Paciente</div>
+      </div>
+      <div class="form-row cols-2">
+        <div class="field">
+          <label>Nome completo *</label>
+          <input type="text" id="sec-pac-nome" placeholder="Nome do paciente">
+        </div>
+        <div class="field">
+          <label>CPF</label>
+          <input type="text" id="sec-pac-cpf" placeholder="000.000.000-00" oninput="formatCPF(this)" maxlength="14">
+        </div>
+      </div>
+      <div class="form-row cols-3">
+        <div class="field">
+          <label>Data de nascimento</label>
+          <input type="date" id="sec-pac-nasc">
+        </div>
+        <div class="field">
+          <label>WhatsApp</label>
+          <input type="text" id="sec-pac-tel" placeholder="(00) 00000-0000" oninput="formatTel(this)" maxlength="15">
+        </div>
+        <div class="field">
+          <label>E-mail</label>
+          <input type="email" id="sec-pac-email" placeholder="paciente@email.com">
+        </div>
+      </div>
+    </div>
+
+    <!-- Dados do exame -->
+    <div class="card">
+      <div class="card-hdr">
+        <div class="card-ico"><i class="ti ti-stethoscope"></i></div>
+        <div class="card-title">Dados do Exame</div>
+      </div>
+      <div class="form-row cols-2">
+        <div class="field">
+          <label>Médico responsável *</label>
+          <select id="sec-medico-id">
+            <option value="">Selecione...</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Data do exame *</label>
+          <input type="date" id="sec-data-exame">
+        </div>
+      </div>
+      <div class="form-row cols-2">
+        <div class="field">
+          <label>Convênio</label>
+          <input type="text" id="sec-convenio" placeholder="Particular, Unimed...">
+        </div>
+        <div class="field">
+          <label>Médico solicitante</label>
+          <input type="text" id="sec-solicitante" placeholder="Dr(a). nome">
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:8px">
+        <button class="btn btn-primary" id="sec-save-btn" onclick="savePendente()" style="flex:1">
+          Salvar na Fila do Médico
+        </button>
+        <button class="btn btn-outline" onclick="resetSecForm()">Limpar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB FILA PENDENTE -->
+  <div id="sec-tab-fila" class="app-main" style="display:none">
+    <div class="card">
+      <div class="card-hdr">
+        <div class="card-ico"><i class="ti ti-hourglass"></i></div>
+        <div class="card-title">Fila Pendente</div>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:16px">
+        <input type="text" id="sec-search" placeholder="🔍 Nome do paciente..." oninput="searchSecFila()" style="flex:2;background:var(--off-white);border:1.5px solid var(--border);border-radius:8px;padding:9px 14px;font-family:Lato,sans-serif;font-size:13px;outline:none;color:var(--text)">
+        <select id="sec-filter-medico" onchange="searchSecFila()" style="flex:1;background:var(--off-white);border:1.5px solid var(--border);border-radius:8px;padding:9px 12px;font-family:Lato,sans-serif;font-size:13px;outline:none;color:var(--text)">
+          <option value="">Todos os médicos</option>
+        </select>
+      </div>
+      <div id="sec-fila-container"><div class="empty"><div class="ei">⏳</div><p>Nenhum laudo na fila.</p></div></div>
+    </div>
+  </div>
+
+  <!-- TAB CONCLUÍDOS -->
+  <div id="sec-tab-concluidos" class="app-main" style="display:none">
+    <div class="card">
+      <div class="card-hdr">
+        <div class="card-ico"><i class="ti ti-file-check"></i></div>
+        <div class="card-title">Laudos Concluídos</div>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:16px">
+        <input type="text" id="sec-search-conc" placeholder="🔍 Nome do paciente..." oninput="searchSecConcluidos()" style="flex:2;background:var(--off-white);border:1.5px solid var(--border);border-radius:8px;padding:9px 14px;font-family:Lato,sans-serif;font-size:13px;outline:none;color:var(--text)">
+      </div>
+      <div id="sec-concluidos-container"><div class="empty"><div class="ei">✅</div><p>Nenhum laudo concluído.</p></div></div>
+    </div>
   </div>
 </div>
 
@@ -433,10 +587,20 @@ async function afterLogin(session) {
   }
 
   currentDoctor = medico;
-  document.getElementById('doctor-badge').textContent = medico.nome;
-  document.getElementById('welcome-title').textContent = 'Olá, ' + medico.nome.split(' ')[0] + ' 👋';
-  showScreen('app');
-  showTab('inicio', document.querySelector('#app-nav .tab'));
+
+  if (medico.papel === 'secretaria') {
+    document.getElementById('sec-badge').textContent = medico.nome;
+    document.getElementById('sec-clinic-name').textContent = currentClinica.nome;
+    showScreen('sec');
+    await loadSecMedicos();
+    showSecTab('nova-fila', document.querySelector('#sec-nav .tab'));
+    document.getElementById('sec-data-exame').value = todayISO();
+  } else {
+    document.getElementById('doctor-badge').textContent = medico.nome;
+    document.getElementById('welcome-title').textContent = 'Olá, ' + medico.nome.split(' ')[0] + ' 👋';
+    showScreen('app');
+    showTab('inicio', document.querySelector('#app-nav .tab'));
+  }
 }
 
 async function doLogout() {
@@ -477,6 +641,298 @@ function toast(msg, type = 'ok') {
 function loading(show, msg = 'Carregando...') {
   document.getElementById('loading-msg').textContent = msg;
   document.getElementById('loading-overlay').classList.toggle('show', show);
+}
+
+function todayISO() {
+  return new Date().toISOString().split('T')[0];
+}
+
+function fmtDate(iso) {
+  if (!iso) return '—';
+  const [y,m,d] = iso.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+function formatCPF(el) {
+  let v = el.value.replace(/\D/g,'').slice(0,11);
+  v = v.replace(/(\d{3})(\d)/,'$1.$2');
+  v = v.replace(/(\d{3})(\d)/,'$1.$2');
+  v = v.replace(/(\d{3})(\d{1,2})$/,'$1-$2');
+  el.value = v;
+}
+
+function formatTel(el) {
+  let v = el.value.replace(/\D/g,'').slice(0,11);
+  if (v.length <= 10) v = v.replace(/(\d{2})(\d{4})(\d)/,'($1) $2-$3');
+  else v = v.replace(/(\d{2})(\d{5})(\d)/,'($1) $2-$3');
+  el.value = v;
+}
+
+// ══════════════════════════════════════════════════════
+// SECRETÁRIA — NAV
+// ══════════════════════════════════════════════════════
+function showSecTab(name, el) {
+  document.querySelectorAll('#sec-nav .tab').forEach(t => t.classList.remove('active'));
+  if (el) el.classList.add('active');
+  ['nova-fila','fila','concluidos'].forEach(t => {
+    const div = document.getElementById('sec-tab-' + t);
+    if (div) div.style.display = t === name ? '' : 'none';
+  });
+  if (name === 'fila') loadSecFila();
+  if (name === 'concluidos') loadSecConcluidos();
+}
+
+// ══════════════════════════════════════════════════════
+// SECRETÁRIA — MÉDICOS
+// ══════════════════════════════════════════════════════
+async function loadSecMedicos() {
+  const { data } = await supa.from('medicos')
+    .select('id,nome')
+    .eq('clinica_id', currentClinica.id)
+    .in('papel', ['medico','admin'])
+    .eq('ativo', true)
+    .order('nome');
+
+  const opts = (data||[]).map(m => `<option value="${m.id}">${m.nome}</option>`).join('');
+  document.getElementById('sec-medico-id').innerHTML = '<option value="">Selecione...</option>' + opts;
+
+  const filt = document.getElementById('sec-filter-medico');
+  if (filt) filt.innerHTML = '<option value="">Todos os médicos</option>' + opts;
+}
+
+// ══════════════════════════════════════════════════════
+// SECRETÁRIA — SALVAR FILA
+// ══════════════════════════════════════════════════════
+let secEditingId = null;
+
+async function savePendente() {
+  const nome     = document.getElementById('sec-pac-nome').value.trim();
+  const cpf      = document.getElementById('sec-pac-cpf').value.trim();
+  const nasc     = document.getElementById('sec-pac-nasc').value;
+  const tel      = document.getElementById('sec-pac-tel').value.trim();
+  const email    = document.getElementById('sec-pac-email').value.trim();
+  const medicoId = document.getElementById('sec-medico-id').value;
+  const data     = document.getElementById('sec-data-exame').value;
+  const convenio = document.getElementById('sec-convenio').value.trim();
+  const solic    = document.getElementById('sec-solicitante').value.trim();
+
+  if (!nome) { toast('Informe o nome do paciente.', 'err'); return; }
+  if (!medicoId) { toast('Selecione o médico responsável.', 'err'); return; }
+  if (!data) { toast('Informe a data do exame.', 'err'); return; }
+
+  loading(true, secEditingId ? 'Atualizando...' : 'Salvando na fila...');
+
+  // Upsert paciente se tiver CPF
+  let pacienteId = null;
+  if (cpf) {
+    const cpfLimpo = cpf.replace(/\D/g,'');
+    const { data: pacExist } = await supa.from('pacientes')
+      .select('id').eq('clinica_id', currentClinica.id).eq('cpf', cpfLimpo).maybeSingle();
+
+    if (pacExist) {
+      pacienteId = pacExist.id;
+      await supa.from('pacientes').update({ nome, data_nasc: nasc||null, telefone: tel||null, email_rec: email||null })
+        .eq('id', pacienteId);
+    } else {
+      const { data: novo } = await supa.from('pacientes').insert({
+        clinica_id: currentClinica.id, nome, cpf: cpfLimpo,
+        data_nasc: nasc||null, telefone: tel||null, email_rec: email||null
+      }).select('id').single();
+      pacienteId = novo?.id;
+    }
+  }
+
+  const payload = {
+    clinica_id: currentClinica.id,
+    paciente_id: pacienteId,
+    medico_responsavel_id: medicoId,
+    paciente_nome: nome,
+    cpf_paciente: cpf.replace(/\D/g,'')||null,
+    data_exame: data,
+    convenio: convenio||null,
+    solicitante: solic||null,
+    status: 'pendente',
+  };
+
+  let error;
+  if (secEditingId) {
+    ({ error } = await supa.from('laudos').update(payload).eq('id', secEditingId));
+  } else {
+    ({ error } = await supa.from('laudos').insert(payload));
+  }
+
+  loading(false);
+  if (error) { toast('Erro ao salvar: ' + error.message, 'err'); return; }
+
+  toast(secEditingId ? 'Laudo atualizado.' : 'Adicionado à fila do médico.', 'ok');
+  resetSecForm();
+  await updateSecBadge();
+}
+
+function resetSecForm() {
+  ['sec-pac-nome','sec-pac-cpf','sec-pac-nasc','sec-pac-tel','sec-pac-email',
+   'sec-convenio','sec-solicitante'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  document.getElementById('sec-medico-id').value = '';
+  document.getElementById('sec-data-exame').value = todayISO();
+  document.getElementById('sec-edit-banner').style.display = 'none';
+  document.getElementById('sec-save-btn').textContent = 'Salvar na Fila do Médico';
+  secEditingId = null;
+}
+
+// ══════════════════════════════════════════════════════
+// SECRETÁRIA — FILA PENDENTE
+// ══════════════════════════════════════════════════════
+let secFilaAll = [];
+
+async function loadSecFila() {
+  loading(true, 'Carregando fila...');
+  const { data } = await supa.from('laudos')
+    .select('id,paciente_nome,cpf_paciente,data_exame,convenio,solicitante,medico_responsavel_id,medicos(nome)')
+    .eq('clinica_id', currentClinica.id)
+    .eq('status','pendente')
+    .is('deleted_at', null)
+    .order('data_exame', { ascending: true });
+  loading(false);
+  secFilaAll = data || [];
+  await updateSecBadge();
+  renderSecFila(secFilaAll);
+}
+
+function renderSecFila(list) {
+  const c = document.getElementById('sec-fila-container');
+  if (!list.length) { c.innerHTML = '<div class="empty"><div class="ei">⏳</div><p>Nenhum laudo na fila.</p></div>'; return; }
+
+  const groups = {};
+  list.forEach(r => {
+    const key = r.data_exame || 'sem-data';
+    const label = r.data_exame ? fmtDate(r.data_exame) : 'Sem data';
+    if (!groups[key]) groups[key] = { label, items: [] };
+    groups[key].items.push(r);
+  });
+
+  let html = '<div class="saved-list">';
+  Object.keys(groups).sort().forEach(key => {
+    const g = groups[key];
+    const isToday = key === todayISO();
+    html += `<div class="saved-group-hdr" style="${isToday?'color:var(--green);border-color:var(--green)':''}">
+      📅 ${g.label}${isToday?' — HOJE':''} <span class="tab-badge" style="background:#d97706">${g.items.length}</span>
+    </div>`;
+    g.items.forEach(r => {
+      const medNome = r.medicos?.nome || '—';
+      html += `<div class="saved-row" style="border-left:3px solid #d97706;padding-left:12px">
+        <div>
+          <div class="saved-name">${r.paciente_nome}</div>
+          <div class="saved-meta">👨‍⚕️ ${medNome} &nbsp;|&nbsp; 🏥 ${r.convenio||'—'}${r.solicitante?' &nbsp;|&nbsp; Solic: '+r.solicitante:''}</div>
+        </div>
+        <div class="saved-actions">
+          <button class="btn btn-outline" style="padding:6px 12px;font-size:12px" onclick="editSecFila('${r.id}')">✏️ Editar</button>
+          <button class="btn btn-danger" style="padding:6px 12px;font-size:12px" onclick="deleteSecFila('${r.id}')">🗑</button>
+        </div>
+      </div>`;
+    });
+  });
+  html += '</div>';
+  c.innerHTML = html;
+}
+
+function searchSecFila() {
+  const q    = (document.getElementById('sec-search')?.value||'').toLowerCase();
+  const med  = (document.getElementById('sec-filter-medico')?.value||'');
+  renderSecFila(secFilaAll.filter(r =>
+    (!q   || (r.paciente_nome||'').toLowerCase().includes(q)) &&
+    (!med || r.medico_responsavel_id === med)
+  ));
+}
+
+async function editSecFila(id) {
+  const r = secFilaAll.find(x => x.id === id);
+  if (!r) return;
+
+  // Buscar dados completos do paciente
+  let pac = null;
+  if (r.paciente_id) {
+    const { data } = await supa.from('pacientes').select('*').eq('id', r.paciente_id).single();
+    pac = data;
+  }
+
+  document.getElementById('sec-pac-nome').value    = r.paciente_nome || '';
+  document.getElementById('sec-pac-cpf').value     = r.cpf_paciente  ? r.cpf_paciente.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4') : '';
+  document.getElementById('sec-pac-nasc').value    = pac?.data_nasc  || '';
+  document.getElementById('sec-pac-tel').value     = pac?.telefone   || '';
+  document.getElementById('sec-pac-email').value   = pac?.email_rec  || '';
+  document.getElementById('sec-medico-id').value   = r.medico_responsavel_id || '';
+  document.getElementById('sec-data-exame').value  = r.data_exame   || '';
+  document.getElementById('sec-convenio').value    = r.convenio     || '';
+  document.getElementById('sec-solicitante').value = r.solicitante  || '';
+
+  secEditingId = id;
+  document.getElementById('sec-edit-banner-nome').textContent = r.paciente_nome;
+  document.getElementById('sec-edit-banner').style.display = 'flex';
+  document.getElementById('sec-save-btn').textContent = 'Atualizar na Fila';
+
+  showSecTab('nova-fila', document.querySelector('#sec-nav .tab'));
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+async function deleteSecFila(id) {
+  if (!confirm('Remover este laudo da fila?')) return;
+  loading(true, 'Removendo...');
+  await supa.from('laudos').delete().eq('id', id);
+  loading(false);
+  toast('Laudo removido da fila.', 'ok');
+  await loadSecFila();
+}
+
+async function updateSecBadge() {
+  const { count } = await supa.from('laudos')
+    .select('id', { count: 'exact', head: true })
+    .eq('clinica_id', currentClinica.id)
+    .eq('status','pendente')
+    .is('deleted_at', null);
+  const el = document.getElementById('sec-pending-count');
+  if (el) el.textContent = count || 0;
+}
+
+// ══════════════════════════════════════════════════════
+// SECRETÁRIA — CONCLUÍDOS
+// ══════════════════════════════════════════════════════
+let secConclAll = [];
+
+async function loadSecConcluidos() {
+  loading(true, 'Carregando...');
+  const { data } = await supa.from('laudos')
+    .select('id,paciente_nome,data_exame,convenio,medicos(nome),atualizado_em')
+    .eq('clinica_id', currentClinica.id)
+    .eq('status','concluido')
+    .is('deleted_at', null)
+    .order('atualizado_em', { ascending: false })
+    .limit(100);
+  loading(false);
+  secConclAll = data || [];
+  renderSecConcluidos(secConclAll);
+}
+
+function renderSecConcluidos(list) {
+  const c = document.getElementById('sec-concluidos-container');
+  if (!list.length) { c.innerHTML = '<div class="empty"><div class="ei">✅</div><p>Nenhum laudo concluído.</p></div>'; return; }
+  let html = '<div class="saved-list">';
+  list.forEach(r => {
+    html += `<div class="saved-row">
+      <div>
+        <div class="saved-name">${r.paciente_nome}</div>
+        <div class="saved-meta">📅 ${fmtDate(r.data_exame)} &nbsp;|&nbsp; 👨‍⚕️ ${r.medicos?.nome||'—'} &nbsp;|&nbsp; 🏥 ${r.convenio||'—'}</div>
+      </div>
+    </div>`;
+  });
+  html += '</div>';
+  c.innerHTML = html;
+}
+
+function searchSecConcluidos() {
+  const q = (document.getElementById('sec-search-conc')?.value||'').toLowerCase();
+  renderSecConcluidos(secConclAll.filter(r => (!q || (r.paciente_nome||'').toLowerCase().includes(q))));
 }
 </script>
 </body>
