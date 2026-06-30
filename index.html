@@ -363,17 +363,23 @@ window.onload = async () => {
 };
 
 function resolveSlug() {
-  // 1. subdomínio: ctdmi.laudoflow.com.br → 'ctdmi'
   const host = window.location.hostname;
-  const parts = host.split('.');
-  if (parts.length >= 3) return parts[0];
-
-  // 2. query string: ?c=ctdmi (desenvolvimento / GitHub Pages)
   const params = new URLSearchParams(window.location.search);
+
+  // query string sempre tem prioridade: ?c=ctdmi
   if (params.get('c')) return params.get('c');
 
-  // 3. localhost sem parâmetro → usa 'ctdmi' para dev
+  // localhost sem parâmetro → usa 'ctdmi' para dev
   if (host === 'localhost' || host === '127.0.0.1') return 'ctdmi';
+
+  // subdomínio próprio: ctdmi.laudoflow.com.br
+  // ignora domínios de hospedagem (vercel.app, github.io, netlify.app)
+  const HOSTING = ['vercel.app', 'github.io', 'netlify.app'];
+  const isHosting = HOSTING.some(h => host.endsWith(h));
+  if (!isHosting) {
+    const parts = host.split('.');
+    if (parts.length >= 3) return parts[0];
+  }
 
   return null;
 }
