@@ -591,6 +591,28 @@
   </div>
 </div>
 
+<!-- MODAL IMAGENS (SECRETÁRIA) -->
+<div id="modal-sec-imgs" class="modal-overlay" style="display:none" onclick="if(event.target===this)fecharModalSecImgs()">
+  <div class="modal-box" style="max-width:600px">
+    <div class="modal-hdr">
+      <div class="modal-title" id="sec-img-modal-title">Imagens do Laudo</div>
+      <button class="modal-close" onclick="fecharModalSecImgs()">✕</button>
+    </div>
+    <div class="img-drop-zone" id="sec-img-drop-zone"
+         onclick="document.getElementById('sec-img-file-input').click()"
+         ondrop="onSecImgDrop(event)" ondragover="onImgDragOver(event)" ondragleave="onImgDragLeave()">
+      <i class="ti ti-upload" style="font-size:20px;display:block;margin-bottom:6px"></i>
+      <div>Arraste imagens ou <strong>clique para selecionar</strong></div>
+    </div>
+    <input type="file" id="sec-img-file-input" multiple accept="image/*" style="display:none" onchange="onSecImgFileSelect(event)">
+    <div id="sec-img-container" style="margin-top:14px"></div>
+    <div style="display:flex;gap:10px;margin-top:18px">
+      <button class="btn btn-primary" style="flex:1" onclick="salvarSecImagens()"><i class="ti ti-device-floppy"></i> Salvar Imagens</button>
+      <button class="btn btn-outline" onclick="fecharModalSecImgs()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
 <!-- APP PRINCIPAL -->
 <div id="screen-app" class="screen">
   <header class="app-header">
@@ -1315,7 +1337,7 @@ let secConclAll = [];
 async function loadSecConcluidos() {
   loading(true, 'Carregando...');
   const { data } = await supa.from('laudos')
-    .select('id,paciente_nome,data_exame,convenio,medicos(nome),atualizado_em')
+    .select('id,paciente_nome,data_exame,convenio,medicos(nome),imagens,atualizado_em')
     .eq('clinica_id', currentClinica.id)
     .eq('status','concluido')
     .is('deleted_at', null)
@@ -1331,15 +1353,110 @@ function renderSecConcluidos(list) {
   if (!list.length) { c.innerHTML = '<div class="empty"><div class="ei">✅</div><p>Nenhum laudo concluído.</p></div>'; return; }
   let html = '<div class="saved-list">';
   list.forEach(r => {
+    const nImgs = (r.imagens||[]).length;
     html += `<div class="saved-row">
-      <div>
+      <div style="flex:1;min-width:0">
         <div class="saved-name">${r.paciente_nome}</div>
         <div class="saved-meta">📅 ${fmtDate(r.data_exame)} &nbsp;|&nbsp; 👨‍⚕️ ${r.medicos?.nome||'—'} &nbsp;|&nbsp; 🏥 ${r.convenio||'—'}</div>
+      </div>
+      <div class="saved-actions" style="display:flex;gap:6px;flex-shrink:0">
+        <button class="btn btn-outline" style="padding:5px 10px;font-size:12px" onclick="secAbrirImagens('${r.id}','${r.paciente_nome.replace(/'/g,"\\'")}')">
+          <i class="ti ti-photo"></i> ${nImgs > 0 ? nImgs + ' img' : 'Imagens'}
+        </button>
+        <button class="btn btn-outline" style="padding:5px 10px;font-size:12px;background:#154d87;color:#fff;border-color:#154d87" onclick="secPrintLaudo('${r.id}')">
+          <i class="ti ti-printer"></i> PDF
+        </button>
       </div>
     </div>`;
   });
   html += '</div>';
   c.innerHTML = html;
+}
+
+// ── Imagens (secretária) ──
+let secEditId   = null;
+let secEditImgs = [];
+
+async function secAbrirImagens(laudoId, nome) {
+  secEditId   = laudoId;
+  secEditImgs = [];
+  loading(true, 'Carregando imagens...');
+  const { data } = await supa.from('laudos').select('imagens').eq('id', laudoId).single();
+  loading(false);
+  secEditImgs = (data?.imagens || []).map(i => ({ id: Date.now() + Math.random(), src: i.src, name: i.name || '' }));
+  document.getElementById('sec-img-modal-title').textContent = 'Imagens — ' + nome;
+  renderSecEditImgs();
+  document.getElementById('modal-sec-imgs').style.display = 'flex';
+}
+
+function fecharModalSecImgs() {
+  document.getElementById('modal-sec-imgs').style.display = 'none';
+  secEditId = null; secEditImgs = [];
+}
+
+function onSecImgDrop(e) {
+  e.preventDefault();
+  document.getElementById('sec-img-drop-zone').classList.remove('over');
+  addSecImages(Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/')));
+}
+function onSecImgFileSelect(e) { addSecImages(Array.from(e.target.files)); e.target.value = ''; }
+
+function addSecImages(files) {
+  files.forEach(f => {
+    const r = new FileReader();
+    r.onload = ev => { secEditImgs.push({ id: Date.now() + Math.random(), src: ev.target.result, name: f.name }); renderSecEditImgs(); };
+    r.readAsDataURL(f);
+  });
+}
+
+function removeSecImg(id) { secEditImgs = secEditImgs.filter(i => i.id !== id); renderSecEditImgs(); }
+function moveSecImg(from, to) {
+  if (to < 0 || to >= secEditImgs.length) return;
+  const a = [...secEditImgs]; const [x] = a.splice(from, 1); a.splice(to, 0, x);
+  secEditImgs = a; renderSecEditImgs();
+}
+
+function renderSecEditImgs() {
+  const c = document.getElementById('sec-img-container');
+  if (!secEditImgs.length) { c.innerHTML = '<div style="color:var(--text-muted);text-align:center;padding:12px;font-size:13px">Nenhuma imagem adicionada.</div>'; return; }
+  c.innerHTML = '<div class="img-grid-ui">' + secEditImgs.map((img, gi) => `
+    <div class="img-ui-item">
+      <img src="${img.src}" alt="">
+      <div class="img-ui-over">
+        <button class="img-ui-btn" onclick="moveSecImg(${gi},${gi-1})" ${gi===0?'disabled':''}>◀</button>
+        <button class="img-ui-btn" onclick="removeSecImg(${img.id})" style="color:#c0392b">✕</button>
+        <button class="img-ui-btn" onclick="moveSecImg(${gi},${gi+1})" ${gi===secEditImgs.length-1?'disabled':''}>▶</button>
+      </div>
+    </div>`).join('') + '</div>';
+}
+
+async function salvarSecImagens() {
+  if (!secEditId) return;
+  loading(true, 'Salvando imagens...');
+  const processadas = await processImagesForSave(secEditImgs);
+  const { error } = await supa.from('laudos').update({ imagens: processadas }).eq('id', secEditId);
+  loading(false);
+  if (error) { toast('Erro: ' + error.message, 'err'); return; }
+  toast('Imagens salvas!', 'ok');
+  // Atualiza cache local
+  secConclAll = secConclAll.map(r => r.id === secEditId ? { ...r, imagens: processadas } : r);
+  fecharModalSecImgs();
+  renderSecConcluidos(secConclAll);
+}
+
+// ── Imprimir (secretária) ──
+async function secPrintLaudo(laudoId) {
+  loading(true, 'Preparando PDF...');
+  if (!secoesClinica.length) await loadSecoesClinica();
+  const { data: laudo } = await supa.from('laudos').select('*').eq('id', laudoId).single();
+  let medico = null;
+  if (laudo?.medico_responsavel_id) {
+    const { data: m } = await supa.from('medicos').select('nome,crm').eq('id', laudo.medico_responsavel_id).single();
+    medico = m;
+  }
+  loading(false);
+  if (!laudo) { toast('Laudo não encontrado.', 'err'); return; }
+  buildPrint(laudo, medico);
 }
 
 function searchSecConcluidos() {
