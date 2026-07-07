@@ -228,6 +228,21 @@
   /* ── LAUDO CONCLUIDO ── */
   .laudo-concluido-banner { background: var(--green-pale); border: 1px solid var(--green); border-radius: 8px; padding: 10px 16px; font-size: 13px; color: var(--green); font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
 
+  /* ── CONFIGURAÇÕES ── */
+  .cfg-secao-row { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--border); }
+  .cfg-secao-row:last-child { border-bottom:none; }
+  .cfg-secao-label { flex:1; font-size:13px; font-weight:700; }
+  .cfg-secao-chave { font-size:11px; color:var(--text-muted); background:var(--off-white); padding:2px 6px; border-radius:4px; font-family:monospace; }
+  .cfg-user-row { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--border); }
+  .cfg-user-row:last-child { border-bottom:none; }
+  .cfg-user-info { flex:1; }
+  .cfg-user-nome { font-size:13px; font-weight:700; }
+  .cfg-user-meta { font-size:11px; color:var(--text-muted); }
+  .badge-papel { display:inline-block; padding:2px 8px; border-radius:99px; font-size:11px; font-weight:700; }
+  .badge-medico { background:var(--green-pale); color:var(--green); }
+  .badge-secretaria { background:var(--amber-pale); color:var(--amber); }
+  .badge-admin { background:#ede9fe; color:#6d28d9; }
+
   /* ── PORTAL PACIENTE ── */
   #screen-patient { flex-direction: column; min-height: 100vh; }
   #screen-patient .app-header { background: var(--green); }
@@ -516,6 +531,9 @@
     <div class="tab" onclick="showTab('concluidos', this)">
       <i class="ti ti-file-check"></i> Concluídos
     </div>
+    <div class="tab" onclick="showTab('config', this)" id="tab-config-btn" style="display:none">
+      <i class="ti ti-settings"></i> Configurações
+    </div>
   </nav>
 
   <!-- TAB INÍCIO -->
@@ -593,6 +611,69 @@
         <button class="btn btn-outline" onclick="showTab('pendentes', document.querySelector('#app-nav .tab:nth-child(2)'))">
           Voltar à Fila
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB CONFIGURAÇÕES (admin) -->
+  <div id="tab-config" class="app-main" style="display:none">
+
+    <!-- Identidade da clínica -->
+    <div class="card">
+      <div class="card-hdr">
+        <div class="card-ico"><i class="ti ti-building-hospital"></i></div>
+        <div class="card-title">Identidade da Clínica</div>
+      </div>
+      <div class="form-row cols-2">
+        <div class="field"><label>Nome da clínica</label><input type="text" id="cfg-nome"></div>
+        <div class="field"><label>Cor primária</label><input type="color" id="cfg-cor" style="height:40px;padding:2px 6px"></div>
+      </div>
+      <div class="form-row cols-2">
+        <div class="field"><label>Cabeçalho do laudo (PDF)</label><input type="text" id="cfg-cabecalho" placeholder="Nome que aparece no topo do laudo impresso"></div>
+        <div class="field"><label>Rodapé do laudo (PDF)</label><input type="text" id="cfg-rodape" placeholder="CRM, endereço, telefone..."></div>
+      </div>
+      <button class="btn btn-primary" onclick="salvarConfigClinica()" style="margin-top:4px">Salvar alterações</button>
+    </div>
+
+    <!-- Seções de exame -->
+    <div class="card">
+      <div class="card-hdr">
+        <div class="card-ico"><i class="ti ti-stethoscope"></i></div>
+        <div class="card-title">Seções de Exame</div>
+      </div>
+      <div id="cfg-secoes-lista" style="margin-bottom:16px"></div>
+      <div style="display:flex;gap:8px;align-items:flex-end">
+        <div class="field" style="flex:2;margin:0"><label>Nova seção — label</label><input type="text" id="cfg-nova-secao-label" placeholder="Ex: Doppler Renal"></div>
+        <div class="field" style="flex:1;margin:0"><label>Chave (sem espaços)</label><input type="text" id="cfg-nova-secao-chave" placeholder="Ex: renal"></div>
+        <button class="btn btn-primary" onclick="adicionarSecao()" style="flex-shrink:0;height:40px">+ Adicionar</button>
+      </div>
+    </div>
+
+    <!-- Usuários -->
+    <div class="card">
+      <div class="card-hdr">
+        <div class="card-ico"><i class="ti ti-users"></i></div>
+        <div class="card-title">Usuários</div>
+      </div>
+      <div id="cfg-usuarios-lista" style="margin-bottom:16px"></div>
+      <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:8px">
+        <div style="font-size:12px;font-weight:700;color:var(--text-muted);letter-spacing:.5px;text-transform:uppercase;margin-bottom:12px">Novo usuário</div>
+        <div class="form-row cols-2">
+          <div class="field"><label>Nome</label><input type="text" id="cfg-novo-user-nome" placeholder="Nome completo"></div>
+          <div class="field"><label>E-mail</label><input type="email" id="cfg-novo-user-email" placeholder="email@clinica.com"></div>
+        </div>
+        <div class="form-row cols-2">
+          <div class="field">
+            <label>Papel</label>
+            <select id="cfg-novo-user-papel">
+              <option value="medico">Médico</option>
+              <option value="secretaria">Secretária</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+          <div class="field"><label>Senha inicial</label><input type="text" id="cfg-novo-user-senha" placeholder="Mínimo 6 caracteres"></div>
+        </div>
+        <button class="btn btn-primary" onclick="criarUsuario()">Criar usuário</button>
       </div>
     </div>
   </div>
@@ -732,6 +813,10 @@ async function afterLogin(session) {
 
   currentDoctor = medico;
 
+  // Mostra aba de configurações só para admin
+  const tabConfig = document.getElementById('tab-config-btn');
+  if (tabConfig) tabConfig.style.display = medico.papel === 'admin' ? '' : 'none';
+
   if (medico.papel === 'secretaria') {
     document.getElementById('sec-badge').textContent = medico.nome;
     document.getElementById('sec-clinic-name').textContent = currentClinica.nome;
@@ -760,15 +845,6 @@ function showScreen(name) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   const el = document.getElementById('screen-' + name);
   if (el) el.classList.add('active');
-}
-
-function showTab(name, el) {
-  document.querySelectorAll('#app-nav .tab').forEach(t => t.classList.remove('active'));
-  if (el) el.classList.add('active');
-  ['inicio','pendentes','novo','concluidos'].forEach(t => {
-    const div = document.getElementById('tab-' + t);
-    if (div) div.style.display = t === name ? '' : 'none';
-  });
 }
 
 // ══════════════════════════════════════════════════════
@@ -1210,17 +1286,186 @@ function labelSecao(chave) {
 }
 
 // ══════════════════════════════════════════════════════
+// CONFIGURAÇÕES — CLÍNICA
+// ══════════════════════════════════════════════════════
+async function loadConfig() {
+  // Preenche dados da clínica
+  document.getElementById('cfg-nome').value      = currentClinica.nome || '';
+  document.getElementById('cfg-cor').value       = currentClinica.cor_primaria || '#1a5c38';
+  document.getElementById('cfg-cabecalho').value = currentClinica.cabecalho_pdf || '';
+  document.getElementById('cfg-rodape').value    = currentClinica.rodape_pdf || '';
+
+  await loadConfigSecoes();
+  await loadConfigUsuarios();
+}
+
+async function salvarConfigClinica() {
+  const nome      = document.getElementById('cfg-nome').value.trim();
+  const cor       = document.getElementById('cfg-cor').value;
+  const cabecalho = document.getElementById('cfg-cabecalho').value.trim();
+  const rodape    = document.getElementById('cfg-rodape').value.trim();
+
+  if (!nome) { toast('Informe o nome da clínica.', 'err'); return; }
+
+  loading(true, 'Salvando...');
+  const { error } = await supa.from('clinicas').update({
+    nome, cor_primaria: cor, cabecalho_pdf: cabecalho, rodape_pdf: rodape
+  }).eq('id', currentClinica.id);
+  loading(false);
+
+  if (error) { toast('Erro ao salvar: ' + error.message, 'err'); return; }
+
+  currentClinica.nome        = nome;
+  currentClinica.cor_primaria = cor;
+  currentClinica.cabecalho_pdf = cabecalho;
+  currentClinica.rodape_pdf    = rodape;
+  applyTema(currentClinica);
+  toast('Configurações salvas.', 'ok');
+}
+
+// ══════════════════════════════════════════════════════
+// CONFIGURAÇÕES — SEÇÕES
+// ══════════════════════════════════════════════════════
+async function loadConfigSecoes() {
+  const { data } = await supa.from('secoes_exame')
+    .select('*').eq('clinica_id', currentClinica.id).order('ordem');
+  secoesClinica = data || [];
+
+  const c = document.getElementById('cfg-secoes-lista');
+  if (!secoesClinica.length) { c.innerHTML = '<p style="color:var(--text-muted);font-size:13px">Nenhuma seção cadastrada.</p>'; return; }
+
+  c.innerHTML = secoesClinica.map(s => `
+    <div class="cfg-secao-row">
+      <div class="cfg-secao-label">
+        ${s.label} <span class="cfg-secao-chave">${s.chave}</span>
+      </div>
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+        <input type="checkbox" ${s.ativo ? 'checked' : ''} onchange="toggleSecaoAtivo('${s.id}', this.checked)">
+        Ativa
+      </label>
+      <button class="btn btn-danger" style="padding:4px 10px;font-size:12px" onclick="deletarSecao('${s.id}')">🗑</button>
+    </div>
+  `).join('');
+}
+
+async function adicionarSecao() {
+  const label = document.getElementById('cfg-nova-secao-label').value.trim();
+  const chave = document.getElementById('cfg-nova-secao-chave').value.trim().toLowerCase().replace(/\s+/g,'_');
+
+  if (!label || !chave) { toast('Preencha label e chave da seção.', 'err'); return; }
+  if (secoesClinica.find(s => s.chave === chave)) { toast('Já existe uma seção com essa chave.', 'err'); return; }
+
+  loading(true, 'Adicionando...');
+  const { error } = await supa.from('secoes_exame').insert({
+    clinica_id: currentClinica.id, chave, label,
+    ordem: secoesClinica.length + 1, ativo: true
+  });
+  loading(false);
+
+  if (error) { toast('Erro: ' + error.message, 'err'); return; }
+
+  document.getElementById('cfg-nova-secao-label').value = '';
+  document.getElementById('cfg-nova-secao-chave').value = '';
+  toast('Seção adicionada.', 'ok');
+  await loadConfigSecoes();
+}
+
+async function toggleSecaoAtivo(id, ativo) {
+  await supa.from('secoes_exame').update({ ativo }).eq('id', id);
+  secoesClinica = secoesClinica.map(s => s.id === id ? { ...s, ativo } : s);
+}
+
+async function deletarSecao(id) {
+  if (!confirm('Remover esta seção? Laudos existentes não serão afetados.')) return;
+  loading(true, 'Removendo...');
+  await supa.from('secoes_exame').delete().eq('id', id);
+  loading(false);
+  toast('Seção removida.', 'ok');
+  await loadConfigSecoes();
+}
+
+// ══════════════════════════════════════════════════════
+// CONFIGURAÇÕES — USUÁRIOS
+// ══════════════════════════════════════════════════════
+async function loadConfigUsuarios() {
+  const { data } = await supa.from('medicos')
+    .select('id,nome,email,papel,ativo')
+    .eq('clinica_id', currentClinica.id)
+    .order('nome');
+
+  const c = document.getElementById('cfg-usuarios-lista');
+  if (!data?.length) { c.innerHTML = '<p style="color:var(--text-muted);font-size:13px">Nenhum usuário cadastrado.</p>'; return; }
+
+  c.innerHTML = data.map(u => `
+    <div class="cfg-user-row">
+      <div class="cfg-user-info">
+        <div class="cfg-user-nome">${u.nome}</div>
+        <div class="cfg-user-meta">${u.email || '—'}</div>
+      </div>
+      <span class="badge-papel badge-${u.papel}">${u.papel}</span>
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+        <input type="checkbox" ${u.ativo ? 'checked' : ''} onchange="toggleUsuarioAtivo('${u.id}', this.checked)"
+          ${u.id === currentDoctor.id ? 'disabled' : ''}>
+        Ativo
+      </label>
+    </div>
+  `).join('');
+}
+
+async function toggleUsuarioAtivo(id, ativo) {
+  await supa.from('medicos').update({ ativo }).eq('id', id);
+  toast(ativo ? 'Usuário ativado.' : 'Usuário desativado.', 'ok');
+}
+
+async function criarUsuario() {
+  const nome  = document.getElementById('cfg-novo-user-nome').value.trim();
+  const email = document.getElementById('cfg-novo-user-email').value.trim();
+  const papel = document.getElementById('cfg-novo-user-papel').value;
+  const senha = document.getElementById('cfg-novo-user-senha').value;
+
+  if (!nome || !email || !senha) { toast('Preencha todos os campos.', 'err'); return; }
+  if (senha.length < 6) { toast('Senha mínima: 6 caracteres.', 'err'); return; }
+
+  loading(true, 'Criando usuário...');
+
+  const sessaoOriginal = (await supa.auth.getSession()).data.session;
+  const { data: authData, error: authErr } = await supa.auth.signUp({ email, password: senha });
+
+  if (sessaoOriginal?.access_token) {
+    await supa.auth.setSession({ access_token: sessaoOriginal.access_token, refresh_token: sessaoOriginal.refresh_token });
+  }
+
+  if (authErr) { loading(false); toast('Erro ao criar conta: ' + authErr.message, 'err'); return; }
+
+  const { error } = await supa.from('medicos').insert({
+    clinica_id: currentClinica.id,
+    auth_id: authData.user?.id,
+    nome, email, papel, ativo: true
+  });
+
+  loading(false);
+  if (error) { toast('Erro ao cadastrar: ' + error.message, 'err'); return; }
+
+  document.getElementById('cfg-novo-user-nome').value  = '';
+  document.getElementById('cfg-novo-user-email').value = '';
+  document.getElementById('cfg-novo-user-senha').value = '';
+  toast('Usuário criado com sucesso.', 'ok');
+  await loadConfigUsuarios();
+}
+
+// ══════════════════════════════════════════════════════
 // MÉDICO — NAVEGAÇÃO
 // ══════════════════════════════════════════════════════
 function showTab(name, el) {
   document.querySelectorAll('#app-nav .tab').forEach(t => t.classList.remove('active'));
   if (el) el.classList.add('active');
-  ['inicio','pendentes','novo','concluidos'].forEach(t => {
+  ['inicio','pendentes','novo','concluidos','config'].forEach(t => {
     const div = document.getElementById('tab-' + t);
     if (div) div.style.display = t === name ? '' : 'none';
   });
   if (name === 'pendentes')  loadDocPending();
   if (name === 'concluidos') loadDocConcluidos();
+  if (name === 'config')     loadConfig();
 }
 
 // ══════════════════════════════════════════════════════
