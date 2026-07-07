@@ -208,6 +208,25 @@
   /* ── SEC SCREEN ── */
   #screen-sec { flex-direction: column; min-height: 100vh; }
   #screen-sec .app-header { background: var(--green); }
+
+  /* ── MÉDICO — SEÇÕES ── */
+  .secao-bloco { border: 1.5px solid var(--border); border-radius: var(--radius); margin-bottom: 12px; overflow: hidden; }
+  .secao-header { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: var(--off-white); cursor: pointer; user-select: none; }
+  .secao-header:hover { background: var(--green-pale); }
+  .secao-toggle { width: 20px; height: 20px; border-radius: 4px; border: 2px solid var(--border-dark); background: var(--white); display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.15s; }
+  .secao-toggle.on { background: var(--green); border-color: var(--green); }
+  .secao-toggle.on::after { content: '✓'; color: white; font-size: 12px; font-weight: 900; }
+  .secao-label { font-size: 13px; font-weight: 700; color: var(--text); flex: 1; }
+  .secao-body { display: none; padding: 12px 16px; border-top: 1px solid var(--border); }
+  .secao-body.open { display: block; }
+  .editor-area { width: 100%; min-height: 100px; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-family: Lato, sans-serif; font-size: 13px; line-height: 1.6; outline: none; resize: vertical; background: var(--off-white); color: var(--text); }
+  .editor-area:focus { border-color: var(--green); background: var(--white); }
+
+  /* ── AUTOSAVE ── */
+  .autosave-ind { font-size: 11px; color: var(--text-muted); margin-left: 8px; }
+
+  /* ── LAUDO CONCLUIDO ── */
+  .laudo-concluido-banner { background: var(--green-pale); border: 1px solid var(--green); border-radius: 8px; padding: 10px 16px; font-size: 13px; color: var(--green); font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
 </style>
 </head>
 <body>
@@ -433,20 +452,66 @@
     <div class="card">
       <div class="card-hdr">
         <div class="card-ico"><i class="ti ti-hourglass"></i></div>
-        <div class="card-title">Laudos Pendentes</div>
+        <div class="card-title">Fila de Pendentes</div>
       </div>
-      <div class="empty"><div class="ei">⏳</div><p>Em breve.</p></div>
+      <div style="display:flex;gap:8px;margin-bottom:16px">
+        <input type="text" id="doc-search-pending" placeholder="🔍 Nome do paciente..." oninput="searchDocPending()" style="flex:1;background:var(--off-white);border:1.5px solid var(--border);border-radius:8px;padding:9px 14px;font-family:Lato,sans-serif;font-size:13px;outline:none;color:var(--text)">
+      </div>
+      <div id="doc-pending-container"><div class="empty"><div class="ei">⏳</div><p>Nenhum laudo pendente.</p></div></div>
     </div>
   </div>
 
-  <!-- TAB NOVO LAUDO -->
+  <!-- TAB LAUDO (novo/editar) -->
   <div id="tab-novo" class="app-main" style="display:none">
+
+    <!-- Banner laudo concluído -->
+    <div id="laudo-concluido-banner" style="display:none" class="laudo-concluido-banner">
+      ✅ Laudo concluído — somente leitura.
+      <button class="btn btn-outline" style="margin-left:auto;padding:5px 12px;font-size:12px" onclick="reabrirLaudo()">Reabrir</button>
+    </div>
+
+    <!-- Dados do paciente (readonly) -->
     <div class="card">
       <div class="card-hdr">
-        <div class="card-ico"><i class="ti ti-file-plus"></i></div>
-        <div class="card-title">Novo Laudo</div>
+        <div class="card-ico"><i class="ti ti-user"></i></div>
+        <div class="card-title">Dados do Paciente</div>
+        <span id="autosave-ind" class="autosave-ind"></span>
       </div>
-      <div class="empty"><div class="ei">📝</div><p>Em breve.</p></div>
+      <div class="form-row cols-2">
+        <div class="field"><label>Nome</label><input type="text" id="doc-pac-nome" readonly style="background:var(--off-white)"></div>
+        <div class="field"><label>CPF</label><input type="text" id="doc-pac-cpf" readonly style="background:var(--off-white)"></div>
+      </div>
+      <div class="form-row cols-3">
+        <div class="field"><label>Data do exame</label><input type="date" id="doc-data-exame"></div>
+        <div class="field"><label>Convênio</label><input type="text" id="doc-convenio"></div>
+        <div class="field"><label>Médico solicitante</label><input type="text" id="doc-solicitante"></div>
+      </div>
+    </div>
+
+    <!-- Seções de exame -->
+    <div class="card">
+      <div class="card-hdr">
+        <div class="card-ico"><i class="ti ti-stethoscope"></i></div>
+        <div class="card-title">Seções do Laudo</div>
+      </div>
+      <div id="secoes-container">
+        <div class="empty"><div class="ei">🔬</div><p>Carregando seções...</p></div>
+      </div>
+    </div>
+
+    <!-- Ações -->
+    <div class="card" id="laudo-acoes">
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="salvarLaudo(false)" style="flex:1;min-width:160px">
+          <i class="ti ti-device-floppy"></i> Salvar Rascunho
+        </button>
+        <button class="btn" onclick="salvarLaudo(true)" style="flex:1;min-width:160px;background:var(--green-mid);color:#fff">
+          <i class="ti ti-check"></i> Concluir Laudo
+        </button>
+        <button class="btn btn-outline" onclick="showTab('pendentes', document.querySelector('#app-nav .tab:nth-child(2)'))">
+          Voltar à Fila
+        </button>
+      </div>
     </div>
   </div>
 
@@ -457,7 +522,10 @@
         <div class="card-ico"><i class="ti ti-file-check"></i></div>
         <div class="card-title">Laudos Concluídos</div>
       </div>
-      <div class="empty"><div class="ei">✅</div><p>Em breve.</p></div>
+      <div style="display:flex;gap:8px;margin-bottom:16px">
+        <input type="text" id="doc-search-conc" placeholder="🔍 Nome do paciente..." oninput="searchDocConcluidos()" style="flex:1;background:var(--off-white);border:1.5px solid var(--border);border-radius:8px;padding:9px 14px;font-family:Lato,sans-serif;font-size:13px;outline:none;color:var(--text)">
+      </div>
+      <div id="doc-concluidos-container"><div class="empty"><div class="ei">✅</div><p>Nenhum laudo concluído.</p></div></div>
     </div>
   </div>
 </div>
@@ -933,6 +1001,341 @@ function renderSecConcluidos(list) {
 function searchSecConcluidos() {
   const q = (document.getElementById('sec-search-conc')?.value||'').toLowerCase();
   renderSecConcluidos(secConclAll.filter(r => (!q || (r.paciente_nome||'').toLowerCase().includes(q))));
+}
+
+// ══════════════════════════════════════════════════════
+// MÉDICO — NAVEGAÇÃO
+// ══════════════════════════════════════════════════════
+function showTab(name, el) {
+  document.querySelectorAll('#app-nav .tab').forEach(t => t.classList.remove('active'));
+  if (el) el.classList.add('active');
+  ['inicio','pendentes','novo','concluidos'].forEach(t => {
+    const div = document.getElementById('tab-' + t);
+    if (div) div.style.display = t === name ? '' : 'none';
+  });
+  if (name === 'pendentes')  loadDocPending();
+  if (name === 'concluidos') loadDocConcluidos();
+}
+
+// ══════════════════════════════════════════════════════
+// MÉDICO — FILA DE PENDENTES
+// ══════════════════════════════════════════════════════
+let docPendingAll = [];
+
+async function loadDocPending() {
+  loading(true, 'Carregando fila...');
+  const q = supa.from('laudos')
+    .select('id,paciente_nome,cpf_paciente,data_exame,convenio,solicitante')
+    .eq('clinica_id', currentClinica.id)
+    .eq('status', 'pendente')
+    .is('deleted_at', null)
+    .order('data_exame', { ascending: true });
+
+  if (currentDoctor.papel !== 'admin') {
+    q.eq('medico_responsavel_id', currentDoctor.id);
+  }
+
+  const { data } = await q;
+  loading(false);
+  docPendingAll = data || [];
+  document.getElementById('pending-count').textContent = docPendingAll.length;
+  renderDocPending(docPendingAll);
+}
+
+function renderDocPending(list) {
+  const c = document.getElementById('doc-pending-container');
+  if (!list.length) {
+    c.innerHTML = '<div class="empty"><div class="ei">⏳</div><p>Nenhum laudo pendente.</p></div>';
+    return;
+  }
+  const groups = {};
+  list.forEach(r => {
+    const key = r.data_exame || 'sem-data';
+    const label = r.data_exame ? fmtDate(r.data_exame) : 'Sem data';
+    if (!groups[key]) groups[key] = { label, items: [] };
+    groups[key].items.push(r);
+  });
+
+  let html = '<div class="saved-list">';
+  Object.keys(groups).sort().forEach(key => {
+    const g = groups[key];
+    const isToday = key === todayISO();
+    html += `<div class="saved-group-hdr" style="${isToday ? 'color:var(--green);border-color:var(--green)' : ''}">
+      📅 ${g.label}${isToday ? ' — HOJE' : ''} <span class="tab-badge" style="background:#d97706">${g.items.length}</span>
+    </div>`;
+    g.items.forEach(r => {
+      html += `<div class="saved-row" style="border-left:3px solid #d97706;padding-left:12px">
+        <div>
+          <div class="saved-name">${r.paciente_nome}</div>
+          <div class="saved-meta">🏥 ${r.convenio || '—'}${r.solicitante ? ' &nbsp;|&nbsp; Solic: ' + r.solicitante : ''}</div>
+        </div>
+        <div class="saved-actions">
+          <button class="btn btn-primary" style="padding:7px 16px;font-size:12px" onclick="abrirLaudo('${r.id}')">✍️ Laudar</button>
+        </div>
+      </div>`;
+    });
+  });
+  html += '</div>';
+  c.innerHTML = html;
+}
+
+function searchDocPending() {
+  const q = (document.getElementById('doc-search-pending')?.value || '').toLowerCase();
+  renderDocPending(docPendingAll.filter(r => !q || (r.paciente_nome || '').toLowerCase().includes(q)));
+}
+
+// ══════════════════════════════════════════════════════
+// MÉDICO — ABRIR / EDITAR LAUDO
+// ══════════════════════════════════════════════════════
+let editingLaudoId   = null;
+let laudoConcluido   = false;
+let secoesClinica    = [];
+let autosaveTimer    = null;
+
+async function abrirLaudo(id) {
+  loading(true, 'Abrindo laudo...');
+
+  // Carrega seções da clínica se ainda não carregou
+  if (!secoesClinica.length) await loadSecoesClinica();
+
+  const { data: laudo } = await supa.from('laudos').select('*').eq('id', id).single();
+  loading(false);
+  if (!laudo) { toast('Laudo não encontrado.', 'err'); return; }
+
+  editingLaudoId = id;
+  laudoConcluido = laudo.status === 'concluido';
+
+  // Preenche dados do paciente
+  document.getElementById('doc-pac-nome').value    = laudo.paciente_nome || '';
+  document.getElementById('doc-pac-cpf').value     = laudo.cpf_paciente
+    ? laudo.cpf_paciente.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4') : '';
+  document.getElementById('doc-data-exame').value  = laudo.data_exame || '';
+  document.getElementById('doc-convenio').value    = laudo.convenio || '';
+  document.getElementById('doc-solicitante').value = laudo.solicitante || '';
+
+  // Renderiza seções
+  renderSecoesEditor(laudo.secoes || {});
+
+  // Banner concluído
+  const banner = document.getElementById('laudo-concluido-banner');
+  const acoes  = document.getElementById('laudo-acoes');
+  banner.style.display = laudoConcluido ? 'flex' : 'none';
+  acoes.style.display  = laudoConcluido ? 'none'  : '';
+
+  // Campos readonly se concluído
+  ['doc-data-exame','doc-convenio','doc-solicitante'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.readOnly = laudoConcluido;
+  });
+
+  showTab('novo', document.querySelector('#app-nav .tab:nth-child(3)'));
+  document.getElementById('autosave-ind').textContent = '';
+
+  if (!laudoConcluido) startAutosave();
+}
+
+async function loadSecoesClinica() {
+  const { data } = await supa.from('secoes_exame')
+    .select('*')
+    .eq('clinica_id', currentClinica.id)
+    .eq('ativo', true)
+    .order('ordem');
+  secoesClinica = data || [];
+}
+
+function renderSecoesEditor(secoesData) {
+  const container = document.getElementById('secoes-container');
+  if (!secoesClinica.length) {
+    container.innerHTML = '<div class="empty"><div class="ei">⚙️</div><p>Nenhuma seção configurada para esta clínica.</p></div>';
+    return;
+  }
+
+  let html = '';
+  secoesClinica.forEach(s => {
+    const saved  = secoesData[s.chave] || {};
+    const ativo  = saved.ativo !== undefined ? saved.ativo : false;
+    const texto  = saved.texto || s.texto_padrao || '';
+    html += `<div class="secao-bloco">
+      <div class="secao-header" onclick="toggleSecao('${s.chave}')">
+        <div class="secao-toggle${ativo ? ' on' : ''}" id="tog-${s.chave}"></div>
+        <div class="secao-label">${s.label}</div>
+        <i class="ti ti-chevron-down" style="color:var(--text-muted);font-size:14px"></i>
+      </div>
+      <div class="secao-body${ativo ? ' open' : ''}" id="body-${s.chave}">
+        <textarea class="editor-area" id="txt-${s.chave}" rows="5"${laudoConcluido ? ' readonly' : ''}>${texto}</textarea>
+      </div>
+    </div>`;
+  });
+  container.innerHTML = html;
+}
+
+function toggleSecao(chave) {
+  if (laudoConcluido) return;
+  const tog  = document.getElementById('tog-' + chave);
+  const body = document.getElementById('body-' + chave);
+  const on   = !tog.classList.contains('on');
+  tog.classList.toggle('on', on);
+  body.classList.toggle('open', on);
+  scheduleAutosave();
+}
+
+function coletarSecoes() {
+  const result = {};
+  secoesClinica.forEach(s => {
+    const tog   = document.getElementById('tog-' + s.chave);
+    const txt   = document.getElementById('txt-' + s.chave);
+    result[s.chave] = {
+      ativo: tog ? tog.classList.contains('on') : false,
+      texto: txt ? txt.value : '',
+    };
+  });
+  return result;
+}
+
+// ══════════════════════════════════════════════════════
+// MÉDICO — SALVAR / CONCLUIR
+// ══════════════════════════════════════════════════════
+async function salvarLaudo(concluir = false) {
+  if (!editingLaudoId) return;
+  if (concluir && !confirm('Concluir este laudo? Ele ficará somente leitura.')) return;
+
+  clearTimeout(autosaveTimer);
+  loading(true, concluir ? 'Concluindo...' : 'Salvando...');
+
+  const payload = {
+    data_exame:   document.getElementById('doc-data-exame').value || null,
+    convenio:     document.getElementById('doc-convenio').value.trim() || null,
+    solicitante:  document.getElementById('doc-solicitante').value.trim() || null,
+    secoes:       coletarSecoes(),
+    atualizado_em: new Date().toISOString(),
+  };
+  if (concluir) payload.status = 'concluido';
+
+  const { error } = await supa.from('laudos').update(payload).eq('id', editingLaudoId);
+  loading(false);
+
+  if (error) { toast('Erro ao salvar: ' + error.message, 'err'); return; }
+
+  if (concluir) {
+    laudoConcluido = true;
+    toast('Laudo concluído com sucesso!', 'ok');
+    document.getElementById('laudo-concluido-banner').style.display = 'flex';
+    document.getElementById('laudo-acoes').style.display = 'none';
+    ['doc-data-exame','doc-convenio','doc-solicitante'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.readOnly = true;
+    });
+    document.querySelectorAll('.editor-area').forEach(el => el.readOnly = true);
+    // Atualiza badge de pendentes
+    const count = parseInt(document.getElementById('pending-count').textContent || '0');
+    document.getElementById('pending-count').textContent = Math.max(0, count - 1);
+  } else {
+    const ind = document.getElementById('autosave-ind');
+    ind.textContent = '✓ Salvo';
+    setTimeout(() => { ind.textContent = ''; }, 2000);
+  }
+}
+
+async function reabrirLaudo() {
+  if (!editingLaudoId) return;
+  if (!confirm('Reabrir este laudo para edição?')) return;
+  loading(true, 'Reabrindo...');
+  await supa.from('laudos').update({ status: 'pendente', atualizado_em: new Date().toISOString() }).eq('id', editingLaudoId);
+  loading(false);
+  laudoConcluido = false;
+  document.getElementById('laudo-concluido-banner').style.display = 'none';
+  document.getElementById('laudo-acoes').style.display = '';
+  ['doc-data-exame','doc-convenio','doc-solicitante'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.readOnly = false;
+  });
+  document.querySelectorAll('.editor-area').forEach(el => el.readOnly = false);
+  toast('Laudo reaberto para edição.', 'ok');
+  startAutosave();
+}
+
+// ══════════════════════════════════════════════════════
+// MÉDICO — AUTOSAVE
+// ══════════════════════════════════════════════════════
+function scheduleAutosave() {
+  clearTimeout(autosaveTimer);
+  const ind = document.getElementById('autosave-ind');
+  if (ind) ind.textContent = '...';
+  autosaveTimer = setTimeout(() => salvarRascunhoSilencioso(), 3000);
+}
+
+function startAutosave() {
+  document.querySelectorAll('.editor-area').forEach(el => {
+    el.addEventListener('input', scheduleAutosave);
+  });
+  ['doc-data-exame','doc-convenio','doc-solicitante'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', scheduleAutosave);
+  });
+}
+
+async function salvarRascunhoSilencioso() {
+  if (!editingLaudoId || laudoConcluido) return;
+  const payload = {
+    data_exame:    document.getElementById('doc-data-exame').value || null,
+    convenio:      document.getElementById('doc-convenio').value.trim() || null,
+    solicitante:   document.getElementById('doc-solicitante').value.trim() || null,
+    secoes:        coletarSecoes(),
+    atualizado_em: new Date().toISOString(),
+  };
+  const { error } = await supa.from('laudos').update(payload).eq('id', editingLaudoId);
+  const ind = document.getElementById('autosave-ind');
+  if (ind) ind.textContent = error ? '⚠ erro' : '✓ Salvo';
+}
+
+// ══════════════════════════════════════════════════════
+// MÉDICO — CONCLUÍDOS
+// ══════════════════════════════════════════════════════
+let docConclAll = [];
+
+async function loadDocConcluidos() {
+  loading(true, 'Carregando...');
+  const q = supa.from('laudos')
+    .select('id,paciente_nome,data_exame,convenio,atualizado_em')
+    .eq('clinica_id', currentClinica.id)
+    .eq('status', 'concluido')
+    .is('deleted_at', null)
+    .order('atualizado_em', { ascending: false })
+    .limit(100);
+
+  if (currentDoctor.papel !== 'admin') {
+    q.eq('medico_responsavel_id', currentDoctor.id);
+  }
+
+  const { data } = await q;
+  loading(false);
+  docConclAll = data || [];
+  renderDocConcluidos(docConclAll);
+}
+
+function renderDocConcluidos(list) {
+  const c = document.getElementById('doc-concluidos-container');
+  if (!list.length) {
+    c.innerHTML = '<div class="empty"><div class="ei">✅</div><p>Nenhum laudo concluído.</p></div>';
+    return;
+  }
+  let html = '<div class="saved-list">';
+  list.forEach(r => {
+    html += `<div class="saved-row">
+      <div>
+        <div class="saved-name">${r.paciente_nome}</div>
+        <div class="saved-meta">📅 ${fmtDate(r.data_exame)} &nbsp;|&nbsp; 🏥 ${r.convenio || '—'}</div>
+      </div>
+      <div class="saved-actions">
+        <button class="btn btn-outline" style="padding:6px 12px;font-size:12px" onclick="abrirLaudo('${r.id}')">👁 Ver</button>
+      </div>
+    </div>`;
+  });
+  html += '</div>';
+  c.innerHTML = html;
+}
+
+function searchDocConcluidos() {
+  const q = (document.getElementById('doc-search-conc')?.value || '').toLowerCase();
+  renderDocConcluidos(docConclAll.filter(r => !q || (r.paciente_nome || '').toLowerCase().includes(q)));
 }
 </script>
 </body>
