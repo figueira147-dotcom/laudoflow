@@ -229,11 +229,18 @@
   .laudo-concluido-banner { background: var(--green-pale); border: 1px solid var(--green); border-radius: 8px; padding: 10px 16px; font-size: 13px; color: var(--green); font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
 
   /* ── CONFIGURAÇÕES ── */
-  .cfg-secao-row { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--border); }
+  .cfg-tabs { display:flex; gap:0; border-bottom:2px solid var(--border); margin-bottom:24px; }
+  .cfg-tab { padding:10px 18px; font-size:13px; font-weight:700; color:var(--text-muted); cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-2px; transition:all .15s; white-space:nowrap; }
+  .cfg-tab:hover { color:var(--green); }
+  .cfg-tab.active { color:var(--green); border-bottom-color:var(--green); }
+  .cfg-panel { display:none; }
+  .cfg-panel.active { display:block; }
+  .cfg-secao-row { display:flex; flex-direction:column; gap:8px; padding:14px 0; border-bottom:1px solid var(--border); }
   .cfg-secao-row:last-child { border-bottom:none; }
+  .cfg-secao-row-header { display:flex; align-items:center; gap:10px; }
   .cfg-secao-label { flex:1; font-size:13px; font-weight:700; }
   .cfg-secao-chave { font-size:11px; color:var(--text-muted); background:var(--off-white); padding:2px 6px; border-radius:4px; font-family:monospace; }
-  .cfg-user-row { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--border); }
+  .cfg-user-row { display:flex; align-items:center; gap:10px; padding:12px 0; border-bottom:1px solid var(--border); }
   .cfg-user-row:last-child { border-bottom:none; }
   .cfg-user-info { flex:1; }
   .cfg-user-nome { font-size:13px; font-weight:700; }
@@ -617,81 +624,79 @@
 
   <!-- TAB CONFIGURAÇÕES (admin) -->
   <div id="tab-config" class="app-main" style="display:none">
-
-    <!-- Identidade da clínica -->
     <div class="card">
-      <div class="card-hdr">
-        <div class="card-ico"><i class="ti ti-building-hospital"></i></div>
-        <div class="card-title">Identidade da Clínica</div>
+      <!-- Sub-abas -->
+      <div class="cfg-tabs">
+        <div class="cfg-tab active" onclick="showCfgTab('clinica',this)"><i class="ti ti-building-hospital"></i> Clínica</div>
+        <div class="cfg-tab" onclick="showCfgTab('secoes',this)"><i class="ti ti-stethoscope"></i> Seções</div>
+        <div class="cfg-tab" onclick="showCfgTab('presets',this)"><i class="ti ti-user-check"></i> Presets</div>
+        <div class="cfg-tab" onclick="showCfgTab('usuarios',this)"><i class="ti ti-users"></i> Usuários</div>
       </div>
-      <div class="form-row cols-2">
-        <div class="field"><label>Nome da clínica</label><input type="text" id="cfg-nome"></div>
-        <div class="field"><label>Cor primária</label><input type="color" id="cfg-cor" style="height:40px;padding:2px 6px"></div>
-      </div>
-      <div class="form-row cols-2">
-        <div class="field"><label>Cabeçalho do laudo (PDF)</label><input type="text" id="cfg-cabecalho" placeholder="Nome que aparece no topo do laudo impresso"></div>
-        <div class="field"><label>Rodapé do laudo (PDF)</label><input type="text" id="cfg-rodape" placeholder="CRM, endereço, telefone..."></div>
-      </div>
-      <button class="btn btn-primary" onclick="salvarConfigClinica()" style="margin-top:4px">Salvar alterações</button>
-    </div>
 
-    <!-- Seções de exame -->
-    <div class="card">
-      <div class="card-hdr">
-        <div class="card-ico"><i class="ti ti-stethoscope"></i></div>
-        <div class="card-title">Seções de Exame</div>
-      </div>
-      <div id="cfg-secoes-lista" style="margin-bottom:16px"></div>
-      <div style="display:flex;gap:8px;align-items:flex-end">
-        <div class="field" style="flex:2;margin:0"><label>Nova seção — label</label><input type="text" id="cfg-nova-secao-label" placeholder="Ex: Doppler Renal"></div>
-        <div class="field" style="flex:1;margin:0"><label>Chave (sem espaços)</label><input type="text" id="cfg-nova-secao-chave" placeholder="Ex: renal"></div>
-        <button class="btn btn-primary" onclick="adicionarSecao()" style="flex-shrink:0;height:40px">+ Adicionar</button>
-      </div>
-    </div>
-
-    <!-- Presets por médico -->
-    <div class="card">
-      <div class="card-hdr">
-        <div class="card-ico"><i class="ti ti-user-check"></i></div>
-        <div class="card-title">Textos Padrão por Médico</div>
-      </div>
-      <div class="field" style="margin-bottom:16px">
-        <label>Selecione o médico</label>
-        <select id="cfg-preset-medico" onchange="loadPresetsMedico()">
-          <option value="">Selecione...</option>
-        </select>
-      </div>
-      <div id="cfg-presets-container"><div class="empty"><div class="ei">👨‍⚕️</div><p>Selecione um médico para editar os presets.</p></div></div>
-      <div id="cfg-presets-actions" style="display:none;margin-top:16px">
-        <button class="btn btn-primary" onclick="salvarPresetsMedico()">Salvar presets do médico</button>
-      </div>
-    </div>
-
-    <!-- Usuários -->
-    <div class="card">
-      <div class="card-hdr">
-        <div class="card-ico"><i class="ti ti-users"></i></div>
-        <div class="card-title">Usuários</div>
-      </div>
-      <div id="cfg-usuarios-lista" style="margin-bottom:16px"></div>
-      <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:8px">
-        <div style="font-size:12px;font-weight:700;color:var(--text-muted);letter-spacing:.5px;text-transform:uppercase;margin-bottom:12px">Novo usuário</div>
+      <!-- PAINEL: Clínica -->
+      <div id="cfg-panel-clinica" class="cfg-panel active">
         <div class="form-row cols-2">
-          <div class="field"><label>Nome</label><input type="text" id="cfg-novo-user-nome" placeholder="Nome completo"></div>
-          <div class="field"><label>E-mail</label><input type="email" id="cfg-novo-user-email" placeholder="email@clinica.com"></div>
+          <div class="field"><label>Nome da clínica</label><input type="text" id="cfg-nome"></div>
+          <div class="field"><label>Cor primária</label><input type="color" id="cfg-cor" style="height:40px;padding:2px 6px"></div>
         </div>
         <div class="form-row cols-2">
-          <div class="field">
-            <label>Papel</label>
-            <select id="cfg-novo-user-papel">
-              <option value="medico">Médico</option>
-              <option value="secretaria">Secretária</option>
-              <option value="admin">Admin</option>
-            </select>
+          <div class="field"><label>Cabeçalho do laudo</label><input type="text" id="cfg-cabecalho" placeholder="Aparece no topo do laudo impresso"></div>
+          <div class="field"><label>Rodapé do laudo</label><input type="text" id="cfg-rodape" placeholder="CRM, endereço, telefone..."></div>
+        </div>
+        <button class="btn btn-primary" onclick="salvarConfigClinica()">Salvar alterações</button>
+      </div>
+
+      <!-- PAINEL: Seções -->
+      <div id="cfg-panel-secoes" class="cfg-panel">
+        <div id="cfg-secoes-lista" style="margin-bottom:20px"></div>
+        <div style="border-top:1px solid var(--border);padding-top:16px">
+          <div style="font-size:12px;font-weight:700;color:var(--text-muted);letter-spacing:.5px;text-transform:uppercase;margin-bottom:12px">Nova seção</div>
+          <div style="display:flex;gap:8px;align-items:flex-end">
+            <div class="field" style="flex:2;margin:0"><label>Label</label><input type="text" id="cfg-nova-secao-label" placeholder="Ex: Doppler Renal"></div>
+            <div class="field" style="flex:1;margin:0"><label>Chave</label><input type="text" id="cfg-nova-secao-chave" placeholder="ex: renal"></div>
+            <button class="btn btn-primary" onclick="adicionarSecao()" style="flex-shrink:0;height:40px">+ Adicionar</button>
           </div>
-          <div class="field"><label>Senha inicial</label><input type="text" id="cfg-novo-user-senha" placeholder="Mínimo 6 caracteres"></div>
         </div>
-        <button class="btn btn-primary" onclick="criarUsuario()">Criar usuário</button>
+      </div>
+
+      <!-- PAINEL: Presets por médico -->
+      <div id="cfg-panel-presets" class="cfg-panel">
+        <div class="field" style="margin-bottom:20px">
+          <label>Médico</label>
+          <select id="cfg-preset-medico" onchange="loadPresetsMedico()">
+            <option value="">Selecione o médico...</option>
+          </select>
+        </div>
+        <div id="cfg-presets-container">
+          <div class="empty"><div class="ei">👨‍⚕️</div><p>Selecione um médico para editar os presets.</p></div>
+        </div>
+        <div id="cfg-presets-actions" style="display:none;margin-top:16px">
+          <button class="btn btn-primary" onclick="salvarPresetsMedico()">Salvar presets</button>
+        </div>
+      </div>
+
+      <!-- PAINEL: Usuários -->
+      <div id="cfg-panel-usuarios" class="cfg-panel">
+        <div id="cfg-usuarios-lista" style="margin-bottom:20px"></div>
+        <div style="border-top:1px solid var(--border);padding-top:16px">
+          <div style="font-size:12px;font-weight:700;color:var(--text-muted);letter-spacing:.5px;text-transform:uppercase;margin-bottom:12px">Novo usuário</div>
+          <div class="form-row cols-2">
+            <div class="field"><label>Nome</label><input type="text" id="cfg-novo-user-nome" placeholder="Nome completo"></div>
+            <div class="field"><label>E-mail</label><input type="email" id="cfg-novo-user-email" placeholder="email@clinica.com"></div>
+          </div>
+          <div class="form-row cols-2">
+            <div class="field">
+              <label>Papel</label>
+              <select id="cfg-novo-user-papel">
+                <option value="medico">Médico</option>
+                <option value="secretaria">Secretária</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+            <div class="field"><label>Senha inicial</label><input type="text" id="cfg-novo-user-senha" placeholder="Mínimo 6 caracteres"></div>
+          </div>
+          <button class="btn btn-primary" onclick="criarUsuario()">Criar usuário</button>
+        </div>
       </div>
     </div>
   </div>
@@ -1306,15 +1311,26 @@ function labelSecao(chave) {
 // ══════════════════════════════════════════════════════
 // CONFIGURAÇÕES — CLÍNICA
 // ══════════════════════════════════════════════════════
+function showCfgTab(name, el) {
+  document.querySelectorAll('.cfg-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.cfg-panel').forEach(p => p.classList.remove('active'));
+  if (el) el.classList.add('active');
+  const panel = document.getElementById('cfg-panel-' + name);
+  if (panel) panel.classList.add('active');
+}
+
 async function loadConfig() {
   document.getElementById('cfg-nome').value      = currentClinica.nome || '';
   document.getElementById('cfg-cor').value       = currentClinica.cor_primaria || '#1a5c38';
   document.getElementById('cfg-cabecalho').value = currentClinica.cabecalho_pdf || '';
   document.getElementById('cfg-rodape').value    = currentClinica.rodape_pdf || '';
 
-  await loadConfigSecoes();
-  await loadConfigUsuarios();
-  await loadPresetMedicosSelect();
+  // Carrega todas as seções em paralelo
+  await Promise.all([
+    loadConfigSecoes(),
+    loadConfigUsuarios(),
+    loadPresetMedicosSelect(),
+  ]);
 }
 
 async function salvarConfigClinica() {
