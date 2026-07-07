@@ -649,6 +649,24 @@
       </div>
     </div>
 
+    <!-- Presets por médico -->
+    <div class="card">
+      <div class="card-hdr">
+        <div class="card-ico"><i class="ti ti-user-check"></i></div>
+        <div class="card-title">Textos Padrão por Médico</div>
+      </div>
+      <div class="field" style="margin-bottom:16px">
+        <label>Selecione o médico</label>
+        <select id="cfg-preset-medico" onchange="loadPresetsMedico()">
+          <option value="">Selecione...</option>
+        </select>
+      </div>
+      <div id="cfg-presets-container"><div class="empty"><div class="ei">👨‍⚕️</div><p>Selecione um médico para editar os presets.</p></div></div>
+      <div id="cfg-presets-actions" style="display:none;margin-top:16px">
+        <button class="btn btn-primary" onclick="salvarPresetsMedico()">Salvar presets do médico</button>
+      </div>
+    </div>
+
     <!-- Usuários -->
     <div class="card">
       <div class="card-hdr">
@@ -1289,7 +1307,6 @@ function labelSecao(chave) {
 // CONFIGURAÇÕES — CLÍNICA
 // ══════════════════════════════════════════════════════
 async function loadConfig() {
-  // Preenche dados da clínica
   document.getElementById('cfg-nome').value      = currentClinica.nome || '';
   document.getElementById('cfg-cor').value       = currentClinica.cor_primaria || '#1a5c38';
   document.getElementById('cfg-cabecalho').value = currentClinica.cabecalho_pdf || '';
@@ -1297,6 +1314,7 @@ async function loadConfig() {
 
   await loadConfigSecoes();
   await loadConfigUsuarios();
+  await loadPresetMedicosSelect();
 }
 
 async function salvarConfigClinica() {
@@ -1335,17 +1353,34 @@ async function loadConfigSecoes() {
   if (!secoesClinica.length) { c.innerHTML = '<p style="color:var(--text-muted);font-size:13px">Nenhuma seção cadastrada.</p>'; return; }
 
   c.innerHTML = secoesClinica.map(s => `
-    <div class="cfg-secao-row">
-      <div class="cfg-secao-label">
-        ${s.label} <span class="cfg-secao-chave">${s.chave}</span>
+    <div class="cfg-secao-row" style="flex-direction:column;align-items:stretch;gap:8px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="cfg-secao-label">
+          ${s.label} <span class="cfg-secao-chave">${s.chave}</span>
+        </div>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;flex-shrink:0">
+          <input type="checkbox" ${s.ativo ? 'checked' : ''} onchange="toggleSecaoAtivo('${s.id}', this.checked)">
+          Ativa
+        </label>
+        <button class="btn btn-danger" style="padding:4px 10px;font-size:12px;flex-shrink:0" onclick="deletarSecao('${s.id}')">🗑</button>
       </div>
-      <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
-        <input type="checkbox" ${s.ativo ? 'checked' : ''} onchange="toggleSecaoAtivo('${s.id}', this.checked)">
-        Ativa
-      </label>
-      <button class="btn btn-danger" style="padding:4px 10px;font-size:12px" onclick="deletarSecao('${s.id}')">🗑</button>
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--text-muted);letter-spacing:.5px;text-transform:uppercase;display:block;margin-bottom:4px">Texto padrão da clínica</label>
+        <textarea id="padrao-${s.id}" rows="3" class="editor-area" style="font-size:12px">${s.texto_padrao || ''}</textarea>
+        <button class="btn btn-outline" style="margin-top:6px;padding:5px 12px;font-size:12px" onclick="salvarPadraoSecao('${s.id}')">Salvar padrão</button>
+      </div>
     </div>
   `).join('');
+}
+
+async function salvarPadraoSecao(secaoId) {
+  const texto = document.getElementById('padrao-' + secaoId)?.value || '';
+  loading(true, 'Salvando...');
+  const { error } = await supa.from('secoes_exame').update({ texto_padrao: texto }).eq('id', secaoId);
+  loading(false);
+  if (error) { toast('Erro: ' + error.message, 'err'); return; }
+  secoesClinica = secoesClinica.map(s => s.id === secaoId ? { ...s, texto_padrao: texto } : s);
+  toast('Texto padrão salvo.', 'ok');
 }
 
 async function adicionarSecao() {
@@ -1415,6 +1450,81 @@ async function loadConfigUsuarios() {
 async function toggleUsuarioAtivo(id, ativo) {
   await supa.from('medicos').update({ ativo }).eq('id', id);
   toast(ativo ? 'Usuário ativado.' : 'Usuário desativado.', 'ok');
+}
+
+// ══════════════════════════════════════════════════════
+// CONFIGURAÇÕES — PRESETS POR MÉDICO
+// ══════════════════════════════════════════════════════
+async function loadPresetMedicosSelect() {
+  const { data } = await supa.from('medicos')
+    .select('id,nome').eq('clinica_id', currentClinica.id)
+    .in('papel', ['medico','admin']).eq('ativo', true).order('nome');
+  const sel = document.getElementById('cfg-preset-medico');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">Selecione...</option>'
+    + (data||[]).map(m => `<option value="${m.id}">${m.nome}</option>`).join('');
+}
+
+async function loadPresetsMedico() {
+  const medicoId = document.getElementById('cfg-preset-medico').value;
+  const container = document.getElementById('cfg-presets-container');
+  const actions   = document.getElementById('cfg-presets-actions');
+
+  if (!medicoId) {
+    container.innerHTML = '<div class="empty"><div class="ei">👨‍⚕️</div><p>Selecione um médico.</p></div>';
+    actions.style.display = 'none';
+    return;
+  }
+
+  loading(true, 'Carregando presets...');
+
+  // Busca presets existentes do médico
+  const { data: presets } = await supa.from('medico_secao_presets')
+    .select('secao_id, texto').eq('medico_id', medicoId);
+
+  loading(false);
+
+  const presetMap = {};
+  (presets||[]).forEach(p => { presetMap[p.secao_id] = p.texto; });
+
+  if (!secoesClinica.length) {
+    container.innerHTML = '<div class="empty"><p>Nenhuma seção cadastrada.</p></div>';
+    actions.style.display = 'none';
+    return;
+  }
+
+  container.innerHTML = secoesClinica.filter(s => s.ativo).map(s => `
+    <div style="margin-bottom:16px">
+      <label style="font-size:12px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <span>${s.label}</span>
+        <span class="cfg-secao-chave">${s.chave}</span>
+      </label>
+      <textarea id="mp-${s.id}" rows="4" class="editor-area" style="font-size:12px"
+        placeholder="Deixe vazio para usar o padrão da clínica">${presetMap[s.id] || ''}</textarea>
+    </div>
+  `).join('');
+
+  actions.style.display = '';
+}
+
+async function salvarPresetsMedico() {
+  const medicoId = document.getElementById('cfg-preset-medico').value;
+  if (!medicoId) return;
+
+  loading(true, 'Salvando presets...');
+
+  const upserts = secoesClinica.filter(s => s.ativo).map(s => ({
+    medico_id: medicoId,
+    secao_id:  s.id,
+    texto:     document.getElementById('mp-' + s.id)?.value || '',
+  }));
+
+  const { error } = await supa.from('medico_secao_presets')
+    .upsert(upserts, { onConflict: 'medico_id,secao_id' });
+
+  loading(false);
+  if (error) { toast('Erro: ' + error.message, 'err'); return; }
+  toast('Presets salvos com sucesso.', 'ok');
 }
 
 async function criarUsuario() {
@@ -1546,17 +1656,23 @@ let autosaveTimer    = null;
 async function abrirLaudo(id) {
   loading(true, 'Abrindo laudo...');
 
-  // Carrega seções da clínica se ainda não carregou
   if (!secoesClinica.length) await loadSecoesClinica();
 
-  const { data: laudo } = await supa.from('laudos').select('*').eq('id', id).single();
+  const [{ data: laudo }, { data: presets }] = await Promise.all([
+    supa.from('laudos').select('*').eq('id', id).single(),
+    supa.from('medico_secao_presets').select('secao_id,texto').eq('medico_id', currentDoctor.id),
+  ]);
+
   loading(false);
   if (!laudo) { toast('Laudo não encontrado.', 'err'); return; }
 
   editingLaudoId = id;
   laudoConcluido = laudo.status === 'concluido';
 
-  // Preenche dados do paciente
+  // Monta mapa de presets do médico
+  const presetMap = {};
+  (presets||[]).forEach(p => { presetMap[p.secao_id] = p.texto; });
+
   document.getElementById('doc-pac-nome').value    = laudo.paciente_nome || '';
   document.getElementById('doc-pac-cpf').value     = laudo.cpf_paciente
     ? laudo.cpf_paciente.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4') : '';
@@ -1564,16 +1680,13 @@ async function abrirLaudo(id) {
   document.getElementById('doc-convenio').value    = laudo.convenio || '';
   document.getElementById('doc-solicitante').value = laudo.solicitante || '';
 
-  // Renderiza seções
-  renderSecoesEditor(laudo.secoes || {});
+  renderSecoesEditor(laudo.secoes || {}, presetMap);
 
-  // Banner concluído
   const banner = document.getElementById('laudo-concluido-banner');
   const acoes  = document.getElementById('laudo-acoes');
   banner.style.display = laudoConcluido ? 'flex' : 'none';
   acoes.style.display  = laudoConcluido ? 'none'  : '';
 
-  // Campos readonly se concluído
   ['doc-data-exame','doc-convenio','doc-solicitante'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.readOnly = laudoConcluido;
@@ -1594,7 +1707,7 @@ async function loadSecoesClinica() {
   secoesClinica = data || [];
 }
 
-function renderSecoesEditor(secoesData) {
+function renderSecoesEditor(secoesData, presetMap = {}) {
   const container = document.getElementById('secoes-container');
   if (!secoesClinica.length) {
     container.innerHTML = '<div class="empty"><div class="ei">⚙️</div><p>Nenhuma seção configurada para esta clínica.</p></div>';
@@ -1603,9 +1716,15 @@ function renderSecoesEditor(secoesData) {
 
   let html = '';
   secoesClinica.forEach(s => {
-    const saved  = secoesData[s.chave] || {};
-    const ativo  = saved.ativo !== undefined ? saved.ativo : false;
-    const texto  = saved.texto || s.texto_padrao || '';
+    const saved = secoesData[s.chave] || {};
+    const ativo = saved.ativo !== undefined ? saved.ativo : false;
+
+    // Prioridade: texto já salvo no laudo → preset do médico → padrão da clínica → vazio
+    const textoSalvo   = saved.texto;
+    const textoPreset  = presetMap[s.id] || '';
+    const textoPadrao  = s.texto_padrao || '';
+    const texto = textoSalvo !== undefined ? textoSalvo : (textoPreset || textoPadrao);
+
     html += `<div class="secao-bloco">
       <div class="secao-header" onclick="toggleSecao('${s.chave}')">
         <div class="secao-toggle${ativo ? ' on' : ''}" id="tog-${s.chave}"></div>
