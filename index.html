@@ -1592,6 +1592,29 @@ function showTab(name, el) {
   if (name === 'pendentes')  loadDocPending();
   if (name === 'concluidos') loadDocConcluidos();
   if (name === 'config')     loadConfig();
+  if (name === 'novo')       initNovoLaudo();
+}
+
+async function initNovoLaudo() {
+  if (!editingLaudoId) {
+    // resetar campos
+    ['doc-nome','doc-cpf','doc-convenio','doc-solicitante'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    const dataEl = document.getElementById('doc-data-exame');
+    if (dataEl) dataEl.value = new Date().toISOString().slice(0,10);
+    editingLaudoId = null;
+    laudoConcluido = false;
+    document.getElementById('laudo-concluido-banner').style.display = 'none';
+    document.getElementById('laudo-acoes').style.display = '';
+  }
+  if (!secoesClinica.length) await loadSecoesClinica();
+  const container = document.getElementById('secoes-container');
+  // só renderiza se não tiver laudo aberto (laudo aberto já renderizou)
+  if (!editingLaudoId) {
+    renderSecoesEditor({});
+  }
 }
 
 // ══════════════════════════════════════════════════════
