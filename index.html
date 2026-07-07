@@ -264,6 +264,53 @@
   .pat-secao-texto { font-size: 13px; color: var(--text); line-height: 1.7; }
   .pat-secao-texto p { margin: 0 0 4px; }
 
+  /* ── UPLOAD DE IMAGENS ── */
+  .img-drop-zone { border: 2px dashed var(--border); border-radius: 10px; padding: 20px 16px; text-align: center; color: var(--text-muted); font-size: 13px; cursor: pointer; transition: all 0.2s; }
+  .img-drop-zone:hover, .img-drop-zone.over { border-color: var(--green); background: var(--green-pale); color: var(--green); }
+  .img-grid-ui { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+  .img-ui-item { position: relative; width: calc(33.333% - 7px); aspect-ratio: 4/3; border-radius: 8px; overflow: hidden; border: 1.5px solid var(--border); background: var(--off-white); }
+  .img-ui-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .img-ui-over { position: absolute; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; gap: 6px; opacity: 0; transition: opacity 0.18s; }
+  .img-ui-item:hover .img-ui-over { opacity: 1; }
+  .img-ui-btn { background: rgba(255,255,255,0.92); border: none; border-radius: 4px; padding: 4px 9px; cursor: pointer; font-size: 13px; font-weight: 700; }
+  .img-ui-btn:disabled { opacity: 0.3; cursor: default; }
+  .img-pg-label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin: 14px 0 6px; }
+
+  /* ── PRINT / PDF ── */
+  @media print {
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    body > *:not(#print-container) { display: none !important; }
+    body { background: #fff !important; margin: 0 !important; padding: 0 !important; }
+    #print-container { display: block !important; }
+    @page { size: A4 portrait; margin: 0; }
+    .print-page { width: 210mm; height: 297mm; box-sizing: border-box; padding: 14mm 22mm 0 22mm; font-family: 'Times New Roman', Times, serif; page-break-after: always; break-after: page; background: #fff; position: relative; overflow: hidden; }
+    .print-page:last-child { page-break-after: avoid; break-after: avoid; }
+    .print-body { display: block; max-height: 218mm; overflow: hidden; }
+    .print-header { text-align: center; padding-bottom: 8px; margin-bottom: 12px; border-bottom: 2px solid; }
+    .ph-main { font-size: 14pt; font-weight: bold; white-space: pre-line; }
+    .ph-sub  { font-size: 9pt; margin-top: 3px; white-space: pre-line; }
+    .print-patient-box { border: 1.5px solid #000; border-radius: 4px; padding: 7px 12px; margin-bottom: 12px; font-size: 9.5pt; }
+    .ppb-row { display: flex; }
+    .pp-cell { padding: 2px 6px 2px 0; min-width: 0; }
+    .pp-label { font-size: 7.5pt; color: #555; text-transform: uppercase; letter-spacing: 0.5px; }
+    .pp-value { font-weight: bold; font-size: 10pt; word-wrap: break-word; }
+    .print-section h3 { font-size: 12pt; font-weight: bold; text-decoration: underline; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.3px; }
+    .print-section .sec-body { margin-top: 10px; }
+    .print-section p, .print-section .sec-body, .print-section .sec-body div { font-size: 9.5pt; line-height: 1.4; text-align: justify; word-break: break-word; margin: 0; font-weight: normal; }
+    .print-section .sec-body b, .print-section .sec-body strong { font-weight: bold; }
+    .print-section .sec-body span:not([style*="font-weight"]) { font-weight: normal; }
+    .print-section [style*="line-height"] { line-height: inherit; }
+    .print-img-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; margin-top: 8mm; }
+    .print-img-cell { width: 100%; aspect-ratio: 4/3; overflow: hidden; }
+    .print-img-cell img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .print-signature { position: absolute; bottom: 28mm; left: 22mm; right: 22mm; padding-top: 8px; border-top: 1px solid #555; }
+    .ps-label { font-size: 9pt; }
+    .ps-name  { font-size: 10pt; font-weight: bold; }
+    .ps-date  { font-size: 8.5pt; font-style: italic; }
+    .ps-warn  { font-size: 7.5pt; color: #444; margin-top: 5px; font-style: italic; line-height: 1.3; }
+    .print-footer { position: absolute; bottom: 10mm; left: 22mm; right: 22mm; padding-top: 6px; border-top: 1.5px solid; font-size: 8pt; display: flex; justify-content: space-between; white-space: pre-line; }
+  }
+
   /* ── QUILL RICH EDITOR ── */
   .ql-toolbar.ql-snow { background: var(--off-white); border: 1.5px solid var(--border) !important; border-bottom: none !important; border-radius: 8px 8px 0 0; padding: 6px 8px; flex-wrap: wrap; }
   .ql-container.ql-snow { border: 1.5px solid var(--border) !important; border-radius: 0 0 8px 8px; font-family: Lato, sans-serif; font-size: 13px; background: var(--off-white); }
@@ -641,14 +688,34 @@
       </div>
     </div>
 
+    <!-- Imagens -->
+    <div class="card" id="laudo-imgs-card">
+      <div class="card-hdr">
+        <div class="card-ico"><i class="ti ti-photo"></i></div>
+        <div class="card-title">Imagens do Exame</div>
+      </div>
+      <div class="img-drop-zone" id="img-drop-zone"
+           onclick="document.getElementById('img-file-input').click()"
+           ondrop="onImgDrop(event)" ondragover="onImgDragOver(event)" ondragleave="onImgDragLeave()">
+        <i class="ti ti-upload" style="font-size:22px;display:block;margin-bottom:6px"></i>
+        <div>Arraste imagens aqui ou <strong>clique para selecionar</strong></div>
+        <div style="font-size:11px;margin-top:4px">JPG, PNG · até 6 imagens por página no PDF</div>
+      </div>
+      <input type="file" id="img-file-input" multiple accept="image/*" style="display:none" onchange="onImgFileSelect(event)">
+      <div id="img-container"></div>
+    </div>
+
     <!-- Ações -->
     <div class="card" id="laudo-acoes">
       <div style="display:flex;gap:10px;flex-wrap:wrap">
-        <button class="btn btn-primary" onclick="salvarLaudo(false)" style="flex:1;min-width:160px">
+        <button class="btn btn-primary" onclick="salvarLaudo(false)" style="flex:1;min-width:140px">
           <i class="ti ti-device-floppy"></i> Salvar Rascunho
         </button>
-        <button class="btn" onclick="salvarLaudo(true)" style="flex:1;min-width:160px;background:var(--green-mid);color:#fff">
+        <button class="btn" onclick="salvarLaudo(true)" style="flex:1;min-width:140px;background:var(--green-mid);color:#fff">
           <i class="ti ti-check"></i> Concluir Laudo
+        </button>
+        <button class="btn" onclick="printLaudo()" style="flex:1;min-width:140px;background:#154d87;color:#fff">
+          <i class="ti ti-printer"></i> Imprimir / PDF
         </button>
         <button class="btn btn-outline" onclick="showTab('pendentes', document.querySelector('#app-nav .tab:nth-child(2)'))">
           Voltar à Fila
@@ -1695,7 +1762,6 @@ function showTab(name, el) {
 
 async function initNovoLaudo() {
   if (!editingLaudoId) {
-    // resetar campos
     ['doc-nome','doc-cpf','doc-convenio','doc-solicitante'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = '';
@@ -1704,12 +1770,14 @@ async function initNovoLaudo() {
     if (dataEl) dataEl.value = new Date().toISOString().slice(0,10);
     editingLaudoId = null;
     laudoConcluido = false;
+    laudoImages = [];
+    renderLaudoImages();
+    const dz = document.getElementById('img-drop-zone');
+    if (dz) dz.style.display = '';
     document.getElementById('laudo-concluido-banner').style.display = 'none';
     document.getElementById('laudo-acoes').style.display = '';
   }
   if (!secoesClinica.length) await loadSecoesClinica();
-  const container = document.getElementById('secoes-container');
-  // só renderiza se não tiver laudo aberto (laudo aberto já renderizou)
   if (!editingLaudoId) {
     renderSecoesEditor({});
   }
@@ -1817,6 +1885,12 @@ async function abrirLaudo(id) {
   document.getElementById('doc-convenio').value    = laudo.convenio || '';
   document.getElementById('doc-solicitante').value = laudo.solicitante || '';
 
+  // Carrega imagens
+  laudoImages = (laudo.imagens || []).map(i => ({ id: Date.now() + Math.random(), src: i.src, name: i.name || '' }));
+  renderLaudoImages();
+  const dropZone = document.getElementById('img-drop-zone');
+  if (dropZone) dropZone.style.display = laudoConcluido ? 'none' : '';
+
   renderSecoesEditor(laudo.secoes || {}, presetMap);
 
   const banner = document.getElementById('laudo-concluido-banner');
@@ -1920,11 +1994,13 @@ async function salvarLaudo(concluir = false) {
   clearTimeout(autosaveTimer);
   loading(true, concluir ? 'Concluindo...' : 'Salvando...');
 
+  const imagensProcessadas = await processImagesForSave(laudoImages);
   const payload = {
     data_exame:   document.getElementById('doc-data-exame').value || null,
     convenio:     document.getElementById('doc-convenio').value.trim() || null,
     solicitante:  document.getElementById('doc-solicitante').value.trim() || null,
     secoes:       coletarSecoes(),
+    imagens:      imagensProcessadas,
     atualizado_em: new Date().toISOString(),
   };
   if (concluir) payload.status = 'concluido';
@@ -1992,11 +2068,13 @@ function startAutosave() {
 
 async function salvarRascunhoSilencioso() {
   if (!editingLaudoId || laudoConcluido) return;
+  const imagensProcessadas = await processImagesForSave(laudoImages);
   const payload = {
     data_exame:    document.getElementById('doc-data-exame').value || null,
     convenio:      document.getElementById('doc-convenio').value.trim() || null,
     solicitante:   document.getElementById('doc-solicitante').value.trim() || null,
     secoes:        coletarSecoes(),
+    imagens:       imagensProcessadas,
     atualizado_em: new Date().toISOString(),
   };
   const { error } = await supa.from('laudos').update(payload).eq('id', editingLaudoId);
@@ -2055,6 +2133,210 @@ function searchDocConcluidos() {
   const q = (document.getElementById('doc-search-conc')?.value || '').toLowerCase();
   renderDocConcluidos(docConclAll.filter(r => !q || (r.paciente_nome || '').toLowerCase().includes(q)));
 }
+
+// ══════════════════════════════════════════════════════
+// IMAGENS DO LAUDO
+// ══════════════════════════════════════════════════════
+let laudoImages = [];
+
+function onImgDrop(e) {
+  e.preventDefault();
+  document.getElementById('img-drop-zone').classList.remove('over');
+  addLaudoImages(Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/')));
+}
+function onImgDragOver(e) { e.preventDefault(); document.getElementById('img-drop-zone').classList.add('over'); }
+function onImgDragLeave()  { document.getElementById('img-drop-zone').classList.remove('over'); }
+function onImgFileSelect(e) { addLaudoImages(Array.from(e.target.files)); e.target.value = ''; }
+
+function addLaudoImages(files) {
+  files.forEach(f => {
+    const r = new FileReader();
+    r.onload = ev => {
+      laudoImages.push({ id: Date.now() + Math.random(), src: ev.target.result, name: f.name });
+      renderLaudoImages();
+      scheduleAutosave();
+    };
+    r.readAsDataURL(f);
+  });
+}
+
+function removeLaudoImg(id) { laudoImages = laudoImages.filter(i => i.id !== id); renderLaudoImages(); scheduleAutosave(); }
+
+function moveLaudoImg(from, to) {
+  if (to < 0 || to >= laudoImages.length) return;
+  const a = [...laudoImages];
+  const [x] = a.splice(from, 1);
+  a.splice(to, 0, x);
+  laudoImages = a;
+  renderLaudoImages();
+  scheduleAutosave();
+}
+
+function renderLaudoImages() {
+  const c = document.getElementById('img-container');
+  if (!c) return;
+  if (!laudoImages.length) { c.innerHTML = ''; return; }
+  const pages = Math.ceil(laudoImages.length / 6);
+  let html = '';
+  for (let p = 0; p < pages; p++) {
+    const slice = laudoImages.slice(p * 6, p * 6 + 6);
+    html += `<div class="img-pg-label">Página de imagens ${p + 1} — ${slice.length} imagem(ns)</div><div class="img-grid-ui">`;
+    slice.forEach((img, ii) => {
+      const gi = p * 6 + ii;
+      html += `<div class="img-ui-item">
+        <img src="${img.src}" alt="">
+        <div class="img-ui-over">
+          <button class="img-ui-btn" onclick="moveLaudoImg(${gi},${gi-1})" ${gi===0?'disabled':''}>◀</button>
+          <button class="img-ui-btn" onclick="removeLaudoImg(${img.id})" style="color:#c0392b">✕</button>
+          <button class="img-ui-btn" onclick="moveLaudoImg(${gi},${gi+1})" ${gi===laudoImages.length-1?'disabled':''}>▶</button>
+        </div>
+      </div>`;
+    });
+    html += '</div>';
+  }
+  c.innerHTML = html;
+}
+
+async function compressImage(b64, maxSize = 1200, quality = 0.78) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      let { width: w, height: h } = img;
+      if (w > maxSize || h > maxSize) {
+        if (w > h) { h = Math.round(h * maxSize / w); w = maxSize; }
+        else       { w = Math.round(w * maxSize / h); h = maxSize; }
+      }
+      const cv = document.createElement('canvas');
+      cv.width = w; cv.height = h;
+      cv.getContext('2d').drawImage(img, 0, 0, w, h);
+      resolve(cv.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = () => resolve(b64);
+    img.src = b64;
+  });
+}
+
+async function processImagesForSave(imgs) {
+  const out = [];
+  for (const img of imgs) {
+    if (!img.src) continue;
+    const src = img.src.startsWith('data:') ? await compressImage(img.src) : img.src;
+    out.push({ src, name: img.name || '' });
+  }
+  return out;
+}
+
+// ══════════════════════════════════════════════════════
+// IMPRIMIR / PDF
+// ══════════════════════════════════════════════════════
+async function printLaudo() {
+  if (!editingLaudoId) { toast('Nenhum laudo aberto.', 'err'); return; }
+  loading(true, 'Preparando PDF...');
+
+  const [{ data: laudo }, { data: medico }] = await Promise.all([
+    supa.from('laudos').select('*').eq('id', editingLaudoId).single(),
+    supa.from('medicos').select('nome,crm').eq('id', currentDoctor.id).single(),
+  ]);
+  loading(false);
+  if (!laudo) { toast('Laudo não encontrado.', 'err'); return; }
+
+  buildPrint(laudo, medico);
+}
+
+function escHtml(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function buildPrint(laudo, medico) {
+  const clinica  = currentClinica || {};
+  const cor      = clinica.cor_primaria || '#1a5c38';
+  const cabecalho = clinica.cabecalho_pdf || clinica.nome || 'LaudoFlow';
+  const rodape    = clinica.rodape_pdf   || clinica.nome  || '';
+  const dateEx    = laudo.data_exame ? fmtDate(laudo.data_exame) : fmtDate(new Date().toISOString().slice(0,10));
+
+  const HEADER = `<div class="print-header" style="border-color:${cor}">
+    <div class="ph-main" style="color:${cor}">${cabecalho.replace(/\n/g,'<br>')}</div>
+  </div>`;
+
+  const FOOTER = `<div class="print-footer" style="border-color:${cor}">
+    <span>${escHtml(rodape)}</span>
+  </div>`;
+
+  const signNome = medico?.nome || '';
+  const signCrm  = medico?.crm  || '';
+  const signLine = signCrm ? `${escHtml(signNome)} &nbsp;·&nbsp; CRM: ${escHtml(signCrm)}` : escHtml(signNome);
+  const SIGN = `<div class="print-signature" style="border-color:${cor}">
+    <div class="ps-label">Laudado por:</div>
+    <div class="ps-name">${signLine}</div>
+    <div class="ps-date">Assinado eletronicamente em ${dateEx}.</div>
+    <div class="ps-warn">Atenção: Somente seu médico possui o conjunto de informações necessárias para qualquer conclusão diagnóstica ou indicação terapêutica sobre os resultados.</div>
+  </div>`;
+
+  const PAT = `<div class="print-patient-box">
+    <div class="ppb-row">
+      <div class="pp-cell" style="flex:3"><div class="pp-label">Paciente</div><div class="pp-value">${escHtml((laudo.paciente_nome||'').toUpperCase())}</div></div>
+      <div class="pp-cell" style="flex:1.5"><div class="pp-label">Data do Exame</div><div class="pp-value">${dateEx}</div></div>
+      <div class="pp-cell" style="flex:1.5"><div class="pp-label">Convênio</div><div class="pp-value">${escHtml((laudo.convenio||'—').toUpperCase())}</div></div>
+    </div>
+    ${laudo.solicitante ? `<div class="ppb-row" style="margin-top:4px;padding-top:4px;border-top:1px solid #ddd">
+      <div class="pp-cell"><div class="pp-label">Médico Solicitante</div><div class="pp-value">${escHtml(laudo.solicitante.toUpperCase())}</div></div>
+    </div>` : ''}
+  </div>`;
+
+  const secoes = laudo.secoes || {};
+  let pagesHtml = '';
+
+  secoesClinica.forEach(s => {
+    const sec = secoes[s.chave];
+    if (!sec || !sec.ativo || !sec.texto) return;
+    pagesHtml += `<div class="print-page">
+      <div class="print-body">
+        ${HEADER}${PAT}
+        <div class="print-section">
+          <h3>${escHtml(s.label)}</h3>
+          <div class="sec-body">${sec.texto}</div>
+        </div>
+      </div>
+      ${SIGN}${FOOTER}
+    </div>`;
+  });
+
+  const imgs = laudo.imagens || [];
+  if (imgs.length) {
+    for (let p = 0; p < Math.ceil(imgs.length / 6); p++) {
+      const slice = [...imgs.slice(p * 6, p * 6 + 6)];
+      while (slice.length < 6) slice.push(null);
+      const grid = '<div class="print-img-grid">' +
+        slice.map(img => img ? `<div class="print-img-cell"><img src="${img.src}" alt=""></div>` : `<div class="print-img-cell"></div>`).join('') +
+        '</div>';
+      pagesHtml += `<div class="print-page">${HEADER}${grid}${FOOTER}</div>`;
+    }
+  }
+
+  if (!pagesHtml) { toast('Nenhuma seção ativa para imprimir.', 'err'); return; }
+
+  const pc = document.getElementById('print-container');
+  pc.innerHTML = pagesHtml;
+  pc.style.display = 'block';
+
+  const allImgs = Array.from(pc.querySelectorAll('img'));
+  const doPrint = () => setTimeout(() => {
+    window.print();
+    setTimeout(() => { pc.style.display = 'none'; pc.innerHTML = ''; }, 2000);
+  }, 200);
+
+  if (!allImgs.length) {
+    doPrint();
+  } else {
+    let loaded = 0;
+    allImgs.forEach(img => {
+      const done = () => { if (++loaded >= allImgs.length) doPrint(); };
+      img.onload = done; img.onerror = done;
+      if (img.complete) done();
+    });
+  }
+}
 </script>
+<div id="print-container" style="display:none"></div>
 </body>
 </html>
