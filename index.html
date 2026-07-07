@@ -227,6 +227,17 @@
 
   /* ── LAUDO CONCLUIDO ── */
   .laudo-concluido-banner { background: var(--green-pale); border: 1px solid var(--green); border-radius: 8px; padding: 10px 16px; font-size: 13px; color: var(--green); font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+
+  /* ── PORTAL PACIENTE ── */
+  #screen-patient { flex-direction: column; min-height: 100vh; }
+  #screen-patient .app-header { background: var(--green); }
+  .pat-laudo-card { border: 1.5px solid var(--border); border-radius: var(--radius); padding: 16px 20px; margin-bottom: 10px; cursor: pointer; transition: all 0.15s; }
+  .pat-laudo-card:hover { border-color: var(--green); background: var(--green-pale); }
+  .pat-laudo-title { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+  .pat-laudo-meta { font-size: 12px; color: var(--text-muted); }
+  .pat-secao { margin-bottom: 16px; }
+  .pat-secao-title { font-size: 13px; font-weight: 700; color: var(--green); margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px solid var(--green-pale); }
+  .pat-secao-texto { font-size: 13px; color: var(--text); line-height: 1.7; white-space: pre-wrap; }
 </style>
 </head>
 <body>
@@ -264,6 +275,77 @@
       <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password">
     </div>
     <button class="btn btn-primary" onclick="doLogin()">Entrar</button>
+  </div>
+</div>
+
+<!-- PORTAL PACIENTE -->
+<div id="screen-patient" class="screen">
+  <header class="app-header">
+    <div class="app-header-left">
+      <div>
+        <div class="app-logo">LaudoFlow</div>
+        <div id="pat-clinic-name" class="app-clinic"></div>
+      </div>
+    </div>
+    <div class="app-header-right">
+      <span id="pat-badge" class="doctor-badge"></span>
+      <button class="btn-logout" onclick="doLogout()">Sair</button>
+    </div>
+  </header>
+
+  <!-- Lista de laudos -->
+  <div id="pat-view-lista" class="app-main">
+    <div class="card">
+      <div class="card-hdr">
+        <div class="card-ico"><i class="ti ti-file-check"></i></div>
+        <div class="card-title">Meus Laudos</div>
+      </div>
+      <div id="pat-laudos-container">
+        <div class="empty"><div class="ei">📋</div><p>Carregando seus laudos...</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detalhe de um laudo -->
+  <div id="pat-view-detalhe" class="app-main" style="display:none">
+    <div style="margin-bottom:16px">
+      <button class="btn btn-outline" onclick="patVoltarLista()" style="padding:7px 14px;font-size:13px">
+        ← Voltar
+      </button>
+    </div>
+    <div class="card">
+      <div class="card-hdr">
+        <div class="card-ico"><i class="ti ti-file-text"></i></div>
+        <div class="card-title" id="pat-det-titulo">Laudo</div>
+      </div>
+      <div style="margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border)">
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">DATA DO EXAME</div>
+        <div id="pat-det-data" style="font-size:14px;font-weight:700"></div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:10px;margin-bottom:4px">CONVÊNIO</div>
+        <div id="pat-det-convenio" style="font-size:14px"></div>
+      </div>
+      <div id="pat-det-secoes"></div>
+    </div>
+  </div>
+</div>
+
+<!-- LOGIN PACIENTE (CPF) -->
+<div id="screen-login-patient" class="screen">
+  <div class="login-box">
+    <div class="login-logo">
+      <div id="login-pat-clinic-name" class="clinic-name">LaudoFlow</div>
+      <div class="system-name">Portal do Paciente</div>
+    </div>
+    <div id="login-pat-error" class="login-error"></div>
+    <div class="form-group">
+      <label>CPF</label>
+      <input type="text" id="login-pat-cpf" placeholder="000.000.000-00" oninput="formatCPF(this)" maxlength="14">
+    </div>
+    <div class="form-group">
+      <label>Data de nascimento</label>
+      <input type="date" id="login-pat-nasc">
+    </div>
+    <button class="btn btn-primary" onclick="doLoginPaciente()">Acessar meus laudos</button>
   </div>
 </div>
 
@@ -551,36 +633,30 @@ window.onload = async () => {
   loading(true, 'Carregando...');
 
   const slug = resolveSlug();
-  if (!slug) {
-    loading(false);
-    showScreen('notfound');
-    return;
-  }
+  if (!slug) { loading(false); showScreen('notfound'); return; }
 
   const { data: clinica, error } = await supa
-    .from('clinicas')
-    .select('*')
-    .eq('slug', slug)
-    .eq('ativo', true)
-    .single();
+    .from('clinicas').select('*').eq('slug', slug).eq('ativo', true).single();
 
-  if (error || !clinica) {
-    loading(false);
-    showScreen('notfound');
-    return;
-  }
+  if (error || !clinica) { loading(false); showScreen('notfound'); return; }
 
   currentClinica = clinica;
   applyTema(clinica);
 
+  const isPortal = new URLSearchParams(window.location.search).get('p') === '1';
+
   const { data: { session } } = await supa.auth.getSession();
-  if (!session) {
-    loading(false);
-    showScreen('login');
-    return;
+
+  if (isPortal) {
+    document.getElementById('login-pat-clinic-name').textContent = clinica.nome;
+    document.getElementById('pat-clinic-name').textContent = clinica.nome;
+    if (!session) { loading(false); showScreen('login-patient'); return; }
+    await afterLoginPaciente(session);
+  } else {
+    if (!session) { loading(false); showScreen('login'); return; }
+    await afterLogin(session);
   }
 
-  await afterLogin(session);
   loading(false);
 };
 
@@ -682,7 +758,8 @@ async function doLogout() {
 // ══════════════════════════════════════════════════════
 function showScreen(name) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById('screen-' + name).classList.add('active');
+  const el = document.getElementById('screen-' + name);
+  if (el) el.classList.add('active');
 }
 
 function showTab(name, el) {
@@ -795,15 +872,29 @@ async function savePendente() {
   if (cpf) {
     const cpfLimpo = cpf.replace(/\D/g,'');
     const { data: pacExist } = await supa.from('pacientes')
-      .select('id').eq('clinica_id', currentClinica.id).eq('cpf', cpfLimpo).maybeSingle();
+      .select('id,auth_id').eq('clinica_id', currentClinica.id).eq('cpf', cpfLimpo).maybeSingle();
 
     if (pacExist) {
       pacienteId = pacExist.id;
       await supa.from('pacientes').update({ nome, data_nasc: nasc||null, telefone: tel||null, email_rec: email||null })
         .eq('id', pacienteId);
     } else {
+      // Cria conta de acesso ao portal (email=cpf@slug.pac, senha=cpf+nasc)
+      let authId = null;
+      if (nasc) {
+        const fakeEmail = `${cpfLimpo}@${currentClinica.slug}.pac`;
+        const senha = cpfLimpo + nasc.replace(/-/g,'');
+        const sessaoOriginal = (await supa.auth.getSession()).data.session;
+        const { data: authData } = await supa.auth.signUp({ email: fakeEmail, password: senha });
+        authId = authData?.user?.id || null;
+        if (sessaoOriginal?.access_token) {
+          await supa.auth.setSession({ access_token: sessaoOriginal.access_token, refresh_token: sessaoOriginal.refresh_token });
+        }
+      }
+
       const { data: novo } = await supa.from('pacientes').insert({
         clinica_id: currentClinica.id, nome, cpf: cpfLimpo,
+        auth_id: authId,
         data_nasc: nasc||null, telefone: tel||null, email_rec: email||null
       }).select('id').single();
       pacienteId = novo?.id;
@@ -1001,6 +1092,121 @@ function renderSecConcluidos(list) {
 function searchSecConcluidos() {
   const q = (document.getElementById('sec-search-conc')?.value||'').toLowerCase();
   renderSecConcluidos(secConclAll.filter(r => (!q || (r.paciente_nome||'').toLowerCase().includes(q))));
+}
+
+// ══════════════════════════════════════════════════════
+// PORTAL PACIENTE — AUTH
+// ══════════════════════════════════════════════════════
+async function doLoginPaciente() {
+  const cpf  = document.getElementById('login-pat-cpf').value.replace(/\D/g,'');
+  const nasc = document.getElementById('login-pat-nasc').value;
+  if (!cpf || cpf.length < 11) { showPatError('Informe o CPF completo.'); return; }
+  if (!nasc) { showPatError('Informe a data de nascimento.'); return; }
+
+  loading(true, 'Verificando...');
+
+  // Autentica com email = cpf@slug.pac, senha = cpf+nasc (sem traços)
+  const fakeEmail = `${cpf}@${currentClinica.slug}.pac`;
+  const senha     = cpf + nasc.replace(/-/g,'');
+
+  const { data, error } = await supa.auth.signInWithPassword({ email: fakeEmail, password: senha });
+
+  if (error) {
+    loading(false);
+    showPatError('CPF ou data de nascimento incorretos.');
+    return;
+  }
+
+  await afterLoginPaciente(data.session);
+  loading(false);
+}
+
+function showPatError(msg) {
+  const el = document.getElementById('login-pat-error');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+async function afterLoginPaciente(session) {
+  // Busca o paciente pelo auth_id
+  const { data: pac } = await supa.from('pacientes')
+    .select('id,nome,cpf')
+    .eq('auth_id', session.user.id)
+    .eq('clinica_id', currentClinica.id)
+    .single();
+
+  if (!pac) {
+    await supa.auth.signOut();
+    showPatError('Paciente não encontrado nesta clínica.');
+    showScreen('login-patient');
+    return;
+  }
+
+  document.getElementById('pat-badge').textContent = pac.nome.split(' ')[0];
+  showScreen('patient');
+  await loadPatLaudos(pac.id);
+}
+
+// ══════════════════════════════════════════════════════
+// PORTAL PACIENTE — LAUDOS
+// ══════════════════════════════════════════════════════
+async function loadPatLaudos(pacienteId) {
+  loading(true, 'Carregando laudos...');
+  const { data } = await supa.from('laudos')
+    .select('id,data_exame,convenio,secoes,atualizado_em')
+    .eq('clinica_id', currentClinica.id)
+    .eq('paciente_id', pacienteId)
+    .eq('status', 'concluido')
+    .is('deleted_at', null)
+    .order('data_exame', { ascending: false });
+  loading(false);
+
+  const c = document.getElementById('pat-laudos-container');
+  if (!data?.length) {
+    c.innerHTML = '<div class="empty"><div class="ei">📋</div><p>Nenhum laudo disponível ainda.</p></div>';
+    return;
+  }
+
+  c.innerHTML = data.map(r => `
+    <div class="pat-laudo-card" onclick="patAbrirLaudo(${JSON.stringify(r).replace(/"/g,'&quot;')})">
+      <div class="pat-laudo-title">Laudo de ${fmtDate(r.data_exame)}</div>
+      <div class="pat-laudo-meta">🏥 ${r.convenio || '—'}</div>
+    </div>
+  `).join('');
+}
+
+function patAbrirLaudo(laudo) {
+  document.getElementById('pat-det-titulo').textContent = 'Laudo de ' + fmtDate(laudo.data_exame);
+  document.getElementById('pat-det-data').textContent   = fmtDate(laudo.data_exame);
+  document.getElementById('pat-det-convenio').textContent = laudo.convenio || '—';
+
+  const secoes = laudo.secoes || {};
+  const ativas = Object.entries(secoes).filter(([,v]) => v.ativo && v.texto);
+
+  const det = document.getElementById('pat-det-secoes');
+  if (!ativas.length) {
+    det.innerHTML = '<div class="empty"><p>Laudo sem conteúdo registrado.</p></div>';
+  } else {
+    det.innerHTML = ativas.map(([chave, v]) => `
+      <div class="pat-secao">
+        <div class="pat-secao-title">${labelSecao(chave)}</div>
+        <div class="pat-secao-texto">${v.texto}</div>
+      </div>
+    `).join('');
+  }
+
+  document.getElementById('pat-view-lista').style.display   = 'none';
+  document.getElementById('pat-view-detalhe').style.display = '';
+}
+
+function patVoltarLista() {
+  document.getElementById('pat-view-detalhe').style.display = 'none';
+  document.getElementById('pat-view-lista').style.display   = '';
+}
+
+function labelSecao(chave) {
+  const found = secoesClinica.find(s => s.chave === chave);
+  return found ? found.label : chave;
 }
 
 // ══════════════════════════════════════════════════════
