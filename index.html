@@ -5,33 +5,41 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LAUDAR</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Montserrat:wght@600;700;800&family=Poppins:wght@600;700&family=Playfair+Display:wght@700;800&family=Merriweather:wght@700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
 <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
 <style>
   :root {
-    --green:        #1a2d6e;
-    --green-mid:    #1e3a8a;
-    --green-pale:   #e8f0fb;
+    --navy-deep:    #0a1628;
+    --navy-mid:     #162454;
+    --green:        #1a2d6e;   /* primária (navy LAUDAR) */
+    --green-mid:    #26398a;
+    --green-pale:   #eef2fb;
+    --accent:       #0ea5a3;   /* teal — destaque secundário */
+    --accent-pale:  #e6f7f6;
     --amber:        #b45309;
-    --amber-pale:   #fffbeb;
+    --amber-pale:   #fff8ec;
     --red:          #dc2626;
     --red-pale:     #fef2f2;
-    --text:         #1a1a2e;
-    --text-muted:   #6b7280;
-    --border:       #e5e7eb;
-    --border-dark:  #d1d5db;
-    --off-white:    #f9fafb;
+    --text:         #14183a;
+    --text-muted:   #667089;
+    --border:       #e7e9f0;
+    --border-dark:  #d3d7e3;
+    --off-white:    #f4f6fb;
     --white:        #ffffff;
-    --radius:       10px;
-    --radius-lg:    16px;
-    --shadow:       0 2px 8px rgba(0,0,0,0.08);
-    --shadow-lg:    0 8px 32px rgba(0,0,0,0.12);
+    --font-ui:      'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --radius-sm:    8px;
+    --radius:       12px;
+    --radius-lg:    18px;
+    --shadow-sm:    0 1px 2px rgba(16,24,64,0.05);
+    --shadow:       0 1px 2px rgba(16,24,64,0.04), 0 6px 20px rgba(16,24,64,0.06);
+    --shadow-lg:    0 18px 50px rgba(16,24,64,0.16);
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: Lato, sans-serif; background: var(--off-white); color: var(--text); min-height: 100vh; }
+  body { font-family: var(--font-ui); background: var(--off-white); color: var(--text); min-height: 100vh; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
 
   /* ── SCREENS ── */
   .screen { display: none; }
@@ -81,10 +89,11 @@
     text-transform: uppercase; color: var(--text-muted); margin-bottom: 10px;
   }
   .login-logo .clinic-name {
-    font-size: 22px; font-weight: 900; color: var(--green);
-    letter-spacing: -0.3px; line-height: 1.25;
+    font-size: 24px; font-weight: 800; color: #1a2d6e;
+    letter-spacing: -0.4px; line-height: 1.2;
   }
-  .login-bar { width: 36px; height: 3px; background: var(--green); border-radius: 2px; margin-top: 16px; opacity: 0.75; }
+  .login-clinic-logo { max-width: 260px; max-height: 90px; object-fit: contain; display: block; }
+  .login-bar { width: 40px; height: 3px; background: #1a2d6e; border-radius: 2px; margin-top: 16px; opacity: 0.85; }
   .login-foot {
     margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--border);
     display: flex; align-items: center; justify-content: center; gap: 7px;
@@ -109,13 +118,14 @@
   }
   .form-group { margin-bottom: 18px; }
   .form-group label { display: block; font-size: 12px; font-weight: 700; color: var(--text-muted); letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 6px; }
-  .form-group input { width: 100%; padding: 11px 14px; border: 1.5px solid var(--border); border-radius: var(--radius); font-family: Lato, sans-serif; font-size: 14px; outline: none; transition: border-color 0.15s; background: var(--off-white); }
+  .form-group input { width: 100%; padding: 11px 14px; border: 1.5px solid var(--border); border-radius: var(--radius); font-family: var(--font-ui); font-size: 14px; outline: none; transition: border-color 0.15s; background: var(--off-white); }
   .form-group input:focus { border-color: var(--green); background: var(--white); }
-  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 11px 20px; border: none; border-radius: var(--radius); font-family: Lato, sans-serif; font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.15s; text-decoration: none; }
-  .btn-primary { background: var(--green); color: var(--white); width: 100%; }
-  .btn-primary:hover { background: var(--green-mid); }
-  .btn-outline { background: transparent; color: var(--green); border: 1.5px solid var(--green); }
-  .btn-outline:hover { background: var(--green-pale); }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 12px 22px; border: none; border-radius: var(--radius); font-family: var(--font-ui); font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.15s; text-decoration: none; letter-spacing: 0.2px; }
+  .btn:active { transform: translateY(1px); }
+  .btn-primary { background: var(--green); color: var(--white); width: 100%; box-shadow: 0 4px 14px rgba(26,45,110,0.28); }
+  .btn-primary:hover { background: var(--green-mid); box-shadow: 0 6px 20px rgba(26,45,110,0.34); }
+  .btn-outline { background: var(--white); color: var(--green); border: 1.5px solid var(--border-dark); }
+  .btn-outline:hover { background: var(--green-pale); border-color: var(--green); }
   .btn-danger { background: var(--red); color: var(--white); }
   .btn-danger:hover { background: #b91c1c; }
   .login-error { background: var(--red-pale); border: 1px solid #fecaca; color: var(--red); border-radius: var(--radius); padding: 10px 14px; font-size: 13px; margin-bottom: 16px; display: none; }
@@ -178,58 +188,63 @@
     min-height: 100vh;
   }
   .app-header {
-    background: var(--green);
-    color: var(--white);
+    background: var(--white);
+    color: var(--text);
     padding: 0 24px;
-    height: 56px;
+    height: 64px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 16px;
     flex-shrink: 0;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 50;
   }
-  .app-header-left { display: flex; align-items: center; gap: 12px; }
-  .app-logo { font-size: 16px; font-weight: 900; letter-spacing: -0.3px; }
-  .app-logo img { height: 19px; display: block; }
-  .app-clinic { font-size: 12px; opacity: 0.75; }
-  .app-header-right { display: flex; align-items: center; gap: 8px; }
-  .doctor-badge { font-size: 12px; opacity: 0.85; }
-  .btn-logout { background: rgba(255,255,255,0.15); color: var(--white); border: none; padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; font-family: Lato, sans-serif; font-weight: 700; }
-  .btn-logout:hover { background: rgba(255,255,255,0.25); }
+  .app-header-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .app-clinic-logo { height: 38px; max-width: 230px; object-fit: contain; display: none; }
+  .app-brand-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+  .app-clinic { font-size: 15px; font-weight: 800; color: var(--text); letter-spacing: -0.2px; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .app-poweredby { font-size: 10px; font-weight: 700; letter-spacing: 0.4px; color: var(--text-muted); text-transform: uppercase; }
+  .app-poweredby b { color: var(--green); font-weight: 800; letter-spacing: 1px; }
+  .app-header-right { display: flex; align-items: center; gap: 10px; }
+  .doctor-badge { font-size: 12px; font-weight: 600; color: var(--text-muted); }
+  .btn-logout { background: var(--off-white); color: var(--text); border: 1px solid var(--border); padding: 7px 14px; border-radius: 99px; font-size: 12px; cursor: pointer; font-family: var(--font-ui); font-weight: 700; transition: all 0.15s; }
+  .btn-logout:hover { background: var(--green-pale); border-color: var(--green-pale); color: var(--green); }
+  .app-logo { display: none; }  /* legado */
 
   nav {
     background: var(--white);
     border-bottom: 1px solid var(--border);
-    padding: 0 24px;
+    padding: 8px 20px;
     display: flex;
     gap: 4px;
     overflow-x: auto;
     flex-shrink: 0;
   }
   .tab {
-    padding: 14px 16px;
+    padding: 9px 14px;
     font-size: 13px;
-    font-weight: 700;
+    font-weight: 600;
     color: var(--text-muted);
     cursor: pointer;
-    border-bottom: 2px solid transparent;
+    border-radius: 99px;
     white-space: nowrap;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 7px;
     transition: all 0.15s;
   }
-  .tab:hover { color: var(--green); }
-  .tab.active { color: var(--green); border-bottom-color: var(--green); }
-  .tab-badge { background: var(--green); color: var(--white); border-radius: 99px; padding: 1px 7px; font-size: 11px; }
+  .tab:hover { color: var(--green); background: var(--green-pale); }
+  .tab.active { color: var(--white); background: var(--green); box-shadow: 0 2px 8px rgba(26,45,110,0.25); }
+  .tab-badge { background: rgba(255,255,255,0.25); color: inherit; border-radius: 99px; padding: 1px 7px; font-size: 11px; font-weight: 700; }
+  .tab:not(.active) .tab-badge { background: var(--green-pale); color: var(--green); }
 
-  .app-main { flex: 1; padding: 24px; max-width: 900px; width: 100%; margin: 0 auto; }
+  .app-main { flex: 1; padding: 28px 24px; max-width: 920px; width: 100%; margin: 0 auto; }
 
-  .card { background: var(--white); border-radius: var(--radius-lg); border: 1px solid var(--border); padding: 24px; margin-bottom: 20px; box-shadow: var(--shadow); }
-  .card-hdr { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
-  .card-ico { width: 36px; height: 36px; background: var(--green-pale); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--green); font-size: 18px; flex-shrink: 0; }
-  .card-title { font-size: 15px; font-weight: 700; color: var(--text); }
+  .card { background: var(--white); border-radius: var(--radius-lg); border: 1px solid var(--border); padding: 26px; margin-bottom: 20px; box-shadow: var(--shadow); }
+  .card-hdr { display: flex; align-items: center; gap: 13px; margin-bottom: 22px; padding-bottom: 18px; border-bottom: 1px solid var(--border); }
+  .card-ico { width: 40px; height: 40px; background: linear-gradient(135deg, var(--green) 0%, var(--green-mid) 100%); border-radius: 11px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 19px; flex-shrink: 0; box-shadow: 0 4px 12px rgba(26,45,110,0.22); }
+  .card-title { font-size: 16px; font-weight: 800; color: var(--text); letter-spacing: -0.2px; }
 
   /* ── TOAST ── */
   #toast {
@@ -267,7 +282,7 @@
   .field label { display: block; font-size: 11px; font-weight: 700; color: var(--text-muted); letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 5px; }
   .field input, .field select, .field textarea {
     width: 100%; padding: 9px 12px; border: 1.5px solid var(--border);
-    border-radius: 8px; font-family: Lato, sans-serif; font-size: 13px;
+    border-radius: 8px; font-family: var(--font-ui); font-size: 13px;
     outline: none; transition: border-color 0.15s; background: var(--off-white); color: var(--text);
   }
   .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--green); background: var(--white); }
@@ -298,7 +313,7 @@
   .secao-label { font-size: 13px; font-weight: 700; color: var(--text); flex: 1; }
   .secao-body { display: none; padding: 12px 16px; border-top: 1px solid var(--border); }
   .secao-body.open { display: block; }
-  .editor-area { width: 100%; min-height: 100px; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-family: Lato, sans-serif; font-size: 13px; line-height: 1.6; outline: none; resize: vertical; background: var(--off-white); color: var(--text); }
+  .editor-area { width: 100%; min-height: 100px; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-family: var(--font-ui); font-size: 13px; line-height: 1.6; outline: none; resize: vertical; background: var(--off-white); color: var(--text); }
   .editor-area:focus { border-color: var(--green); background: var(--white); }
 
   /* ── AUTOSAVE ── */
@@ -328,6 +343,16 @@
   .badge-medico { background:var(--green-pale); color:var(--green); }
   .badge-secretaria { background:var(--amber-pale); color:var(--amber); }
   .badge-admin { background:#ede9fe; color:#6d28d9; }
+  /* identidade da clínica (config) */
+  .cfg-subhdr { font-size:11px; font-weight:800; color:var(--green); letter-spacing:1px; text-transform:uppercase; margin:0 0 14px; padding-bottom:8px; border-bottom:1px solid var(--border); }
+  .cfg-idmode { display:flex; gap:10px; margin-bottom:18px; flex-wrap:wrap; }
+  .idmode-btn { display:inline-flex; align-items:center; gap:8px; padding:11px 18px; border:1.5px solid var(--border-dark); background:var(--white); border-radius:var(--radius); font-family:var(--font-ui); font-size:13px; font-weight:700; color:var(--text-muted); cursor:pointer; transition:all .15s; }
+  .idmode-btn:hover { border-color:var(--green); color:var(--green); }
+  .idmode-btn.active { border-color:var(--green); background:var(--green-pale); color:var(--green); }
+  .cfg-id-preview { margin-top:20px; }
+  .cfg-id-preview-label { font-size:11px; font-weight:700; color:var(--text-muted); letter-spacing:.5px; text-transform:uppercase; margin-bottom:8px; }
+  .cfg-id-preview-box { border:1px dashed var(--border-dark); border-radius:var(--radius); padding:26px 24px; background:var(--off-white); min-height:88px; display:flex; align-items:center; }
+  .cfg-preview-nome { font-size:24px; font-weight:800; color:#1a2d6e; letter-spacing:-0.4px; }
 
   /* ── PORTAL PACIENTE ── */
   #screen-patient { flex-direction: column; min-height: 100vh; }
@@ -390,7 +415,7 @@
 
   /* ── QUILL RICH EDITOR ── */
   .ql-toolbar.ql-snow { background: var(--off-white); border: 1.5px solid var(--border) !important; border-bottom: none !important; border-radius: 8px 8px 0 0; padding: 6px 8px; flex-wrap: wrap; }
-  .ql-container.ql-snow { border: 1.5px solid var(--border) !important; border-radius: 0 0 8px 8px; font-family: Lato, sans-serif; font-size: 13px; background: var(--off-white); }
+  .ql-container.ql-snow { border: 1.5px solid var(--border) !important; border-radius: 0 0 8px 8px; font-family: var(--font-ui); font-size: 13px; background: var(--off-white); }
   .ql-editor { min-height: 90px; padding: 10px 12px; color: var(--text); }
   .ql-editor.ql-blank::before { color: var(--text-muted); font-style: italic; }
   .ql-editor p { margin: 0; }
@@ -513,6 +538,7 @@
     <div class="login-box">
       <div class="login-logo">
         <div class="login-eyebrow">Bem-vindo à sua clínica</div>
+        <img id="login-clinic-logo" class="login-clinic-logo" alt="" style="display:none">
         <div id="login-clinic-name" class="clinic-name">LAUDAR</div>
         <div class="login-bar"></div>
       </div>
@@ -535,9 +561,10 @@
 <div id="screen-patient" class="screen">
   <header class="app-header">
     <div class="app-header-left">
-      <div>
-        <div class="app-logo"><img src="laudar-wordmark-white.png" alt="LAUDAR"></div>
+      <img id="pat-clinic-logo" class="app-clinic-logo" alt="">
+      <div class="app-brand-text">
         <div id="pat-clinic-name" class="app-clinic"></div>
+        <div class="app-poweredby">via <b>LAUDAR</b></div>
       </div>
     </div>
     <div class="app-header-right">
@@ -600,6 +627,7 @@
     <div class="login-box">
       <div class="login-logo">
         <div class="login-eyebrow">Portal do Paciente</div>
+        <img id="login-pat-clinic-logo" class="login-clinic-logo" alt="" style="display:none">
         <div id="login-pat-clinic-name" class="clinic-name">LAUDAR</div>
         <div class="login-bar"></div>
       </div>
@@ -622,9 +650,10 @@
 <div id="screen-sec" class="screen">
   <header class="app-header">
     <div class="app-header-left">
-      <div>
-        <div class="app-logo"><img src="laudar-wordmark-white.png" alt="LAUDAR"></div>
+      <img id="sec-clinic-logo" class="app-clinic-logo" alt="">
+      <div class="app-brand-text">
         <div id="sec-clinic-name" class="app-clinic"></div>
+        <div class="app-poweredby">via <b>LAUDAR</b></div>
       </div>
     </div>
     <div class="app-header-right">
@@ -732,8 +761,8 @@
         <div class="card-title">Fila Pendente</div>
       </div>
       <div style="display:flex;gap:8px;margin-bottom:16px">
-        <input type="text" id="sec-search" placeholder="🔍 Nome do paciente..." oninput="searchSecFila()" style="flex:2;background:var(--off-white);border:1.5px solid var(--border);border-radius:8px;padding:9px 14px;font-family:Lato,sans-serif;font-size:13px;outline:none;color:var(--text)">
-        <select id="sec-filter-medico" onchange="searchSecFila()" style="flex:1;background:var(--off-white);border:1.5px solid var(--border);border-radius:8px;padding:9px 12px;font-family:Lato,sans-serif;font-size:13px;outline:none;color:var(--text)">
+        <input type="text" id="sec-search" placeholder="🔍 Nome do paciente..." oninput="searchSecFila()" style="flex:2;background:var(--off-white);border:1.5px solid var(--border);border-radius:8px;padding:9px 14px;font-family:var(--font-ui);font-size:13px;outline:none;color:var(--text)">
+        <select id="sec-filter-medico" onchange="searchSecFila()" style="flex:1;background:var(--off-white);border:1.5px solid var(--border);border-radius:8px;padding:9px 12px;font-family:var(--font-ui);font-size:13px;outline:none;color:var(--text)">
           <option value="">Todos os médicos</option>
         </select>
       </div>
@@ -749,7 +778,7 @@
         <div class="card-title">Laudos Concluídos</div>
       </div>
       <div style="display:flex;gap:8px;margin-bottom:16px">
-        <input type="text" id="sec-search-conc" placeholder="🔍 Nome do paciente..." oninput="searchSecConcluidos()" style="flex:2;background:var(--off-white);border:1.5px solid var(--border);border-radius:8px;padding:9px 14px;font-family:Lato,sans-serif;font-size:13px;outline:none;color:var(--text)">
+        <input type="text" id="sec-search-conc" placeholder="🔍 Nome do paciente..." oninput="searchSecConcluidos()" style="flex:2;background:var(--off-white);border:1.5px solid var(--border);border-radius:8px;padding:9px 14px;font-family:var(--font-ui);font-size:13px;outline:none;color:var(--text)">
       </div>
       <div id="sec-concluidos-container"><div class="empty"><div class="ei">✅</div><p>Nenhum laudo concluído.</p></div></div>
     </div>
@@ -782,9 +811,10 @@
 <div id="screen-app" class="screen">
   <header class="app-header">
     <div class="app-header-left">
-      <div>
-        <div class="app-logo"><img src="laudar-wordmark-white.png" alt="LAUDAR"></div>
+      <img id="app-clinic-logo" class="app-clinic-logo" alt="">
+      <div class="app-brand-text">
         <div id="app-clinic-name" class="app-clinic"></div>
+        <div class="app-poweredby">via <b>LAUDAR</b></div>
       </div>
     </div>
     <div class="app-header-right">
@@ -831,7 +861,7 @@
         <div class="card-title">Fila de Pendentes</div>
       </div>
       <div style="display:flex;gap:8px;margin-bottom:16px">
-        <input type="text" id="doc-search-pending" placeholder="🔍 Nome do paciente..." oninput="searchDocPending()" style="flex:1;background:var(--off-white);border:1.5px solid var(--border);border-radius:8px;padding:9px 14px;font-family:Lato,sans-serif;font-size:13px;outline:none;color:var(--text)">
+        <input type="text" id="doc-search-pending" placeholder="🔍 Nome do paciente..." oninput="searchDocPending()" style="flex:1;background:var(--off-white);border:1.5px solid var(--border);border-radius:8px;padding:9px 14px;font-family:var(--font-ui);font-size:13px;outline:none;color:var(--text)">
       </div>
       <div id="doc-pending-container"><div class="empty"><div class="ei">⏳</div><p>Nenhum laudo pendente.</p></div></div>
     </div>
@@ -924,15 +954,51 @@
 
       <!-- PAINEL: Clínica -->
       <div id="cfg-panel-clinica" class="cfg-panel active">
-        <div class="form-row cols-2">
-          <div class="field"><label>Nome da clínica</label><input type="text" id="cfg-nome"></div>
-          <div class="field"><label>Cor primária</label><input type="color" id="cfg-cor" style="height:40px;padding:2px 6px"></div>
+        <div class="field" style="margin-bottom:20px;max-width:420px"><label>Nome da clínica</label><input type="text" id="cfg-nome" oninput="previewFonte()"></div>
+
+        <div class="cfg-subhdr">Identidade no login e cabeçalho</div>
+        <div class="cfg-idmode">
+          <button type="button" class="idmode-btn active" id="idmode-texto" onclick="setIdModo('texto')"><i class="ti ti-typography"></i> Nome em texto</button>
+          <button type="button" class="idmode-btn" id="idmode-logo" onclick="setIdModo('logo')"><i class="ti ti-photo"></i> Logo (imagem)</button>
         </div>
-        <div class="form-row cols-2">
+
+        <div id="cfg-id-texto">
+          <div class="field" style="max-width:340px"><label>Fonte do nome</label>
+            <select id="cfg-fonte" onchange="previewFonte()">
+              <option value="'Plus Jakarta Sans', sans-serif">Plus Jakarta Sans</option>
+              <option value="'Montserrat', sans-serif">Montserrat</option>
+              <option value="'Poppins', sans-serif">Poppins</option>
+              <option value="'Playfair Display', serif">Playfair Display</option>
+              <option value="'Merriweather', serif">Merriweather</option>
+              <option value="Georgia, serif">Georgia</option>
+              <option value="'Times New Roman', serif">Times New Roman</option>
+              <option value="Arial, sans-serif">Arial</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="cfg-id-logo" style="display:none">
+          <div class="field" style="max-width:420px"><label>Arquivo do logo (JPG ou PNG)</label>
+            <input type="file" id="cfg-logo-file" accept="image/jpeg,image/png,image/webp" onchange="onLogoFile(event)">
+            <div style="font-size:11px;color:var(--text-muted);margin-top:6px">Ideal: fundo transparente ou claro. A imagem é reduzida automaticamente.</div>
+          </div>
+          <button type="button" class="btn btn-outline" id="cfg-logo-remove" style="width:auto;padding:8px 14px;font-size:12px;display:none" onclick="removerLogo()"><i class="ti ti-trash"></i> Remover logo</button>
+        </div>
+
+        <div class="cfg-id-preview">
+          <div class="cfg-id-preview-label">Prévia</div>
+          <div class="cfg-id-preview-box">
+            <img id="cfg-preview-logo" alt="" style="display:none;max-height:72px;max-width:240px;object-fit:contain">
+            <div id="cfg-preview-nome" class="cfg-preview-nome">Nome da clínica</div>
+          </div>
+        </div>
+
+        <div class="cfg-subhdr" style="margin-top:26px">Laudo impresso (PDF)</div>
+        <div class="form-row cols-2" style="max-width:640px">
           <div class="field"><label>Cabeçalho do laudo</label><input type="text" id="cfg-cabecalho" placeholder="Aparece no topo do laudo impresso"></div>
           <div class="field"><label>Rodapé do laudo</label><input type="text" id="cfg-rodape" placeholder="CRM, endereço, telefone..."></div>
         </div>
-        <button class="btn btn-primary" onclick="salvarConfigClinica()">Salvar alterações</button>
+        <button class="btn btn-primary" onclick="salvarConfigClinica()" style="width:auto;padding:12px 28px;margin-top:10px">Salvar alterações</button>
       </div>
 
       <!-- PAINEL: Seções -->
@@ -998,7 +1064,7 @@
         <div class="card-title">Laudos Concluídos</div>
       </div>
       <div style="display:flex;gap:8px;margin-bottom:16px">
-        <input type="text" id="doc-search-conc" placeholder="🔍 Nome do paciente..." oninput="searchDocConcluidos()" style="flex:1;background:var(--off-white);border:1.5px solid var(--border);border-radius:8px;padding:9px 14px;font-family:Lato,sans-serif;font-size:13px;outline:none;color:var(--text)">
+        <input type="text" id="doc-search-conc" placeholder="🔍 Nome do paciente..." oninput="searchDocConcluidos()" style="flex:1;background:var(--off-white);border:1.5px solid var(--border);border-radius:8px;padding:9px 14px;font-family:var(--font-ui);font-size:13px;outline:none;color:var(--text)">
       </div>
       <div id="doc-concluidos-container"><div class="empty"><div class="ei">✅</div><p>Nenhum laudo concluído.</p></div></div>
     </div>
@@ -1143,14 +1209,41 @@ function hexLighten(hex, pct) {
 }
 
 function applyTema(clinica) {
-  if (clinica.cor_primaria) {
-    const cor = clinica.cor_primaria;
-    document.documentElement.style.setProperty('--green',      cor);
-    document.documentElement.style.setProperty('--green-mid',  hexLighten(cor, 15));
-    document.documentElement.style.setProperty('--green-pale', hexLighten(cor, 88));
-  }
-  document.getElementById('login-clinic-name').textContent = clinica.nome;
-  document.getElementById('app-clinic-name').textContent   = clinica.nome;
+  // Paleta é fixa (navy LAUDAR); a clínica define apenas nome/logo.
+  renderIdentity(clinica);
+}
+
+// Renderiza a identidade da clínica (logo OU nome) no login e nos cabeçalhos.
+function renderIdentity(clinica) {
+  const nome  = clinica.nome || 'LAUDAR';
+  const modo  = clinica.login_modo || 'texto';
+  const fonte = clinica.login_fonte || "'Plus Jakarta Sans', sans-serif";
+  const logo  = clinica.login_logo || '';
+  const usaLogo = modo === 'logo' && !!logo;
+
+  // Login (médico + paciente): logo grande OU nome com fonte
+  [['login-clinic-name','login-clinic-logo'], ['login-pat-clinic-name','login-pat-clinic-logo']].forEach(([nomeId, logoId]) => {
+    const nEl = document.getElementById(nomeId), lEl = document.getElementById(logoId);
+    if (usaLogo) {
+      if (lEl) { lEl.src = logo; lEl.style.display = 'block'; }
+      if (nEl) nEl.style.display = 'none';
+    } else {
+      if (lEl) lEl.style.display = 'none';
+      if (nEl) { nEl.textContent = nome; nEl.style.display = 'block'; nEl.style.fontFamily = fonte; }
+    }
+  });
+
+  // Cabeçalhos (médico, secretária, paciente): logo compacto OU nome em texto
+  [['app-clinic-name','app-clinic-logo'], ['sec-clinic-name','sec-clinic-logo'], ['pat-clinic-name','pat-clinic-logo']].forEach(([nomeId, logoId]) => {
+    const nEl = document.getElementById(nomeId), lEl = document.getElementById(logoId);
+    if (usaLogo) {
+      if (lEl) { lEl.src = logo; lEl.style.display = 'block'; }
+      if (nEl) nEl.style.display = 'none';
+    } else {
+      if (lEl) lEl.style.display = 'none';
+      if (nEl) { nEl.textContent = nome; nEl.style.display = 'block'; }
+    }
+  });
 }
 
 // ══════════════════════════════════════════════════════
@@ -1820,11 +1913,16 @@ function showCfgTab(name, el) {
   if (panel) panel.classList.add('active');
 }
 
+let cfgIdModo = 'texto';
+let cfgLogoData = null;
+
 async function loadConfig() {
   document.getElementById('cfg-nome').value      = currentClinica.nome || '';
-  document.getElementById('cfg-cor').value       = currentClinica.cor_primaria || '#1a2d6e';
   document.getElementById('cfg-cabecalho').value = currentClinica.cabecalho_pdf || '';
   document.getElementById('cfg-rodape').value    = currentClinica.rodape_pdf || '';
+  document.getElementById('cfg-fonte').value     = currentClinica.login_fonte || "'Plus Jakarta Sans', sans-serif";
+  cfgLogoData = currentClinica.login_logo || null;
+  setIdModo(currentClinica.login_modo === 'logo' ? 'logo' : 'texto');
 
   // Carrega todas as seções em paralelo
   await Promise.all([
@@ -1834,27 +1932,96 @@ async function loadConfig() {
   ]);
 }
 
+function setIdModo(modo) {
+  cfgIdModo = modo;
+  document.getElementById('idmode-texto').classList.toggle('active', modo === 'texto');
+  document.getElementById('idmode-logo').classList.toggle('active', modo === 'logo');
+  document.getElementById('cfg-id-texto').style.display = modo === 'texto' ? 'block' : 'none';
+  document.getElementById('cfg-id-logo').style.display  = modo === 'logo' ? 'block' : 'none';
+  atualizarPreview();
+}
+
+function previewFonte() { atualizarPreview(); }
+
+function atualizarPreview() {
+  const pv = document.getElementById('cfg-preview-nome');
+  const pl = document.getElementById('cfg-preview-logo');
+  const rm = document.getElementById('cfg-logo-remove');
+  if (cfgIdModo === 'logo' && cfgLogoData) {
+    pl.src = cfgLogoData; pl.style.display = 'block';
+    pv.style.display = 'none';
+  } else {
+    pl.style.display = 'none';
+    pv.style.display = 'block';
+    pv.textContent = (document.getElementById('cfg-nome').value.trim()) || 'Nome da clínica';
+    pv.style.fontFamily = document.getElementById('cfg-fonte').value;
+  }
+  if (rm) rm.style.display = cfgLogoData ? 'inline-flex' : 'none';
+}
+
+function onLogoFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async () => {
+    const keepAlpha = file.type === 'image/png';
+    cfgLogoData = await resizeLogo(reader.result, keepAlpha);
+    atualizarPreview();
+  };
+  reader.readAsDataURL(file);
+}
+
+function resizeLogo(b64, keepAlpha) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      const maxW = 600, maxH = 200;
+      let { width: w, height: h } = img;
+      const scale = Math.min(1, maxW / w, maxH / h);
+      w = Math.round(w * scale); h = Math.round(h * scale);
+      const cv = document.createElement('canvas');
+      cv.width = w; cv.height = h;
+      cv.getContext('2d').drawImage(img, 0, 0, w, h);
+      resolve(cv.toDataURL(keepAlpha ? 'image/png' : 'image/jpeg', 0.85));
+    };
+    img.onerror = () => resolve(b64);
+    img.src = b64;
+  });
+}
+
+function removerLogo() {
+  cfgLogoData = null;
+  const f = document.getElementById('cfg-logo-file');
+  if (f) f.value = '';
+  atualizarPreview();
+}
+
 async function salvarConfigClinica() {
   const nome      = document.getElementById('cfg-nome').value.trim();
-  const cor       = document.getElementById('cfg-cor').value;
   const cabecalho = document.getElementById('cfg-cabecalho').value.trim();
   const rodape    = document.getElementById('cfg-rodape').value.trim();
+  const fonte     = document.getElementById('cfg-fonte').value;
+  const modo      = cfgIdModo;
 
   if (!nome) { toast('Informe o nome da clínica.', 'err'); return; }
+  if (modo === 'logo' && !cfgLogoData) { toast('Envie um logo ou use o modo texto.', 'err'); return; }
 
   loading(true, 'Salvando...');
   const { error } = await supa.from('clinicas').update({
-    nome, cor_primaria: cor, cabecalho_pdf: cabecalho, rodape_pdf: rodape
+    nome, cabecalho_pdf: cabecalho, rodape_pdf: rodape,
+    login_modo: modo, login_fonte: fonte, login_logo: cfgLogoData || null
   }).eq('id', currentClinica.id);
   loading(false);
 
   if (error) { toast('Erro ao salvar: ' + error.message, 'err'); return; }
 
-  currentClinica.nome        = nome;
-  currentClinica.cor_primaria = cor;
+  currentClinica.nome          = nome;
   currentClinica.cabecalho_pdf = cabecalho;
   currentClinica.rodape_pdf    = rodape;
-  applyTema(currentClinica);
+  currentClinica.login_modo    = modo;
+  currentClinica.login_fonte   = fonte;
+  currentClinica.login_logo    = cfgLogoData || null;
+  renderIdentity(currentClinica);
   toast('Configurações salvas.', 'ok');
 }
 
