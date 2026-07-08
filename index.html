@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LaudoFlow</title>
+<title>LAUDAR</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
@@ -12,9 +12,9 @@
 <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
 <style>
   :root {
-    --green:        #1a5c38;
-    --green-mid:    #2d7a50;
-    --green-pale:   #eaf4ee;
+    --green:        #1a2d6e;
+    --green-mid:    #1e3a8a;
+    --green-pale:   #e8f0fb;
     --amber:        #b45309;
     --amber-pale:   #fffbeb;
     --red:          #dc2626;
@@ -125,7 +125,7 @@
   .slug-row { display: flex; gap: 8px; align-items: flex-end; }
   .slug-row .field { flex: 1; }
   .slug-status { font-size: 11px; margin-top: 4px; min-height: 16px; }
-  .slug-ok   { color: #2d7a50; }
+  .slug-ok   { color: #1e3a8a; }
   .slug-err  { color: #c0392b; }
   .slug-chk  { color: var(--text-muted); }
   .signup-footer { text-align: center; margin-top: 20px; font-size: 13px; color: var(--text-muted); }
@@ -397,7 +397,7 @@
 <div id="screen-signup" class="screen">
   <div class="signup-wrap">
     <div class="signup-brand">
-      <div class="signup-brand-name">LaudoFlow</div>
+      <div class="signup-brand-name">LAUDAR</div>
       <div class="signup-brand-sub">Sistema Integrado de Laudos e Clínicas</div>
     </div>
     <div class="signup-card">
@@ -453,14 +453,14 @@
 <div id="screen-notfound" class="screen">
   <div class="nf-icon">🏥</div>
   <div class="nf-title">Clínica não encontrada</div>
-  <div class="nf-sub">O endereço acessado não corresponde a nenhuma clínica cadastrada no LaudoFlow.</div>
+  <div class="nf-sub">O endereço acessado não corresponde a nenhuma clínica cadastrada no LAUDAR.</div>
 </div>
 
 <!-- LOGIN -->
 <div id="screen-login" class="screen">
   <div class="login-box">
     <div class="login-logo">
-      <div id="login-clinic-name" class="clinic-name">LaudoFlow</div>
+      <div id="login-clinic-name" class="clinic-name">LAUDAR</div>
       <div class="system-name">Sistema de Laudos</div>
     </div>
     <div id="login-error" class="login-error"></div>
@@ -481,7 +481,7 @@
   <header class="app-header">
     <div class="app-header-left">
       <div>
-        <div class="app-logo">LaudoFlow</div>
+        <div class="app-logo">LAUDAR</div>
         <div id="pat-clinic-name" class="app-clinic"></div>
       </div>
     </div>
@@ -531,7 +531,7 @@
 <div id="screen-login-patient" class="screen">
   <div class="login-box">
     <div class="login-logo">
-      <div id="login-pat-clinic-name" class="clinic-name">LaudoFlow</div>
+      <div id="login-pat-clinic-name" class="clinic-name">LAUDAR</div>
       <div class="system-name">Portal do Paciente</div>
     </div>
     <div id="login-pat-error" class="login-error"></div>
@@ -552,7 +552,7 @@
   <header class="app-header">
     <div class="app-header-left">
       <div>
-        <div class="app-logo">LaudoFlow</div>
+        <div class="app-logo">LAUDAR</div>
         <div id="sec-clinic-name" class="app-clinic"></div>
       </div>
     </div>
@@ -712,7 +712,7 @@
   <header class="app-header">
     <div class="app-header-left">
       <div>
-        <div class="app-logo">LaudoFlow</div>
+        <div class="app-logo">LAUDAR</div>
         <div id="app-clinic-name" class="app-clinic"></div>
       </div>
     </div>
@@ -748,7 +748,7 @@
         <div class="card-ico"><i class="ti ti-home"></i></div>
         <div class="card-title" id="welcome-title">Bem-vindo</div>
       </div>
-      <p style="color:var(--text-muted);font-size:14px">Sistema em construção — Fase 2 do LaudoFlow.</p>
+      <p style="color:var(--text-muted);font-size:14px">Sistema Integrado de Laudos e Clínicas</p>
     </div>
   </div>
 
@@ -1063,9 +1063,20 @@ function resolveSlug() {
   return null;
 }
 
+function hexLighten(hex, pct) {
+  const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+  const nr = Math.min(255, Math.round(r + (255-r)*pct/100));
+  const ng = Math.min(255, Math.round(g + (255-g)*pct/100));
+  const nb = Math.min(255, Math.round(b + (255-b)*pct/100));
+  return '#' + [nr,ng,nb].map(v=>v.toString(16).padStart(2,'0')).join('');
+}
+
 function applyTema(clinica) {
   if (clinica.cor_primaria) {
-    document.documentElement.style.setProperty('--green', clinica.cor_primaria);
+    const cor = clinica.cor_primaria;
+    document.documentElement.style.setProperty('--green',      cor);
+    document.documentElement.style.setProperty('--green-mid',  hexLighten(cor, 15));
+    document.documentElement.style.setProperty('--green-pale', hexLighten(cor, 88));
   }
   document.getElementById('login-clinic-name').textContent = clinica.nome;
   document.getElementById('app-clinic-name').textContent   = clinica.nome;
@@ -1696,7 +1707,7 @@ function showCfgTab(name, el) {
 
 async function loadConfig() {
   document.getElementById('cfg-nome').value      = currentClinica.nome || '';
-  document.getElementById('cfg-cor').value       = currentClinica.cor_primaria || '#1a5c38';
+  document.getElementById('cfg-cor').value       = currentClinica.cor_primaria || '#1a2d6e';
   document.getElementById('cfg-cabecalho').value = currentClinica.cabecalho_pdf || '';
   document.getElementById('cfg-rodape').value    = currentClinica.rodape_pdf || '';
 
@@ -2570,8 +2581,8 @@ function escHtml(s) {
 
 function buildPrint(laudo, medico) {
   const clinica  = currentClinica || {};
-  const cor      = clinica.cor_primaria || '#1a5c38';
-  const cabecalho = clinica.cabecalho_pdf || clinica.nome || 'LaudoFlow';
+  const cor      = clinica.cor_primaria || '#1a2d6e';
+  const cabecalho = clinica.cabecalho_pdf || clinica.nome || 'LAUDAR';
   const rodape    = clinica.rodape_pdf   || clinica.nome  || '';
   const dateEx    = laudo.data_exame ? fmtDate(laudo.data_exame) : fmtDate(new Date().toISOString().slice(0,10));
 
