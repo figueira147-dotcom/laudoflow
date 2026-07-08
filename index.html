@@ -2362,12 +2362,10 @@ function sgGerarSlug() {
   const nome = document.getElementById('sg-nome-clinica').value;
   const slug = nome.toLowerCase()
     .normalize('NFD').replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-z0-9]/g, '');
+    .replace(/[^a-z0-9]/g, '')
+    .slice(0, 30);
   document.getElementById('sg-slug').value = slug;
-  document.getElementById('sg-slug-preview').textContent = slug || '...';
-  document.getElementById('sg-slug-status').className = 'slug-status slug-chk';
-  document.getElementById('sg-slug-status').innerHTML =
-    `Será usado na URL: <strong>laudoflow.vercel.app/?c=<span id="sg-slug-preview">${slug||'...'}</span></strong>`;
+  sgVerificarSlug();
 }
 
 let sgSlugOk = false;
