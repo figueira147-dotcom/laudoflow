@@ -37,37 +37,75 @@
   .screen { display: none; }
   .screen.active { display: flex; }
 
-  /* ── LOGIN ── */
-  #screen-login {
+  /* ── LOGIN (split: marca LAUDAR + formulário da clínica) ── */
+  #screen-login, #screen-login-patient {
     min-height: 100vh;
-    align-items: center;
-    justify-content: center;
-    background: linear-gradient(135deg, var(--green) 0%, var(--green-mid) 100%);
-  }
-  .login-box {
+    align-items: stretch;
+    justify-content: stretch;
     background: var(--white);
-    border-radius: var(--radius-lg);
-    padding: 48px 40px;
-    width: 100%;
-    max-width: 400px;
-    box-shadow: var(--shadow-lg);
   }
-  .login-logo {
-    text-align: center;
-    margin-bottom: 32px;
+  .login-brand {
+    width: 44%;
+    background: linear-gradient(155deg, #0a1628 0%, #162454 100%);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 52px 48px;
+    flex-shrink: 0;
+  }
+  .login-constellation { position: absolute; inset: 0; pointer-events: none; }
+  .login-brand-logo { position: relative; z-index: 1; }
+  .login-brand-logo img { width: 270px; max-width: 72%; display: block; }
+  .login-feats { list-style: none; position: relative; z-index: 1; }
+  .login-feat {
+    display: flex; align-items: center; gap: 14px;
+    padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.07);
+    color: rgba(255,255,255,0.70); font-size: 13.5px; line-height: 1.4;
+  }
+  .login-feat:last-child { border-bottom: none; }
+  .login-feat .fi {
+    width: 30px; height: 30px; border-radius: 6px;
+    background: rgba(255,255,255,0.08);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; font-size: 15px;
+  }
+  .login-brand-foot { position: relative; z-index: 1; font-size: 10.5px; color: rgba(255,255,255,0.22); letter-spacing: 1px; }
+
+  .login-form-side { flex: 1; display: flex; align-items: center; justify-content: center; padding: 48px 40px; }
+  .login-box { width: 100%; max-width: 380px; }
+  .login-logo { margin-bottom: 30px; }
+  .login-eyebrow {
+    font-size: 9.5px; font-weight: 700; letter-spacing: 3px;
+    text-transform: uppercase; color: var(--text-muted); margin-bottom: 10px;
   }
   .login-logo .clinic-name {
-    font-size: 22px;
-    font-weight: 900;
-    color: var(--green);
-    letter-spacing: -0.5px;
+    font-size: 22px; font-weight: 900; color: var(--green);
+    letter-spacing: -0.3px; line-height: 1.25;
   }
+  .login-bar { width: 36px; height: 3px; background: var(--green); border-radius: 2px; margin-top: 16px; opacity: 0.75; }
+  .login-foot {
+    margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center; gap: 7px;
+    font-size: 10.5px; color: var(--text-muted); letter-spacing: 0.5px;
+  }
+  .login-foot img { height: 13px; opacity: 0.75; filter: brightness(0) saturate(100%) invert(13%) sepia(38%) saturate(2200%) hue-rotate(205deg) brightness(95%); }
   .login-logo .system-name {
-    font-size: 12px;
-    color: var(--text-muted);
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    margin-top: 2px;
+    font-size: 12px; color: var(--text-muted); letter-spacing: 2px;
+    text-transform: uppercase; margin-top: 2px;
+  }
+
+  @media (max-width: 720px) {
+    #screen-login, #screen-login-patient { flex-direction: column; }
+    .login-brand {
+      width: 100%; flex-direction: row; align-items: center;
+      justify-content: space-between; padding: 20px 24px;
+    }
+    .login-brand-logo img { width: 150px; }
+    .login-feats, .login-brand-foot { display: none; }
+    .login-constellation { opacity: 0.25; }
+    .login-form-side { padding: 40px 24px; align-items: flex-start; }
   }
   .form-group { margin-bottom: 18px; }
   .form-group label { display: block; font-size: 12px; font-weight: 700; color: var(--text-muted); letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 6px; }
@@ -153,6 +191,7 @@
   }
   .app-header-left { display: flex; align-items: center; gap: 12px; }
   .app-logo { font-size: 16px; font-weight: 900; letter-spacing: -0.3px; }
+  .app-logo img { height: 19px; display: block; }
   .app-clinic { font-size: 12px; opacity: 0.75; }
   .app-header-right { display: flex; align-items: center; gap: 8px; }
   .doctor-badge { font-size: 12px; opacity: 0.85; }
@@ -397,8 +436,7 @@
 <div id="screen-signup" class="screen">
   <div class="signup-wrap">
     <div class="signup-brand">
-      <div class="signup-brand-name">LAUDAR</div>
-      <div class="signup-brand-sub">Sistema Integrado de Laudos e Clínicas</div>
+      <img src="laudar-logo-white.png" alt="LAUDAR" style="width:320px;max-width:80%;display:block;margin:0 auto">
     </div>
     <div class="signup-card">
       <div style="font-size:20px;font-weight:900;color:var(--text);margin-bottom:4px">Criar sua clínica</div>
@@ -458,21 +496,38 @@
 
 <!-- LOGIN -->
 <div id="screen-login" class="screen">
-  <div class="login-box">
-    <div class="login-logo">
-      <div id="login-clinic-name" class="clinic-name">LAUDAR</div>
-      <div class="system-name">Sistema de Laudos</div>
+  <div class="login-brand">
+    <canvas class="login-constellation"></canvas>
+    <div class="login-brand-logo">
+      <img src="laudar-logo-white.png" alt="LAUDAR">
     </div>
-    <div id="login-error" class="login-error"></div>
-    <div class="form-group">
-      <label>E-mail</label>
-      <input type="email" id="login-email" placeholder="seu@email.com" autocomplete="email">
+    <ul class="login-feats">
+      <li class="login-feat"><span class="fi">🩺</span> Editor rico com presets por médico</li>
+      <li class="login-feat"><span class="fi">🏥</span> Gestão multi-clínica e multi-usuário</li>
+      <li class="login-feat"><span class="fi">👤</span> Portal exclusivo para pacientes</li>
+      <li class="login-feat"><span class="fi">📄</span> Impressão e PDF integrados</li>
+    </ul>
+    <div class="login-brand-foot">© 2026 LAUDAR</div>
+  </div>
+  <div class="login-form-side">
+    <div class="login-box">
+      <div class="login-logo">
+        <div class="login-eyebrow">Bem-vindo à sua clínica</div>
+        <div id="login-clinic-name" class="clinic-name">LAUDAR</div>
+        <div class="login-bar"></div>
+      </div>
+      <div id="login-error" class="login-error"></div>
+      <div class="form-group">
+        <label>E-mail</label>
+        <input type="email" id="login-email" placeholder="seu@email.com" autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label>Senha</label>
+        <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <button class="btn btn-primary" onclick="doLogin()">Entrar</button>
+      <div class="login-foot">Acesso seguro via <img src="laudar-wordmark-white.png" alt="LAUDAR"></div>
     </div>
-    <div class="form-group">
-      <label>Senha</label>
-      <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password">
-    </div>
-    <button class="btn btn-primary" onclick="doLogin()">Entrar</button>
   </div>
 </div>
 
@@ -481,7 +536,7 @@
   <header class="app-header">
     <div class="app-header-left">
       <div>
-        <div class="app-logo">LAUDAR</div>
+        <div class="app-logo"><img src="laudar-wordmark-white.png" alt="LAUDAR"></div>
         <div id="pat-clinic-name" class="app-clinic"></div>
       </div>
     </div>
@@ -529,21 +584,37 @@
 
 <!-- LOGIN PACIENTE (CPF) -->
 <div id="screen-login-patient" class="screen">
-  <div class="login-box">
-    <div class="login-logo">
-      <div id="login-pat-clinic-name" class="clinic-name">LAUDAR</div>
-      <div class="system-name">Portal do Paciente</div>
+  <div class="login-brand">
+    <canvas class="login-constellation"></canvas>
+    <div class="login-brand-logo">
+      <img src="laudar-logo-white.png" alt="LAUDAR">
     </div>
-    <div id="login-pat-error" class="login-error"></div>
-    <div class="form-group">
-      <label>CPF</label>
-      <input type="text" id="login-pat-cpf" placeholder="000.000.000-00" oninput="formatCPF(this)" maxlength="14">
+    <ul class="login-feats">
+      <li class="login-feat"><span class="fi">📋</span> Seus laudos sempre à mão</li>
+      <li class="login-feat"><span class="fi">🔒</span> Acesso seguro por CPF</li>
+      <li class="login-feat"><span class="fi">📄</span> Baixe e imprima quando quiser</li>
+    </ul>
+    <div class="login-brand-foot">© 2026 LAUDAR</div>
+  </div>
+  <div class="login-form-side">
+    <div class="login-box">
+      <div class="login-logo">
+        <div class="login-eyebrow">Portal do Paciente</div>
+        <div id="login-pat-clinic-name" class="clinic-name">LAUDAR</div>
+        <div class="login-bar"></div>
+      </div>
+      <div id="login-pat-error" class="login-error"></div>
+      <div class="form-group">
+        <label>CPF</label>
+        <input type="text" id="login-pat-cpf" placeholder="000.000.000-00" oninput="formatCPF(this)" maxlength="14">
+      </div>
+      <div class="form-group">
+        <label>Data de nascimento</label>
+        <input type="date" id="login-pat-nasc">
+      </div>
+      <button class="btn btn-primary" onclick="doLoginPaciente()">Acessar meus laudos</button>
+      <div class="login-foot">Acesso seguro via <img src="laudar-wordmark-white.png" alt="LAUDAR"></div>
     </div>
-    <div class="form-group">
-      <label>Data de nascimento</label>
-      <input type="date" id="login-pat-nasc">
-    </div>
-    <button class="btn btn-primary" onclick="doLoginPaciente()">Acessar meus laudos</button>
   </div>
 </div>
 
@@ -552,7 +623,7 @@
   <header class="app-header">
     <div class="app-header-left">
       <div>
-        <div class="app-logo">LAUDAR</div>
+        <div class="app-logo"><img src="laudar-wordmark-white.png" alt="LAUDAR"></div>
         <div id="sec-clinic-name" class="app-clinic"></div>
       </div>
     </div>
@@ -712,7 +783,7 @@
   <header class="app-header">
     <div class="app-header-left">
       <div>
-        <div class="app-logo">LAUDAR</div>
+        <div class="app-logo"><img src="laudar-wordmark-white.png" alt="LAUDAR"></div>
         <div id="app-clinic-name" class="app-clinic"></div>
       </div>
     </div>
@@ -1156,6 +1227,50 @@ function showScreen(name) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   const el = document.getElementById('screen-' + name);
   if (el) el.classList.add('active');
+  if (el) { const cv = el.querySelector('.login-constellation'); if (cv) initConstellation(cv); }
+}
+
+// Constelação animada no painel de marca do login
+const _constellations = new WeakSet();
+function initConstellation(cv) {
+  if (_constellations.has(cv)) return;
+  _constellations.add(cv);
+  const cx = cv.getContext('2d');
+  let W, H;
+  function resize() {
+    const r = cv.parentElement.getBoundingClientRect();
+    W = cv.width = r.width; H = cv.height = r.height;
+  }
+  resize();
+  if (window.ResizeObserver) new ResizeObserver(resize).observe(cv.parentElement);
+  const pts = Array.from({ length: 42 }, () => ({
+    x: Math.random(), y: Math.random(),
+    vx: (Math.random() - 0.5) * 0.00015, vy: (Math.random() - 0.5) * 0.00015
+  }));
+  function frame() {
+    if (!W || !H) { resize(); }
+    cx.clearRect(0, 0, W, H);
+    pts.forEach(p => { p.x = (p.x + p.vx + 1) % 1; p.y = (p.y + p.vy + 1) % 1; });
+    for (let i = 0; i < pts.length; i++) {
+      for (let j = i + 1; j < pts.length; j++) {
+        const dx = (pts[i].x - pts[j].x) * W, dy = (pts[i].y - pts[j].y) * H;
+        const d = Math.sqrt(dx * dx + dy * dy);
+        if (d < 130) {
+          cx.beginPath();
+          cx.strokeStyle = 'rgba(255,255,255,' + (1 - d / 130) * 0.12 + ')';
+          cx.lineWidth = 0.6;
+          cx.moveTo(pts[i].x * W, pts[i].y * H); cx.lineTo(pts[j].x * W, pts[j].y * H);
+          cx.stroke();
+        }
+      }
+    }
+    pts.forEach(p => {
+      cx.beginPath(); cx.arc(p.x * W, p.y * H, 1.8, 0, Math.PI * 2);
+      cx.fillStyle = 'rgba(255,255,255,0.25)'; cx.fill();
+    });
+    requestAnimationFrame(frame);
+  }
+  frame();
 }
 
 // ══════════════════════════════════════════════════════
