@@ -96,6 +96,44 @@
   .nf-title { font-size: 24px; font-weight: 900; color: var(--text); }
   .nf-sub { font-size: 15px; color: var(--text-muted); max-width: 360px; }
 
+  /* ── SIGNUP / ONBOARDING ── */
+  #screen-signup {
+    background: linear-gradient(135deg, #0f2a5e 0%, #1a4a8a 100%);
+  }
+  .signup-wrap {
+    width: 100%; max-width: 520px; padding: 24px 16px;
+  }
+  .signup-brand {
+    text-align: center; margin-bottom: 28px;
+  }
+  .signup-brand-name {
+    font-size: 36px; font-weight: 900; color: #fff; letter-spacing: 2px;
+  }
+  .signup-brand-sub {
+    font-size: 12px; color: rgba(255,255,255,0.65); letter-spacing: 1.5px; text-transform: uppercase; margin-top: 4px;
+  }
+  .signup-card {
+    background: var(--white); border-radius: var(--radius-lg);
+    padding: 32px; box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+  }
+  .signup-section-title {
+    font-size: 11px; font-weight: 700; color: #1a4a8a;
+    letter-spacing: 1px; text-transform: uppercase;
+    border-bottom: 2px solid #e8f0fb; padding-bottom: 6px; margin: 20px 0 14px;
+  }
+  .signup-section-title:first-of-type { margin-top: 0; }
+  .slug-row { display: flex; gap: 8px; align-items: flex-end; }
+  .slug-row .field { flex: 1; }
+  .slug-status { font-size: 11px; margin-top: 4px; min-height: 16px; }
+  .slug-ok   { color: #2d7a50; }
+  .slug-err  { color: #c0392b; }
+  .slug-chk  { color: var(--text-muted); }
+  .signup-footer { text-align: center; margin-top: 20px; font-size: 13px; color: var(--text-muted); }
+  .signup-footer a { color: #1a4a8a; font-weight: 700; text-decoration: none; cursor: pointer; }
+  .btn-signup { width: 100%; background: #1a4a8a; color: #fff; border: none; border-radius: 8px; padding: 13px; font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 8px; transition: background 0.2s; }
+  .btn-signup:hover { background: #0f2a5e; }
+  .btn-signup:disabled { opacity: 0.6; cursor: not-allowed; }
+
   /* ── APP ── */
   #screen-app {
     flex-direction: column;
@@ -354,6 +392,62 @@
 
 <!-- TOAST -->
 <div id="toast"></div>
+
+<!-- ONBOARDING / CADASTRO DE NOVA CLÍNICA -->
+<div id="screen-signup" class="screen">
+  <div class="signup-wrap">
+    <div class="signup-brand">
+      <div class="signup-brand-name">LaudoFlow</div>
+      <div class="signup-brand-sub">Sistema Integrado de Laudos e Clínicas</div>
+    </div>
+    <div class="signup-card">
+      <div style="font-size:20px;font-weight:900;color:var(--text);margin-bottom:4px">Criar sua clínica</div>
+      <div style="font-size:13px;color:var(--text-muted);margin-bottom:4px">Preencha os dados abaixo. Leva menos de 2 minutos.</div>
+
+      <div class="signup-section-title">Dados da Clínica</div>
+
+      <div class="field" style="margin-bottom:14px">
+        <label>Nome da clínica</label>
+        <input type="text" id="sg-nome-clinica" placeholder="Ex: Centro Vascular São Paulo" oninput="sgGerarSlug()">
+      </div>
+      <div class="field" style="margin-bottom:4px">
+        <label>Identificador único (slug)</label>
+        <div class="slug-row">
+          <div class="field" style="margin-bottom:0">
+            <input type="text" id="sg-slug" placeholder="ex: centrovascular" oninput="sgVerificarSlug()" style="font-family:monospace">
+          </div>
+          <button class="btn btn-outline" style="padding:9px 14px;font-size:12px;flex-shrink:0;height:38px" onclick="sgVerificarSlug()">Verificar</button>
+        </div>
+        <div class="slug-status slug-chk" id="sg-slug-status">Será usado na URL: <strong>laudoflow.vercel.app/?c=<span id="sg-slug-preview">...</span></strong></div>
+      </div>
+
+      <div class="signup-section-title">Dados do Administrador</div>
+
+      <div class="form-row cols-2" style="margin-bottom:14px">
+        <div class="field"><label>Seu nome</label><input type="text" id="sg-admin-nome" placeholder="Nome completo"></div>
+        <div class="field"><label>CRM (opcional)</label><input type="text" id="sg-admin-crm" placeholder="Ex: 12345-RJ"></div>
+      </div>
+      <div class="field" style="margin-bottom:14px">
+        <label>E-mail</label>
+        <input type="email" id="sg-email" placeholder="seu@email.com">
+      </div>
+      <div class="field" style="margin-bottom:6px">
+        <label>Senha</label>
+        <input type="password" id="sg-senha" placeholder="Mínimo 6 caracteres">
+      </div>
+
+      <div id="sg-error" style="display:none;background:#fdf0f0;border:1px solid #f5c6cb;border-radius:8px;padding:10px 14px;font-size:13px;color:#c0392b;margin-top:10px"></div>
+
+      <button class="btn-signup" id="sg-btn" onclick="sgCriarClinica()">
+        <i class="ti ti-rocket"></i> Criar minha clínica
+      </button>
+
+      <div class="signup-footer">
+        Já tem uma conta? <a onclick="sgVoltarLogin()">Fazer login</a>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- CLÍNICA NÃO ENCONTRADA -->
 <div id="screen-notfound" class="screen">
@@ -911,6 +1005,13 @@ let currentDoctor   = null;
 // ══════════════════════════════════════════════════════
 window.onload = async () => {
   loading(true, 'Carregando...');
+
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('signup') === '1') {
+    loading(false);
+    showScreen('signup');
+    return;
+  }
 
   const slug = resolveSlug();
   if (!slug) { loading(false); showScreen('notfound'); return; }
@@ -2252,6 +2353,108 @@ function renderDocConcluidos(list) {
 function searchDocConcluidos() {
   const q = (document.getElementById('doc-search-conc')?.value || '').toLowerCase();
   renderDocConcluidos(docConclAll.filter(r => !q || (r.paciente_nome || '').toLowerCase().includes(q)));
+}
+
+// ══════════════════════════════════════════════════════
+// ONBOARDING — CADASTRO DE NOVA CLÍNICA
+// ══════════════════════════════════════════════════════
+function sgGerarSlug() {
+  const nome = document.getElementById('sg-nome-clinica').value;
+  const slug = nome.toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]/g, '');
+  document.getElementById('sg-slug').value = slug;
+  document.getElementById('sg-slug-preview').textContent = slug || '...';
+  document.getElementById('sg-slug-status').className = 'slug-status slug-chk';
+  document.getElementById('sg-slug-status').innerHTML =
+    `Será usado na URL: <strong>laudoflow.vercel.app/?c=<span id="sg-slug-preview">${slug||'...'}</span></strong>`;
+}
+
+let sgSlugOk = false;
+let sgSlugTimer = null;
+
+function sgVerificarSlug() {
+  const slug = document.getElementById('sg-slug').value.trim().toLowerCase();
+  document.getElementById('sg-slug-preview').textContent = slug || '...';
+  clearTimeout(sgSlugTimer);
+  if (!slug) { sgSlugOk = false; return; }
+  if (!/^[a-z0-9]{3,30}$/.test(slug)) {
+    sgSetSlugStatus('err', 'Use apenas letras minúsculas e números (3–30 caracteres).');
+    sgSlugOk = false; return;
+  }
+  sgSetSlugStatus('chk', 'Verificando disponibilidade...');
+  sgSlugTimer = setTimeout(async () => {
+    const { data } = await supa.rpc('verificar_slug', { p_slug: slug });
+    if (data === true) {
+      sgSetSlugStatus('ok', '✓ Disponível!');
+      sgSlugOk = true;
+    } else {
+      sgSetSlugStatus('err', '✗ Este identificador já está em uso. Escolha outro.');
+      sgSlugOk = false;
+    }
+  }, 500);
+}
+
+function sgSetSlugStatus(type, msg) {
+  const el = document.getElementById('sg-slug-status');
+  el.className = 'slug-status slug-' + type;
+  el.textContent = msg;
+}
+
+function sgShowError(msg) {
+  const el = document.getElementById('sg-error');
+  el.textContent = msg;
+  el.style.display = msg ? '' : 'none';
+}
+
+async function sgCriarClinica() {
+  const nomeClinica = document.getElementById('sg-nome-clinica').value.trim();
+  const slug        = document.getElementById('sg-slug').value.trim().toLowerCase();
+  const adminNome   = document.getElementById('sg-admin-nome').value.trim();
+  const adminCrm    = document.getElementById('sg-admin-crm').value.trim();
+  const email       = document.getElementById('sg-email').value.trim();
+  const senha       = document.getElementById('sg-senha').value;
+
+  sgShowError('');
+  if (!nomeClinica) { sgShowError('Informe o nome da clínica.'); return; }
+  if (!slug || !/^[a-z0-9]{3,30}$/.test(slug)) { sgShowError('Verifique o identificador da clínica.'); return; }
+  if (!sgSlugOk) { sgShowError('Verifique a disponibilidade do identificador antes de continuar.'); return; }
+  if (!adminNome)  { sgShowError('Informe seu nome.'); return; }
+  if (!email)      { sgShowError('Informe seu e-mail.'); return; }
+  if (senha.length < 6) { sgShowError('A senha deve ter pelo menos 6 caracteres.'); return; }
+
+  const btn = document.getElementById('sg-btn');
+  btn.disabled = true;
+  btn.textContent = 'Criando sua clínica...';
+
+  // 1. Criar usuário no Supabase Auth
+  const { data: authData, error: authErr } = await supa.auth.signUp({ email, password: senha });
+  if (authErr) {
+    sgShowError('Erro ao criar conta: ' + authErr.message);
+    btn.disabled = false; btn.innerHTML = '<i class="ti ti-rocket"></i> Criar minha clínica';
+    return;
+  }
+
+  // 2. Criar clínica + medico admin via RPC SECURITY DEFINER
+  const { data: result, error: rpcErr } = await supa.rpc('criar_clinica_onboarding', {
+    p_nome: nomeClinica,
+    p_slug: slug,
+    p_admin_nome: adminNome,
+    p_admin_crm: adminCrm || null,
+  });
+
+  if (rpcErr) {
+    sgShowError('Erro ao criar clínica: ' + rpcErr.message);
+    btn.disabled = false; btn.innerHTML = '<i class="ti ti-rocket"></i> Criar minha clínica';
+    return;
+  }
+
+  // 3. Redirecionar para a clínica recém-criada
+  window.location.href = window.location.pathname + '?c=' + slug;
+}
+
+function sgVoltarLogin() {
+  window.location.href = window.location.pathname;
 }
 
 // ══════════════════════════════════════════════════════
