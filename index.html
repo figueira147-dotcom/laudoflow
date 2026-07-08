@@ -353,6 +353,46 @@
   .cfg-id-preview-label { font-size:11px; font-weight:700; color:var(--text-muted); letter-spacing:.5px; text-transform:uppercase; margin-bottom:8px; }
   .cfg-id-preview-box { border:1px dashed var(--border-dark); border-radius:var(--radius); padding:26px 24px; background:var(--off-white); min-height:88px; display:flex; align-items:center; }
   .cfg-preview-nome { font-size:24px; font-weight:800; color:#1a2d6e; letter-spacing:-0.4px; }
+  /* ── LAUDO ESTRUTURADO (beta) ── */
+  .est-patient { display:flex; gap:14px; flex-wrap:wrap; padding:16px; background:var(--off-white); border:1px solid var(--border); border-radius:var(--radius); margin-bottom:18px; }
+  .est-patient .field { flex:1; min-width:150px; margin:0; }
+  .est-sec { border:1px solid var(--border); border-radius:var(--radius); margin-bottom:14px; overflow:hidden; box-shadow:var(--shadow-sm); }
+  .est-sec-hdr { display:flex; align-items:center; gap:11px; padding:13px 16px; background:var(--green-pale); cursor:pointer; user-select:none; }
+  .est-sec-ico { width:32px; height:32px; border-radius:9px; background:linear-gradient(135deg,var(--green),var(--green-mid)); color:#fff; display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0; }
+  .est-sec-title { flex:1; font-size:14px; font-weight:800; color:var(--green); letter-spacing:-0.2px; }
+  .est-sec-arrow { color:var(--text-muted); font-size:12px; transition:transform .25s; }
+  .est-sec-arrow.open { transform:rotate(180deg); }
+  .est-sec-body { display:none; padding:14px 16px; }
+  .est-sec-body.open { display:block; }
+  .est-quick { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
+  .est-qbtn { padding:6px 14px; border:1px solid var(--border-dark); border-radius:99px; font-size:12px; font-weight:600; cursor:pointer; background:var(--white); color:var(--text-muted); font-family:var(--font-ui); transition:all .15s; }
+  .est-qbtn:hover { border-color:var(--green); color:var(--green); background:var(--green-pale); }
+  .est-lado { display:flex; gap:6px; margin-bottom:14px; }
+  .est-lado-tab { padding:6px 16px; border:1px solid var(--border-dark); border-radius:99px; font-size:12px; font-weight:600; cursor:pointer; color:var(--text-muted); background:var(--white); transition:all .15s; }
+  .est-lado-tab.active { background:var(--green); color:#fff; border-color:var(--green); }
+  .est-lado-title { font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.8px; color:var(--green); padding:8px 2px 6px; }
+  .est-table { width:100%; border-collapse:collapse; font-size:12px; }
+  .est-table th { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.6px; color:var(--text-muted); padding:7px 10px; border-bottom:1px solid var(--border); background:var(--off-white); text-align:left; }
+  .est-table td { padding:7px 8px; border-bottom:1px solid var(--border); vertical-align:middle; }
+  .est-table tr:last-child td { border-bottom:none; }
+  .est-seg-nome { font-size:12px; color:var(--text); font-weight:700; min-width:150px; }
+  .est-seg-sub { font-size:10px; color:var(--text-muted); font-weight:500; margin-top:1px; }
+  .est-mini, .est-obs { font-size:11px; padding:6px 8px; border:1px solid var(--border-dark); border-radius:7px; background:var(--white); color:var(--text); font-family:var(--font-ui); width:100%; outline:none; transition:border-color .15s; }
+  .est-mini:focus, .est-obs:focus { border-color:var(--green); }
+  .est-pill { display:inline-block; font-size:10px; font-weight:700; padding:2px 9px; border-radius:99px; margin-top:4px; white-space:nowrap; }
+  .est-pill-ok { background:#dcf0e3; color:#1a5c30; }
+  .est-pill-danger { background:var(--red-pale); color:#8b1f16; }
+  .est-pill-warn { background:var(--amber-pale); color:#7a4500; }
+  .est-pill-info { background:var(--green-pale); color:var(--green); }
+  .est-pill-gray { background:#edecea; color:#4a4845; }
+  .est-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:6px; flex-wrap:wrap; }
+  #est-preview-wrap { border:1px solid var(--border); border-radius:var(--radius); margin-top:20px; overflow:hidden; box-shadow:var(--shadow); }
+  .est-prev-hdr { background:var(--green); color:#fff; padding:12px 18px; display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .est-prev-hdr span { font-size:13px; font-weight:700; }
+  .est-prev-hdr .btn-outline { background:rgba(255,255,255,0.12); color:#fff; border-color:rgba(255,255,255,0.35); }
+  .est-prev-hdr .btn-outline:hover { background:rgba(255,255,255,0.22); }
+  .est-prev-body { padding:22px; font-size:13px; line-height:1.85; color:var(--text); white-space:pre-wrap; font-family:Georgia, serif; max-height:480px; overflow-y:auto; }
+  @media(max-width:600px){ .est-table th:nth-child(3), .est-table td:nth-child(3){ display:none; } }
 
   /* ── PORTAL PACIENTE ── */
   #screen-patient { flex-direction: column; min-height: 100vh; }
@@ -837,6 +877,9 @@
     <div class="tab" onclick="showTab('concluidos', this)">
       <i class="ti ti-file-check"></i> Concluídos
     </div>
+    <div class="tab" onclick="showTab('estruturado', this)" id="tab-estruturado-btn" style="display:none">
+      <i class="ti ti-table"></i> Estruturado
+    </div>
     <div class="tab" onclick="showTab('config', this)" id="tab-config-btn" style="display:none">
       <i class="ti ti-settings"></i> Configurações
     </div>
@@ -850,6 +893,41 @@
         <div class="card-title" id="welcome-title">Bem-vindo</div>
       </div>
       <p style="color:var(--text-muted);font-size:14px">Sistema Integrado de Laudos e Clínicas</p>
+    </div>
+  </div>
+
+  <!-- TAB ESTRUTURADO (beta — gated) -->
+  <div id="tab-estruturado" class="app-main" style="display:none">
+    <div class="card">
+      <div class="card-hdr">
+        <div class="card-ico"><i class="ti ti-table"></i></div>
+        <div class="card-title">Laudo Estruturado — Vascular <span style="font-size:10px;font-weight:800;color:var(--accent);background:var(--accent-pale);padding:2px 8px;border-radius:99px;margin-left:6px;letter-spacing:.5px">BETA</span></div>
+      </div>
+
+      <div class="est-patient">
+        <div class="field" style="flex:2;min-width:200px"><label>Paciente</label><input id="est-nome" placeholder="Nome completo" oninput="this.value=this.value.toUpperCase()"></div>
+        <div class="field"><label>Data do exame</label><input type="date" id="est-data"></div>
+        <div class="field"><label>Idade</label><input id="est-idade" placeholder="Ex: 54 anos"></div>
+        <div class="field"><label>Convênio</label><input id="est-convenio" placeholder="Unimed, Bradesco..."></div>
+      </div>
+
+      <div id="est-sections"></div>
+
+      <div class="est-actions">
+        <button class="btn btn-outline" style="width:auto" onclick="EST.limparTudo()"><i class="ti ti-refresh"></i> Limpar tudo</button>
+        <button class="btn btn-primary" style="width:auto" onclick="EST.gerar()"><i class="ti ti-file-text"></i> Gerar texto</button>
+      </div>
+
+      <div id="est-preview-wrap" style="display:none">
+        <div class="est-prev-hdr">
+          <span><i class="ti ti-file-description"></i> Texto gerado do laudo</span>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-outline" style="width:auto;padding:7px 14px;font-size:12px" onclick="EST.copiar()">Copiar</button>
+            <button class="btn btn-outline" style="width:auto;padding:7px 14px;font-size:12px" onclick="EST.imprimir()">Imprimir</button>
+          </div>
+        </div>
+        <div id="est-preview" class="est-prev-body"></div>
+      </div>
     </div>
   </div>
 
@@ -1291,6 +1369,11 @@ async function afterLogin(session) {
   // Mostra aba de configurações só para admin
   const tabConfig = document.getElementById('tab-config-btn');
   if (tabConfig) tabConfig.style.display = medico.papel === 'admin' ? '' : 'none';
+
+  // Módulo estruturado (upsell) — gate por clínica (teste: CTDMI)
+  const tabEst = document.getElementById('tab-estruturado-btn');
+  const temEstruturado = currentClinica.slug === 'ctdmi' || currentClinica.addon_estruturado === true;
+  if (tabEst) tabEst.style.display = (temEstruturado && medico.papel !== 'secretaria') ? '' : 'none';
 
   if (medico.papel === 'secretaria') {
     document.getElementById('sec-badge').textContent = medico.nome;
@@ -2264,7 +2347,7 @@ async function criarUsuario() {
 function showTab(name, el) {
   document.querySelectorAll('#app-nav .tab').forEach(t => t.classList.remove('active'));
   if (el) el.classList.add('active');
-  ['inicio','pendentes','novo','concluidos','config'].forEach(t => {
+  ['inicio','pendentes','novo','concluidos','estruturado','config'].forEach(t => {
     const div = document.getElementById('tab-' + t);
     if (div) div.style.display = t === name ? '' : 'none';
   });
@@ -2272,7 +2355,232 @@ function showTab(name, el) {
   if (name === 'concluidos') loadDocConcluidos();
   if (name === 'config')     loadConfig();
   if (name === 'novo')       initNovoLaudo();
+  if (name === 'estruturado') EST.init();
 }
+
+// ══════════════════════════════════════════════════════
+// MÓDULO: LAUDO ESTRUTURADO (beta) — vascular MMII
+// Namespaced em EST.* para não colidir com o app.
+// ══════════════════════════════════════════════════════
+const EST = (() => {
+  const estado = { venoso:{lado:'B',dados:{}}, arterial:{lado:'B',dados:{}} };
+  let iniciado = false;
+
+  const SECTIONS = [
+    { key:'venoso',   icon:'🩸', title:'Sistema Venoso Superficial e Profundo dos MMII', open:true },
+    { key:'arterial', icon:'❤️', title:'Ecocolor Doppler Arterial dos MMII', open:false },
+  ];
+
+  const SEG_VENOSO = [
+    { id:'perv',    nome:'Perviedade geral',        sub:'Superficial e profundo', tipo:'perv' },
+    { id:'profundo',nome:'Sistema Venoso Profundo', sub:'FC, FS, Pop, Tib, Fib, Gastr, Sol', tipo:'refluxo_profundo' },
+    { id:'vsm',     nome:'Veia Safena Magna',       sub:'VSM', tipo:'safena' },
+    { id:'vsp',     nome:'Veia Safena Parva',       sub:'VSP', tipo:'safena' },
+    { id:'perf',    nome:'Veias Perfurantes',       sub:'',    tipo:'perfurantes' },
+    { id:'varic',   nome:'Varicosidades',           sub:'Ectoscopia', tipo:'varicosidades' },
+  ];
+  const SEG_ARTERIAL = [
+    { id:'afc',   nome:'A. Femoral Comum',            sub:'AFC', tipo:'arterial' },
+    { id:'afp',   nome:'A. Femoral Profunda',         sub:'AFP', tipo:'arterial_simples' },
+    { id:'afspop',nome:'A. Femoral Sup. + Poplítea',  sub:'AFS + Pop', tipo:'arterial' },
+    { id:'atib',  nome:'Artérias Tibiais + Fibular',  sub:'Tib Ant/Post + Fibular', tipo:'arterial' },
+  ];
+  const OPT = {
+    perv:['—','Pérvias (normal)','Alterado — ver obs'],
+    refluxo:['—','Sem refluxo','Refluxo presente','Não avaliado'],
+    calibre:['—','Normal','Aumentado','Reduzido'],
+    perf:['—','Não visualizadas','Perfurante incompetente presente'],
+    varic:['—','Há varicosidades conforme ectoscopia','Sem varicosidades'],
+    art_cal:['—','Normal','Estenose < 50%','Estenose 50–70%','Estenose > 70%','Ocluída'],
+    art_fluxo:['—','Trifásico (normal)','Bifásico','Monofásico','Ausente'],
+    art_parede:['—','Regular, sem placas','Placa < 10%','Placa 10–50%','Placa > 50%'],
+  };
+  const NORMAL_VENOSO = {
+    perv:{status:'Pérvias (normal)'}, profundo:{refluxo:'Sem refluxo'},
+    vsm:{refluxo:'Sem refluxo',calibre:'Normal'}, vsp:{refluxo:'Sem refluxo',calibre:'Normal'},
+    perf:{status:'Não visualizadas'}, varic:{status:'Há varicosidades conforme ectoscopia'},
+  };
+  const NORMAL_ARTERIAL = {
+    afc:{calibre:'Normal',parede:'Regular, sem placas',fluxo:'Trifásico (normal)'},
+    afp:{calibre:'Normal'},
+    afspop:{calibre:'Normal',parede:'Regular, sem placas',fluxo:'Trifásico (normal)'},
+    atib:{calibre:'Normal',parede:'Regular, sem placas',fluxo:'Trifásico (normal)'},
+  };
+
+  const k  = (sec,id,l) => sec+'_'+id+'_'+l;
+  const gv = (sec,id,l,f) => (estado[sec].dados[k(sec,id,l)]||{})[f]||'—';
+  function sv(sec,id,l,f,v){ const key=k(sec,id,l); (estado[sec].dados[key]=estado[sec].dados[key]||{})[f]=v; }
+  const getLados = sec => estado[sec].lado==='B' ? ['D','E'] : [estado[sec].lado];
+  const esc = s => (s||'').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+  function pill(v){
+    if(!v||v==='—') return '';
+    if(['Pérvias (normal)','Sem refluxo','Normal','Não visualizadas','Trifásico (normal)','Regular, sem placas'].includes(v)) return `<span class="est-pill est-pill-ok">${v}</span>`;
+    if(['Refluxo presente','Perfurante incompetente presente','Estenose > 70%','Ocluída','Ausente','Monofásico'].includes(v)) return `<span class="est-pill est-pill-danger">${v}</span>`;
+    if(['Aumentado','Estenose 50–70%','Placa 10–50%','Placa > 50%','Bifásico','Alterado — ver obs'].includes(v)) return `<span class="est-pill est-pill-warn">${v}</span>`;
+    if(['Estenose < 50%','Placa < 10%','Reduzido'].includes(v)) return `<span class="est-pill est-pill-info">${v}</span>`;
+    return `<span class="est-pill est-pill-gray">${v}</span>`;
+  }
+  function sel(sec,id,l,campo,opts,cur){
+    return `<select class="est-mini" onchange="EST.sv('${sec}','${id}','${l}','${campo}',this.value);EST.upd(this)">
+      ${opts.map(o=>`<option${o===cur?' selected':''}>${o}</option>`).join('')}</select><div>${pill(cur)}</div>`;
+  }
+  function upd(s){ s.nextElementSibling.innerHTML = pill(s.value); }
+
+  function renderVenoso(l){
+    const ln = l==='D'?'Membro Inferior Direito':'Membro Inferior Esquerdo';
+    let h=`<div class="est-lado-title">${ln}</div><table class="est-table"><thead><tr>
+      <th style="width:36%">Segmento</th><th style="width:24%">Status / Refluxo</th><th style="width:18%">Calibre</th><th>Observação</th></tr></thead><tbody>`;
+    SEG_VENOSO.forEach(s=>{
+      const obs=(estado.venoso.dados[k('venoso',s.id,l)]||{}).obs||'';
+      h+=`<tr><td><div class="est-seg-nome">${s.nome}</div>${s.sub?`<div class="est-seg-sub">${s.sub}</div>`:''}</td>`;
+      if(s.tipo==='perv') h+=`<td colspan="2">${sel('venoso',s.id,l,'status',OPT.perv,gv('venoso',s.id,l,'status'))}</td>`;
+      else if(s.tipo==='refluxo_profundo') h+=`<td colspan="2">${sel('venoso',s.id,l,'refluxo',OPT.refluxo,gv('venoso',s.id,l,'refluxo'))}</td>`;
+      else if(s.tipo==='safena'){ h+=`<td>${sel('venoso',s.id,l,'refluxo',OPT.refluxo,gv('venoso',s.id,l,'refluxo'))}</td><td>${sel('venoso',s.id,l,'calibre',OPT.calibre,gv('venoso',s.id,l,'calibre'))}</td>`; }
+      else if(s.tipo==='perfurantes') h+=`<td colspan="2">${sel('venoso',s.id,l,'status',OPT.perf,gv('venoso',s.id,l,'status'))}</td>`;
+      else if(s.tipo==='varicosidades') h+=`<td colspan="2">${sel('venoso',s.id,l,'status',OPT.varic,gv('venoso',s.id,l,'status'))}</td>`;
+      h+=`<td><input class="est-obs" placeholder="obs livre" value="${esc(obs)}" onchange="EST.sv('venoso','${s.id}','${l}','obs',this.value)"></td></tr>`;
+    });
+    return h+`</tbody></table>`;
+  }
+  function renderArterial(l){
+    const ln = l==='D'?'Membro Inferior Direito':'Membro Inferior Esquerdo';
+    let h=`<div class="est-lado-title">${ln}</div><table class="est-table"><thead><tr>
+      <th style="width:32%">Artéria</th><th style="width:22%">Calibre / Estenose</th><th style="width:22%">Parede / Placa</th><th style="width:16%">Fluxo</th><th>Obs</th></tr></thead><tbody>`;
+    SEG_ARTERIAL.forEach(s=>{
+      const obs=(estado.arterial.dados[k('arterial',s.id,l)]||{}).obs||'';
+      h+=`<tr><td><div class="est-seg-nome">${s.nome}</div>${s.sub?`<div class="est-seg-sub">${s.sub}</div>`:''}</td>`;
+      h+=`<td>${sel('arterial',s.id,l,'calibre',OPT.art_cal,gv('arterial',s.id,l,'calibre'))}</td>`;
+      if(s.tipo==='arterial_simples') h+=`<td colspan="2"><span style="font-size:11px;color:var(--text-muted)">—</span></td>`;
+      else h+=`<td>${sel('arterial',s.id,l,'parede',OPT.art_parede,gv('arterial',s.id,l,'parede'))}</td><td>${sel('arterial',s.id,l,'fluxo',OPT.art_fluxo,gv('arterial',s.id,l,'fluxo'))}</td>`;
+      h+=`<td><input class="est-obs" placeholder="obs" value="${esc(obs)}" onchange="EST.sv('arterial','${s.id}','${l}','obs',this.value)"></td></tr>`;
+    });
+    return h+`</tbody></table>`;
+  }
+  function renderSec(sec){
+    const lados=getLados(sec), wrap=document.getElementById('est-tables-'+sec);
+    if(!wrap) return;
+    const fn = sec==='venoso'?renderVenoso:renderArterial;
+    let html=''; lados.forEach((l,i)=>{ html+=fn(l); if(lados.length>1&&i===0) html+='<hr style="border:none;border-top:1px solid var(--border);margin:12px 0">'; });
+    wrap.innerHTML=html;
+    ['D','E','B'].forEach(x=>{ const b=document.getElementById('est-lado-'+sec+'-'+x); if(b) b.classList.toggle('active', estado[sec].lado===x); });
+  }
+
+  function setLado(sec,l){ estado[sec].lado=l; renderSec(sec); }
+  function toggleSec(sec){
+    const b=document.getElementById('est-body-'+sec), a=document.getElementById('est-arrow-'+sec);
+    const open=b.classList.toggle('open'); b.style.display=open?'block':'none'; if(a) a.classList.toggle('open',open);
+  }
+  function aplicarNormal(sec){
+    const norm = sec==='venoso'?NORMAL_VENOSO:NORMAL_ARTERIAL;
+    getLados(sec).forEach(l=>Object.entries(norm).forEach(([id,c])=>Object.entries(c).forEach(([f,v])=>sv(sec,id,l,f,v))));
+    renderSec(sec);
+  }
+  function limparSec(sec){ estado[sec].dados={}; renderSec(sec); }
+  function limparTudo(){ estado.venoso.dados={}; estado.arterial.dados={}; renderSec('venoso'); renderSec('arterial'); document.getElementById('est-preview-wrap').style.display='none'; }
+
+  // ── GERAÇÃO DE TEXTO ──
+  function gerarVenoso(l){
+    const ln=l==='D'?'MEMBRO INFERIOR DIREITO':'MEMBRO INFERIOR ESQUERDO', d=estado.venoso.dados; let t='';
+    const pS=gv('venoso','perv',l,'status'), pO=(d[k('venoso','perv',l)]||{}).obs||'';
+    if(pS==='Pérvias (normal)') t+='PERVIEDADE:\nVeias do sistema superficial e profundo encontram-se pérvias, calibres normais, compressíveis, sem trombos visíveis ao mapeamento a cores, com fluxos fásicos com a respiração, sendo suas paredes lisas sem irregularidades parietais.\n\n';
+    else if(pS&&pS!=='—') t+=`PERVIEDADE:\n${pO||'Alterações presentes — ver observações.'}\n\n`;
+    t+=`COMPETÊNCIA:\n${ln}\n\n`;
+    const prR=gv('venoso','profundo',l,'refluxo'), prO=(d[k('venoso','profundo',l)]||{}).obs||'';
+    if(prR==='Sem refluxo') t+='Veia Femoral Comum, Femoral Superficial, Poplítea, Tibiais Anteriores, Tibiais Posteriores, Fibulares, Gastrocnêmias e Soleares não demonstram refluxos ao Doppler espectral, com manobras provocativas.\n\n';
+    else if(prR&&prR!=='—') t+=`Veia Femoral Comum, Femoral Superficial, Poplítea, Tibiais Anteriores, Tibiais Posteriores, Fibulares, Gastrocnêmias e Soleares: ${prR}.${prO?' '+prO+'.':''}\n\n`;
+    [['vsm','Veia Safena Magna'],['vsp','Veia Safena Parva']].forEach(([id,nm])=>{
+      const r=gv('venoso',id,l,'refluxo'), c=gv('venoso',id,l,'calibre'), o=(d[k('venoso',id,l)]||{}).obs||'';
+      if(r==='—'&&c==='—') return;
+      if(r==='Sem refluxo'&&(c==='Normal'||c==='—')) t+=`${nm} apresenta calibre normal, sem tortuosidades e ou refluxos significativos, detectáveis ao Doppler espectral, com manobras provocativas.\n\n`;
+      else { let f=`${nm} apresenta`; if(c&&c!=='—'&&c!=='Normal') f+=` calibre ${c.toLowerCase()},`; if(r==='Refluxo presente') f+=' refluxo ao Doppler espectral, com manobras provocativas.'; else if(r&&r!=='—') f+=' sem refluxos significativos ao Doppler espectral.'; if(o) f+=' '+o+'.'; t+=f+'\n\n'; }
+    });
+    const peS=gv('venoso','perf',l,'status'), peO=(d[k('venoso','perf',l)]||{}).obs||'';
+    if(peS==='Não visualizadas') t+='Não foram visualizadas veias perfurantes incompetentes.\n\n';
+    else if(peS&&peS!=='—') t+=`Perfurante incompetente presente.${peO?' Localização: '+peO+'.':''}\n\n`;
+    const vS=gv('venoso','varic',l,'status'), vO=(d[k('venoso','varic',l)]||{}).obs||'';
+    if(vS==='Há varicosidades conforme ectoscopia') t+=`Há varicosidades conforme ectoscopia. Telangiectasias e varizes reticulares subcutâneas, visualizadas veias extra-faciais insuficientes na face anterior e lateral e posterior da coxa e perna.${vO?' '+vO:''}`;
+    else if(vS&&vS!=='—') t+=`Sem varicosidades visíveis ao exame físico.${vO?' '+vO:''}`;
+    return t.trim();
+  }
+  function gerarArterial(l){
+    const ln=l==='D'?'MEMBRO INFERIOR DIREITO':'MEMBRO INFERIOR ESQUERDO', d=estado.arterial.dados; let t=`${ln}\n\n`;
+    const nomes={afc:'Artéria Femoral Comum',afp:'Artéria Femoral Profunda',afspop:'Artérias Femoral Superficial e Poplítea',atib:'Artérias Tibiais (anterior e posterior) e artéria fibular'};
+    SEG_ARTERIAL.forEach(s=>{
+      const c=gv('arterial',s.id,l,'calibre'), p=gv('arterial',s.id,l,'parede'), fl=gv('arterial',s.id,l,'fluxo'), o=(d[k('arterial',s.id,l)]||{}).obs||'';
+      if(c==='—'&&p==='—'&&fl==='—') return;
+      let linha=`${nomes[s.id]}: `; if(c&&c!=='—') linha+=`Calibre ${c.toLowerCase()}`;
+      if(s.tipo!=='arterial_simples'){ if(p&&p!=='—') linha+=`, paredes ${p==='Regular, sem placas'?'regulares, sem placas ateromatosas':p.toLowerCase()}`; if(fl&&fl!=='—') linha+=`. Fluxo ${fl==='Trifásico (normal)'?'amplo laminar e trifásico':fl.toLowerCase()}`; }
+      linha+='.'; if(o) linha+=' '+o+'.'; t+=linha+'\n\n';
+    });
+    return t.trim();
+  }
+  function gerar(){
+    let partes=[];
+    const lv=getLados('venoso'), vT=lv.map(gerarVenoso).filter(Boolean);
+    if(vT.length){
+      let bloco='SISTEMA VENOSO SUPERFICIAL E PROFUNDO DOS MEMBROS INFERIORES\n\n';
+      if(lv.length===2){ const p0=vT[0].split('COMPETÊNCIA')[0], p1=vT[1].split('COMPETÊNCIA')[0];
+        if(p0===p1&&p0.trim()){ bloco+=p0.trim()+'\n\n'+vT[0].replace(p0,'').trim()+'\n\n'+vT[1].replace(p1,'').trim(); } else bloco+=vT.join('\n\n');
+      } else bloco+=vT.join('\n\n');
+      partes.push(bloco.trim());
+    }
+    const la=getLados('arterial'), aT=la.map(gerarArterial).filter(t=>t.trim().length>40);
+    if(aT.length){
+      let bloco='ECOCOLOR DOPPLER ARTERIAL DOS MEMBROS INFERIORES\n\nO exame com Doppler espectral e colorido revela:\n\n'+aT.join('\n\n');
+      const allN=la.every(l=>SEG_ARTERIAL.every(s=>{const c=gv('arterial',s.id,l,'calibre');return c==='Normal'||c==='—';}));
+      if(allN) bloco+='\n\nIMPRESSÃO:\nArtérias de calibres normais sem dilatações aneurismáticas.\nAusência de estenoses hemodinamicamente significativas nos segmentos visualizados.\nPerfusão periférica adequada em repouso.';
+      partes.push(bloco.trim());
+    }
+    if(!partes.length){ toast('Preencha pelo menos uma seção antes de gerar.','err'); return; }
+    const wrap=document.getElementById('est-preview-wrap'), body=document.getElementById('est-preview');
+    body.textContent=partes.join('\n\n\n'); wrap.style.display='block'; wrap.scrollIntoView({behavior:'smooth',block:'nearest'});
+  }
+  function copiar(){
+    const t=document.getElementById('est-preview').textContent; if(!t) return;
+    navigator.clipboard.writeText(t).then(()=>toast('Texto copiado.','ok')).catch(()=>toast('Não foi possível copiar.','err'));
+  }
+  function imprimir(){
+    const t=document.getElementById('est-preview').textContent; if(!t){ toast('Gere o texto primeiro.','err'); return; }
+    const nome=document.getElementById('est-nome').value||'', data=document.getElementById('est-data').value;
+    const dataFmt=data?new Date(data+'T12:00:00').toLocaleDateString('pt-BR'):'';
+    const w=window.open('','_blank'); if(!w){ toast('Permita pop-ups para imprimir.','err'); return; }
+    w.document.write(`<html><head><meta charset="utf-8"><title>Laudo</title></head><body style="font-family:Georgia,serif;color:#111;padding:40px;max-width:720px;margin:0 auto">
+      <div style="border-bottom:2px solid #1a2d6e;padding-bottom:8px;margin-bottom:16px"><b>${esc(nome)}</b>${dataFmt?' — '+dataFmt:''}</div>
+      <pre style="font-family:Georgia,serif;font-size:13px;line-height:1.7;white-space:pre-wrap">${esc(t)}</pre></body></html>`);
+    w.document.close(); w.focus(); setTimeout(()=>w.print(),200);
+  }
+
+  function init(){
+    if(iniciado) return;
+    iniciado=true;
+    const cont=document.getElementById('est-sections');
+    cont.innerHTML = SECTIONS.map(s=>`
+      <div class="est-sec">
+        <div class="est-sec-hdr" onclick="EST.toggleSec('${s.key}')">
+          <div class="est-sec-ico">${s.icon}</div>
+          <div class="est-sec-title">${s.title}</div>
+          <span class="est-sec-arrow${s.open?' open':''}" id="est-arrow-${s.key}">▼</span>
+        </div>
+        <div class="est-sec-body${s.open?' open':''}" id="est-body-${s.key}" style="display:${s.open?'block':'none'}">
+          <div class="est-quick">
+            <button class="est-qbtn" onclick="EST.aplicarNormal('${s.key}')">✓ Exame normal completo</button>
+            <div class="est-lado" style="margin:0">
+              <div class="est-lado-tab" id="est-lado-${s.key}-D" onclick="EST.setLado('${s.key}','D')">Direito</div>
+              <div class="est-lado-tab" id="est-lado-${s.key}-E" onclick="EST.setLado('${s.key}','E')">Esquerdo</div>
+              <div class="est-lado-tab" id="est-lado-${s.key}-B" onclick="EST.setLado('${s.key}','B')">Bilateral</div>
+            </div>
+            <button class="est-qbtn" style="margin-left:auto" onclick="EST.limparSec('${s.key}')">↺ Limpar</button>
+          </div>
+          <div id="est-tables-${s.key}"></div>
+        </div>
+      </div>`).join('');
+    const dt=document.getElementById('est-data'); if(dt&&!dt.value) dt.value=new Date().toISOString().split('T')[0];
+    renderSec('venoso'); renderSec('arterial');
+  }
+
+  return { init, sv, upd, setLado, toggleSec, aplicarNormal, limparSec, limparTudo, gerar, copiar, imprimir };
+})();
 
 async function initNovoLaudo() {
   if (!editingLaudoId) {
