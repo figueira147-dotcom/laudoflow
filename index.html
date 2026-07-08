@@ -425,32 +425,41 @@
     body { background: #fff !important; margin: 0 !important; padding: 0 !important; }
     #print-container { display: block !important; }
     @page { size: A4 portrait; margin: 0; }
-    .print-page { width: 210mm; height: 297mm; box-sizing: border-box; padding: 14mm 22mm 0 22mm; font-family: 'Times New Roman', Times, serif; page-break-after: always; break-after: page; background: #fff; position: relative; overflow: hidden; }
+    .print-page { width: 210mm; height: 297mm; box-sizing: border-box; padding: 12mm 20mm 34mm 20mm; font-family: 'Garamond','Times New Roman',Times,serif; color: #000; page-break-after: always; break-after: page; background: #fff; position: relative; overflow: hidden; }
     .print-page:last-child { page-break-after: avoid; break-after: avoid; }
-    .print-body { display: block; max-height: 218mm; overflow: hidden; }
-    .print-header { text-align: center; padding-bottom: 8px; margin-bottom: 12px; border-bottom: 2px solid; }
-    .ph-main { font-size: 14pt; font-weight: bold; white-space: pre-line; }
-    .ph-sub  { font-size: 9pt; margin-top: 3px; white-space: pre-line; }
-    .print-patient-box { border: 1.5px solid #000; border-radius: 4px; padding: 7px 12px; margin-bottom: 12px; font-size: 9.5pt; }
-    .ppb-row { display: flex; }
-    .pp-cell { padding: 2px 6px 2px 0; min-width: 0; }
-    .pp-label { font-size: 7.5pt; color: #555; text-transform: uppercase; letter-spacing: 0.5px; }
-    .pp-value { font-weight: bold; font-size: 10pt; word-wrap: break-word; }
-    .print-section h3 { font-size: 12pt; font-weight: bold; text-decoration: underline; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.3px; }
-    .print-section .sec-body { margin-top: 10px; }
-    .print-section p, .print-section .sec-body, .print-section .sec-body div { font-size: 9.5pt; line-height: 1.4; text-align: justify; word-break: break-word; margin: 0; font-weight: normal; }
-    .print-section .sec-body b, .print-section .sec-body strong { font-weight: bold; }
-    .print-section .sec-body span:not([style*="font-weight"]) { font-weight: normal; }
-    .print-section [style*="line-height"] { line-height: inherit; }
-    .print-img-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; margin-top: 8mm; }
-    .print-img-cell { width: 100%; aspect-ratio: 4/3; overflow: hidden; }
-    .print-img-cell img { width: 100%; height: 100%; object-fit: cover; display: block; }
-    .print-signature { position: absolute; bottom: 28mm; left: 22mm; right: 22mm; padding-top: 8px; border-top: 1px solid #555; }
-    .ps-label { font-size: 9pt; }
-    .ps-name  { font-size: 10pt; font-weight: bold; }
-    .ps-date  { font-size: 8.5pt; font-style: italic; }
-    .ps-warn  { font-size: 7.5pt; color: #444; margin-top: 5px; font-style: italic; line-height: 1.3; }
-    .print-footer { position: absolute; bottom: 10mm; left: 22mm; right: 22mm; padding-top: 6px; border-top: 1.5px solid; font-size: 8pt; display: flex; justify-content: space-between; white-space: pre-line; }
+    .print-body { display: block; }
+
+    /* ── CABEÇALHO ── */
+    .pdf-hd { text-align: center; margin-bottom: 14px; }
+    .pdf-hd-title { font-family: 'Times New Roman',Times,serif; font-size: 16pt; font-weight: bold; line-height: 1.15; }
+    .pdf-hd-sub { font-family: 'Times New Roman',Times,serif; font-size: 11pt; line-height: 1.3; }
+
+    /* ── PACIENTE ── */
+    .pdf-pat { margin-bottom: 16px; font-family: 'Calibri','Segoe UI',Arial,sans-serif; font-size: 11pt; line-height: 1.35; }
+    .pdf-pat b { font-weight: bold; }
+
+    /* ── SEÇÃO ── */
+    .pdf-sec-title { font-family: 'Cambria','Times New Roman',serif; font-size: 12pt; font-weight: bold; text-decoration: underline; text-transform: uppercase; margin: 4px 0 12px; letter-spacing: .2px; }
+    .pdf-body { font-family: 'Garamond','Times New Roman',Times,serif; font-size: 13pt; line-height: 1.5; text-align: justify; word-break: break-word; }
+    .pdf-body p { margin: 0 0 11px; }
+    .pdf-body b, .pdf-body strong { font-weight: bold; }
+    .pdf-body span:not([style*="font-weight"]) { font-weight: normal; }
+    .pdf-body [style*="line-height"] { line-height: inherit; }
+
+    /* ── IMAGENS ── */
+    .pdf-img-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; margin-top: 6mm; }
+    .pdf-img-cell { width: 100%; aspect-ratio: 4/3; overflow: hidden; }
+    .pdf-img-cell img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+    /* ── ASSINATURA + RODAPÉ (fixos no pé de cada página) ── */
+    .pdf-sign { position: absolute; left: 20mm; right: 20mm; bottom: 22mm; text-align: right; }
+    .pdf-sign-l  { font-family: Arial,sans-serif; font-size: 10pt; }
+    .pdf-sign-dr { font-family: 'Times New Roman',serif; font-size: 11pt; }
+    .pdf-sign-crm{ font-family: 'Times New Roman',serif; font-size: 9pt; }
+    .pdf-disc { position: absolute; left: 16mm; right: 16mm; bottom: 17mm; text-align: center; font-family: Arial,sans-serif; font-size: 6pt; font-weight: bold; font-style: italic; line-height: 1.2; }
+    .pdf-foot { position: absolute; left: 20mm; right: 20mm; bottom: 8mm; font-family: 'Calibri','Segoe UI',Arial,sans-serif; font-size: 11pt; line-height: 1.35; }
+    .pdf-foot-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+    .pdf-foot b { font-weight: bold; }
   }
 
   /* ── QUILL RICH EDITOR ── */
@@ -3170,40 +3179,55 @@ function escHtml(s) {
 }
 
 function buildPrint(laudo, medico) {
-  const clinica  = currentClinica || {};
-  const cor      = clinica.cor_primaria || '#1a2d6e';
-  const cabecalho = clinica.cabecalho_pdf || clinica.nome || 'LAUDAR';
-  const rodape    = clinica.rodape_pdf   || clinica.nome  || '';
-  const dateEx    = laudo.data_exame ? fmtDate(laudo.data_exame) : fmtDate(new Date().toISOString().slice(0,10));
+  const clinica = currentClinica || {};
+  const pc = clinica.pdf_config || {};
+  const dateEx = laudo.data_exame ? fmtDate(laudo.data_exame) : fmtDate(new Date().toISOString().slice(0,10));
 
-  const HEADER = `<div class="print-header" style="border-color:${cor}">
-    <div class="ph-main" style="color:${cor}">${cabecalho.replace(/\n/g,'<br>')}</div>
+  // ── Cabeçalho (padrão CTDMI: título / subtítulo / CRM) ──
+  const titulo    = pc.titulo    || clinica.cabecalho_pdf || clinica.nome || 'LAUDAR';
+  const subtitulo = pc.subtitulo || '';
+  const crmClin   = pc.crm       || '';
+  const HEADER = `<div class="pdf-hd">
+    <div class="pdf-hd-title">${escHtml(titulo)}</div>
+    ${subtitulo ? `<div class="pdf-hd-sub">${escHtml(subtitulo)}</div>` : ''}
+    ${crmClin ? `<div class="pdf-hd-sub">${escHtml(crmClin)}</div>` : ''}
   </div>`;
 
-  const FOOTER = `<div class="print-footer" style="border-color:${cor}">
-    <span>${escHtml(rodape)}</span>
+  // ── Bloco do paciente (labels em negrito) ──
+  const patRows = [
+    `<div><b>Paciente:</b> ${escHtml((laudo.paciente_nome||'').toUpperCase())}</div>`,
+    laudo.paciente_nascimento ? `<div><b>Data Nascimento:</b> ${escHtml(fmtDate(laudo.paciente_nascimento))}</div>` : '',
+    laudo.idade ? `<div><b>Idade:</b> ${escHtml(laudo.idade)}</div>` : '',
+    `<div><b>Data do Exame:</b> ${dateEx}</div>`,
+    `<div><b>Convênio:</b> ${escHtml((laudo.convenio||'—').toUpperCase())}</div>`,
+    laudo.solicitante ? `<div><b>Médico Solicitante:</b> ${escHtml(laudo.solicitante.toUpperCase())}</div>` : '',
+  ].filter(Boolean).join('');
+  const PAT = `<div class="pdf-pat">${patRows}</div>`;
+
+  // ── Assinatura ──
+  const signNome = (medico?.nome || '').toUpperCase();
+  const signCrm  = medico?.crm ? `CRM:${escHtml(medico.crm)}` : '';
+  const assinaTxt = (pc.assinatura_texto || 'Este laudo foi assinado eletronicamente em {data}.').replace('{data}', dateEx);
+  const SIGN = `<div class="pdf-sign">
+    <div class="pdf-sign-l">Laudado por:</div>
+    <div class="pdf-sign-dr">${escHtml(signNome)}${signCrm ? ' '+signCrm : ''}</div>
+    <div class="pdf-sign-crm">${escHtml(assinaTxt)}</div>
   </div>`;
 
-  const signNome = medico?.nome || '';
-  const signCrm  = medico?.crm  || '';
-  const signLine = signCrm ? `${escHtml(signNome)} &nbsp;·&nbsp; CRM: ${escHtml(signCrm)}` : escHtml(signNome);
-  const SIGN = `<div class="print-signature" style="border-color:${cor}">
-    <div class="ps-label">Laudado por:</div>
-    <div class="ps-name">${signLine}</div>
-    <div class="ps-date">Assinado eletronicamente em ${dateEx}.</div>
-    <div class="ps-warn">Atenção: Somente seu médico possui o conjunto de informações necessárias para qualquer conclusão diagnóstica ou indicação terapêutica sobre os resultados.</div>
-  </div>`;
+  // ── Disclaimer + rodapé (endereço / e-mail / telefones) ──
+  const disc = pc.disclaimer || 'Atenção: Somente seu médico possui o conjunto de informações necessárias para qualquer conclusão diagnóstica ou indicação terapêutica sobre os resultados.';
+  const DISC = `<div class="pdf-disc">${escHtml(disc)}</div>`;
 
-  const PAT = `<div class="print-patient-box">
-    <div class="ppb-row">
-      <div class="pp-cell" style="flex:3"><div class="pp-label">Paciente</div><div class="pp-value">${escHtml((laudo.paciente_nome||'').toUpperCase())}</div></div>
-      <div class="pp-cell" style="flex:1.5"><div class="pp-label">Data do Exame</div><div class="pp-value">${dateEx}</div></div>
-      <div class="pp-cell" style="flex:1.5"><div class="pp-label">Convênio</div><div class="pp-value">${escHtml((laudo.convenio||'—').toUpperCase())}</div></div>
-    </div>
-    ${laudo.solicitante ? `<div class="ppb-row" style="margin-top:4px;padding-top:4px;border-top:1px solid #ddd">
-      <div class="pp-cell"><div class="pp-label">Médico Solicitante</div><div class="pp-value">${escHtml(laudo.solicitante.toUpperCase())}</div></div>
-    </div>` : ''}
-  </div>`;
+  let FOOT;
+  if (pc.endereco || pc.email || pc.tel1 || pc.tel2) {
+    const linha1 = `${pc.endereco_bold1 ? `<b>${escHtml(pc.endereco_bold1)}</b>` : ''}${escHtml(pc.endereco||'')}${pc.endereco_bold2 ? `<b>${escHtml(pc.endereco_bold2)}</b>` : ''}`;
+    FOOT = `<div class="pdf-foot">
+      <div class="pdf-foot-row"><span>${linha1}</span><span>${escHtml(pc.tel1||'')}</span></div>
+      <div class="pdf-foot-row"><span>${escHtml(pc.email||'')}</span><span>${escHtml(pc.tel2||'')}</span></div>
+    </div>`;
+  } else {
+    FOOT = `<div class="pdf-foot"><div class="pdf-foot-row"><span>${escHtml(clinica.rodape_pdf||'')}</span></div></div>`;
+  }
 
   const secoes = laudo.secoes || {};
   let pagesHtml = '';
@@ -3214,12 +3238,10 @@ function buildPrint(laudo, medico) {
     pagesHtml += `<div class="print-page">
       <div class="print-body">
         ${HEADER}${PAT}
-        <div class="print-section">
-          <h3>${escHtml(s.label)}</h3>
-          <div class="sec-body">${sec.texto}</div>
-        </div>
+        <div class="pdf-sec-title">${escHtml(s.label)}</div>
+        <div class="pdf-body">${sec.texto}</div>
       </div>
-      ${SIGN}${FOOTER}
+      ${SIGN}${DISC}${FOOT}
     </div>`;
   });
 
@@ -3228,10 +3250,10 @@ function buildPrint(laudo, medico) {
     for (let p = 0; p < Math.ceil(imgs.length / 6); p++) {
       const slice = [...imgs.slice(p * 6, p * 6 + 6)];
       while (slice.length < 6) slice.push(null);
-      const grid = '<div class="print-img-grid">' +
-        slice.map(img => img ? `<div class="print-img-cell"><img src="${img.src}" alt=""></div>` : `<div class="print-img-cell"></div>`).join('') +
+      const grid = '<div class="pdf-img-grid">' +
+        slice.map(img => img ? `<div class="pdf-img-cell"><img src="${img.src}" alt=""></div>` : `<div class="pdf-img-cell"></div>`).join('') +
         '</div>';
-      pagesHtml += `<div class="print-page">${HEADER}${grid}${FOOTER}</div>`;
+      pagesHtml += `<div class="print-page"><div class="print-body">${HEADER}${grid}</div>${SIGN}${DISC}${FOOT}</div>`;
     }
   }
 
