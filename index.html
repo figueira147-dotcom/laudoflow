@@ -1223,7 +1223,7 @@ let secFilaAll = [];
 async function loadSecFila() {
   loading(true, 'Carregando fila...');
   const { data } = await supa.from('laudos')
-    .select('id,paciente_nome,cpf_paciente,data_exame,convenio,solicitante,medico_responsavel_id,medicos(nome)')
+    .select('id,paciente_nome,cpf_paciente,data_exame,convenio,solicitante,medico_responsavel_id,imagens,medicos(nome)')
     .eq('clinica_id', currentClinica.id)
     .eq('status','pendente')
     .is('deleted_at', null)
@@ -1260,9 +1260,12 @@ function renderSecFila(list) {
           <div class="saved-name">${r.paciente_nome}</div>
           <div class="saved-meta">👨‍⚕️ ${medNome} &nbsp;|&nbsp; 🏥 ${r.convenio||'—'}${r.solicitante?' &nbsp;|&nbsp; Solic: '+r.solicitante:''}</div>
         </div>
-        <div class="saved-actions">
-          <button class="btn btn-outline" style="padding:6px 12px;font-size:12px" onclick="editSecFila('${r.id}')">✏️ Editar</button>
-          <button class="btn btn-danger" style="padding:6px 12px;font-size:12px" onclick="deleteSecFila('${r.id}')">🗑</button>
+        <div class="saved-actions" style="display:flex;gap:6px">
+          <button class="btn btn-outline" style="padding:5px 10px;font-size:12px" onclick="secAbrirImagens('${r.id}','${r.paciente_nome.replace(/'/g,"\\'")}')">
+            <i class="ti ti-photo"></i> ${(r.imagens||[]).length > 0 ? (r.imagens.length) + ' img' : 'Imagens'}
+          </button>
+          <button class="btn btn-outline" style="padding:5px 10px;font-size:12px" onclick="editSecFila('${r.id}')">✏️ Editar</button>
+          <button class="btn btn-danger" style="padding:5px 10px;font-size:12px" onclick="deleteSecFila('${r.id}')">🗑</button>
         </div>
       </div>`;
     });
