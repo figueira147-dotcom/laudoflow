@@ -391,7 +391,15 @@
   .est-prev-hdr span { font-size:13px; font-weight:700; }
   .est-prev-hdr .btn-outline { background:rgba(255,255,255,0.12); color:#fff; border-color:rgba(255,255,255,0.35); }
   .est-prev-hdr .btn-outline:hover { background:rgba(255,255,255,0.22); }
-  .est-prev-body { padding:22px; font-size:13px; line-height:1.85; color:var(--text); white-space:pre-wrap; font-family:Georgia, serif; max-height:480px; overflow-y:auto; }
+  .est-prev-body { padding:22px; font-size:13px; line-height:1.85; color:var(--text); font-family:Georgia, serif; max-height:560px; overflow-y:auto; }
+  .est-unit { margin-bottom:26px; }
+  .est-unit:last-child { margin-bottom:0; }
+  .est-unit-title { font-family:var(--font-ui); font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.6px; color:var(--green); margin-bottom:8px; padding:4px 8px; border-radius:6px; outline:none; }
+  .est-unit-title:focus, .est-unit-title:hover { background:var(--green-pale); }
+  .est-unit-body { font-family:Georgia, serif; font-size:13px; line-height:1.85; white-space:pre-wrap; color:var(--text); outline:none; border-radius:8px; padding:6px 8px; margin:0 -8px; transition:background .15s, box-shadow .15s; }
+  .est-unit-body:hover { background:var(--off-white); }
+  .est-unit-body:focus { background:var(--off-white); box-shadow:0 0 0 2px var(--green-pale); }
+  .est-prev-hint { font-size:11px; color:var(--text-muted); padding:10px 22px 0; }
   @media(max-width:600px){ .est-table th:nth-child(3), .est-table td:nth-child(3){ display:none; } }
 
   /* ── PORTAL PACIENTE ── */
@@ -938,6 +946,7 @@
             <button class="btn btn-outline" style="width:auto;padding:7px 14px;font-size:12px" onclick="EST.imprimir()">Imprimir</button>
           </div>
         </div>
+        <div class="est-prev-hint"><i class="ti ti-pencil"></i> Clique no texto para editar antes de copiar ou imprimir.</div>
         <div id="est-preview" class="est-prev-body"></div>
       </div>
     </div>
@@ -2489,7 +2498,11 @@ const EST = (() => {
     renderSec(sec);
   }
   function limparSec(sec){ estado[sec].dados={}; renderSec(sec); }
-  function limparTudo(){ estado.venoso.dados={}; estado.arterial.dados={}; renderSec('venoso'); renderSec('arterial'); document.getElementById('est-preview-wrap').style.display='none'; }
+  function limparTudo(){
+    estado.venoso.dados={}; estado.arterial.dados={}; renderSec('venoso'); renderSec('arterial');
+    ultimasPartes=[]; document.getElementById('est-preview').innerHTML='';
+    document.getElementById('est-preview-wrap').style.display='none';
+  }
 
   // ── GERAÇÃO DE TEXTO ──
   function gerarVenoso(l){
@@ -2530,26 +2543,31 @@ const EST = (() => {
   let ultimasPartes = [];
 
   function gerar(){
-    let partes=[];
-    const lv=getLados('venoso'), vT=lv.map(gerarVenoso).filter(Boolean);
-    if(vT.length){
-      let bloco='SISTEMA VENOSO SUPERFICIAL E PROFUNDO DOS MEMBROS INFERIORES\n\n';
-      if(lv.length===2){ const p0=vT[0].split('COMPETÊNCIA')[0], p1=vT[1].split('COMPETÊNCIA')[0];
-        if(p0===p1&&p0.trim()){ bloco+=p0.trim()+'\n\n'+vT[0].replace(p0,'').trim()+'\n\n'+vT[1].replace(p1,'').trim(); } else bloco+=vT.join('\n\n');
-      } else bloco+=vT.join('\n\n');
-      partes.push(bloco.trim());
-    }
-    const la=getLados('arterial'), aT=la.map(gerarArterial).filter(t=>t.trim().length>40);
-    if(aT.length){
-      let bloco='ECOCOLOR DOPPLER ARTERIAL DOS MEMBROS INFERIORES\n\nO exame com Doppler espectral e colorido revela:\n\n'+aT.join('\n\n');
-      const allN=la.every(l=>SEG_ARTERIAL.every(s=>{const c=gv('arterial',s.id,l,'calibre');return c==='Normal'||c==='—';}));
-      if(allN) bloco+='\n\nIMPRESSÃO:\nArtérias de calibres normais sem dilatações aneurismáticas.\nAusência de estenoses hemodinamicamente significativas nos segmentos visualizados.\nPerfusão periférica adequada em repouso.';
-      partes.push(bloco.trim());
-    }
-    if(!partes.length){ toast('Preencha pelo menos uma seção antes de gerar.','err'); return; }
-    ultimasPartes = buildPrintUnits();
-    const wrap=document.getElementById('est-preview-wrap'), body=document.getElementById('est-preview');
-    body.textContent=partes.join('\n\n\n'); wrap.style.display='block'; wrap.scrollIntoView({behavior:'smooth',block:'nearest'});
+    const units = buildPrintUnits();
+    if(!units.length){ toast('Preencha pelo menos uma seção antes de gerar.','err'); return; }
+    ultimasPartes = units;
+    renderPreview();
+    const wrap=document.getElementById('est-preview-wrap');
+    wrap.style.display='block'; wrap.scrollIntoView({behavior:'smooth',block:'nearest'});
+  }
+
+  // Renderiza cada seção como um bloco editável (contenteditable), preservando
+  // a divisão em páginas (ex.: venoso Direito/Esquerdo) usada na impressão.
+  function renderPreview(){
+    const cont = document.getElementById('est-preview');
+    cont.innerHTML = ultimasPartes.map((p,i) => `
+      <div class="est-unit" data-idx="${i}">
+        <div class="est-unit-title" contenteditable="true">${esc(p.titulo)}</div>
+        <div class="est-unit-body" contenteditable="true">${esc(p.corpo)}</div>
+      </div>`).join('');
+  }
+
+  // Lê o texto atual (já editado pelo usuário) direto do DOM.
+  function lerUnidadesEditadas(){
+    return Array.from(document.querySelectorAll('#est-preview .est-unit')).map(u => ({
+      titulo: u.querySelector('.est-unit-title').innerText.trim(),
+      corpo:  u.querySelector('.est-unit-body').innerText.trim(),
+    }));
   }
 
   // Monta as páginas de impressão: quando bilateral, o venoso vai em UMA
@@ -2585,7 +2603,9 @@ const EST = (() => {
     return units;
   }
   function copiar(){
-    const t=document.getElementById('est-preview').textContent; if(!t) return;
+    const unidades = lerUnidadesEditadas();
+    if(!unidades.length) return;
+    const t = unidades.map(u => u.titulo+'\n\n'+u.corpo).join('\n\n\n');
     navigator.clipboard.writeText(t).then(()=>toast('Texto copiado.','ok')).catch(()=>toast('Não foi possível copiar.','err'));
   }
 
@@ -2604,7 +2624,8 @@ const EST = (() => {
   }
 
   function imprimir(){
-    if(!ultimasPartes.length){ toast('Gere o texto primeiro.','err'); return; }
+    const unidades = lerUnidadesEditadas();
+    if(!unidades.length){ toast('Gere o texto primeiro.','err'); return; }
     const nome = document.getElementById('est-nome').value || '';
     const data = document.getElementById('est-data').value;
     const idade = document.getElementById('est-idade').value || '';
@@ -2644,7 +2665,7 @@ const EST = (() => {
       FOOT = `<div class="pdf-foot"><div class="pdf-foot-row"><span>${esc(clinica.rodape_pdf||'')}</span></div></div>`;
     }
 
-    const pages = ultimasPartes.map(p => `<div class="print-page">
+    const pages = unidades.map(p => `<div class="print-page">
       <div class="print-body">
         ${HEADER}${PAT}
         <div class="pdf-sec-title">${esc(p.titulo)}</div>
