@@ -2547,12 +2547,42 @@ const EST = (() => {
       partes.push(bloco.trim());
     }
     if(!partes.length){ toast('Preencha pelo menos uma seção antes de gerar.','err'); return; }
-    ultimasPartes = partes.map(p=>{
-      const idx=p.indexOf('\n\n');
-      return idx===-1 ? {titulo:p,corpo:''} : {titulo:p.slice(0,idx),corpo:p.slice(idx+2)};
-    });
+    ultimasPartes = buildPrintUnits();
     const wrap=document.getElementById('est-preview-wrap'), body=document.getElementById('est-preview');
     body.textContent=partes.join('\n\n\n'); wrap.style.display='block'; wrap.scrollIntoView({behavior:'smooth',block:'nearest'});
+  }
+
+  // Monta as páginas de impressão: quando bilateral, o venoso vai em UMA
+  // página por membro (como no modelo impresso), evitando estourar a folha.
+  function buildPrintUnits(){
+    const units=[];
+    const lv=getLados('venoso'), vT=lv.map(gerarVenoso).filter(Boolean);
+    if(vT.length){
+      const titulo='SISTEMA VENOSO SUPERFICIAL E PROFUNDO DOS MEMBROS INFERIORES';
+      if(lv.length===2){
+        const p0=vT[0].split('COMPETÊNCIA')[0], p1=vT[1].split('COMPETÊNCIA')[0];
+        let corpo1, corpo2;
+        if(p0===p1&&p0.trim()){
+          corpo1 = p0.trim()+'\n\n'+vT[0].replace(p0,'').trim();
+          corpo2 = vT[1].replace(p1,'').replace(/^COMPETÊNCIA:\s*\n?/,'').trim();
+        } else {
+          corpo1 = vT[0];
+          corpo2 = vT[1];
+        }
+        units.push({titulo, corpo:corpo1});
+        units.push({titulo, corpo:corpo2});
+      } else {
+        units.push({titulo, corpo:vT[0]});
+      }
+    }
+    const la=getLados('arterial'), aT=la.map(gerarArterial).filter(t=>t.trim().length>40);
+    if(aT.length){
+      let corpo='O exame com Doppler espectral e colorido revela:\n\n'+aT.join('\n\n');
+      const allN=la.every(l=>SEG_ARTERIAL.every(s=>{const c=gv('arterial',s.id,l,'calibre');return c==='Normal'||c==='—';}));
+      if(allN) corpo+='\n\nIMPRESSÃO:\nArtérias de calibres normais sem dilatações aneurismáticas.\nAusência de estenoses hemodinamicamente significativas nos segmentos visualizados.\nPerfusão periférica adequada em repouso.';
+      units.push({titulo:'ECOCOLOR DOPPLER ARTERIAL DOS MEMBROS INFERIORES', corpo});
+    }
+    return units;
   }
   function copiar(){
     const t=document.getElementById('est-preview').textContent; if(!t) return;
@@ -2627,7 +2657,9 @@ const EST = (() => {
     w.document.write(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Laudo</title><style>
       *{box-sizing:border-box;margin:0;padding:0}
       body{background:#888;font-family:'Garamond','Times New Roman',Times,serif;color:#000}
-      .print-page{width:210mm;min-height:297mm;box-sizing:border-box;padding:12mm 20mm 34mm 20mm;background:#fff;position:relative;margin:0 auto 16px;box-shadow:0 2px 14px rgba(0,0,0,.35);page-break-after:always}
+      .print-page{width:210mm;height:297mm;box-sizing:border-box;padding:12mm 20mm 34mm 20mm;background:#fff;position:relative;margin:0 auto 16px;box-shadow:0 2px 14px rgba(0,0,0,.35);page-break-after:always;overflow:hidden}
+      .print-page:last-child{page-break-after:avoid}
+      .pdf-body p{page-break-inside:avoid;break-inside:avoid}
       .pdf-hd{text-align:center;margin-bottom:14px}
       .pdf-hd-title{font-family:'Times New Roman',Times,serif;font-size:16pt;font-weight:bold;line-height:1.15}
       .pdf-hd-sub{font-family:'Times New Roman',Times,serif;font-size:11pt;line-height:1.3}
