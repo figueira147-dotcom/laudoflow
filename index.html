@@ -434,9 +434,12 @@
     .pdf-hd-title { font-family: 'Times New Roman',Times,serif; font-size: 16pt; font-weight: bold; line-height: 1.15; }
     .pdf-hd-sub { font-family: 'Times New Roman',Times,serif; font-size: 11pt; line-height: 1.3; }
 
-    /* ── PACIENTE ── */
-    .pdf-pat { margin-bottom: 16px; font-family: 'Calibri','Segoe UI',Arial,sans-serif; font-size: 11pt; line-height: 1.35; }
-    .pdf-pat b { font-weight: bold; }
+    /* ── PACIENTE (caixa, formato antigo) ── */
+    .print-patient-box { border: 1.5px solid #000; border-radius: 4px; padding: 7px 12px; margin-bottom: 14px; font-family: 'Calibri','Segoe UI',Arial,sans-serif; }
+    .ppb-row { display: flex; }
+    .pp-cell { padding: 2px 6px 2px 0; min-width: 0; }
+    .pp-label { font-size: 7.5pt; color: #555; text-transform: uppercase; letter-spacing: 0.5px; }
+    .pp-value { font-weight: bold; font-size: 10pt; word-wrap: break-word; }
 
     /* ── SEÇÃO ── */
     .pdf-sec-title { font-family: 'Cambria','Times New Roman',serif; font-size: 12pt; font-weight: bold; text-decoration: underline; text-transform: uppercase; margin: 4px 0 12px; letter-spacing: .2px; }
@@ -3180,34 +3183,35 @@ function escHtml(s) {
 
 function buildPrint(laudo, medico) {
   const clinica = currentClinica || {};
-  const pc = clinica.pdf_config || {};
+  const pcfg = clinica.pdf_config || {};
   const dateEx = laudo.data_exame ? fmtDate(laudo.data_exame) : fmtDate(new Date().toISOString().slice(0,10));
 
   // ── Cabeçalho (padrão CTDMI: título / subtítulo / CRM) ──
-  const titulo    = pc.titulo    || clinica.cabecalho_pdf || clinica.nome || 'LAUDAR';
-  const subtitulo = pc.subtitulo || '';
-  const crmClin   = pc.crm       || '';
+  const titulo    = pcfg.titulo    || clinica.cabecalho_pdf || clinica.nome || 'LAUDAR';
+  const subtitulo = pcfg.subtitulo || '';
+  const crmClin   = pcfg.crm       || '';
   const HEADER = `<div class="pdf-hd">
     <div class="pdf-hd-title">${escHtml(titulo)}</div>
     ${subtitulo ? `<div class="pdf-hd-sub">${escHtml(subtitulo)}</div>` : ''}
     ${crmClin ? `<div class="pdf-hd-sub">${escHtml(crmClin)}</div>` : ''}
   </div>`;
 
-  // ── Bloco do paciente (labels em negrito) ──
-  const patRows = [
-    `<div><b>Paciente:</b> ${escHtml((laudo.paciente_nome||'').toUpperCase())}</div>`,
-    laudo.paciente_nascimento ? `<div><b>Data Nascimento:</b> ${escHtml(fmtDate(laudo.paciente_nascimento))}</div>` : '',
-    laudo.idade ? `<div><b>Idade:</b> ${escHtml(laudo.idade)}</div>` : '',
-    `<div><b>Data do Exame:</b> ${dateEx}</div>`,
-    `<div><b>Convênio:</b> ${escHtml((laudo.convenio||'—').toUpperCase())}</div>`,
-    laudo.solicitante ? `<div><b>Médico Solicitante:</b> ${escHtml(laudo.solicitante.toUpperCase())}</div>` : '',
-  ].filter(Boolean).join('');
-  const PAT = `<div class="pdf-pat">${patRows}</div>`;
+  // ── Bloco do paciente (formato antigo: caixa com colunas) ──
+  const PAT = `<div class="print-patient-box">
+    <div class="ppb-row">
+      <div class="pp-cell" style="flex:3"><div class="pp-label">Paciente</div><div class="pp-value">${escHtml((laudo.paciente_nome||'').toUpperCase())}</div></div>
+      <div class="pp-cell" style="flex:1.5"><div class="pp-label">Data do Exame</div><div class="pp-value">${dateEx}</div></div>
+      <div class="pp-cell" style="flex:1.5"><div class="pp-label">Convênio</div><div class="pp-value">${escHtml((laudo.convenio||'—').toUpperCase())}</div></div>
+    </div>
+    ${laudo.solicitante ? `<div class="ppb-row" style="margin-top:4px;padding-top:4px;border-top:1px solid #ddd">
+      <div class="pp-cell"><div class="pp-label">Médico Solicitante</div><div class="pp-value">${escHtml(laudo.solicitante.toUpperCase())}</div></div>
+    </div>` : ''}
+  </div>`;
 
   // ── Assinatura ──
   const signNome = (medico?.nome || '').toUpperCase();
   const signCrm  = medico?.crm ? `CRM:${escHtml(medico.crm)}` : '';
-  const assinaTxt = (pc.assinatura_texto || 'Este laudo foi assinado eletronicamente em {data}.').replace('{data}', dateEx);
+  const assinaTxt = (pcfg.assinatura_texto || 'Este laudo foi assinado eletronicamente em {data}.').replace('{data}', dateEx);
   const SIGN = `<div class="pdf-sign">
     <div class="pdf-sign-l">Laudado por:</div>
     <div class="pdf-sign-dr">${escHtml(signNome)}${signCrm ? ' '+signCrm : ''}</div>
@@ -3215,15 +3219,15 @@ function buildPrint(laudo, medico) {
   </div>`;
 
   // ── Disclaimer + rodapé (endereço / e-mail / telefones) ──
-  const disc = pc.disclaimer || 'Atenção: Somente seu médico possui o conjunto de informações necessárias para qualquer conclusão diagnóstica ou indicação terapêutica sobre os resultados.';
+  const disc = pcfg.disclaimer || 'Atenção: Somente seu médico possui o conjunto de informações necessárias para qualquer conclusão diagnóstica ou indicação terapêutica sobre os resultados.';
   const DISC = `<div class="pdf-disc">${escHtml(disc)}</div>`;
 
   let FOOT;
-  if (pc.endereco || pc.email || pc.tel1 || pc.tel2) {
-    const linha1 = `${pc.endereco_bold1 ? `<b>${escHtml(pc.endereco_bold1)}</b>` : ''}${escHtml(pc.endereco||'')}${pc.endereco_bold2 ? `<b>${escHtml(pc.endereco_bold2)}</b>` : ''}`;
+  if (pcfg.endereco || pcfg.email || pcfg.tel1 || pcfg.tel2) {
+    const linha1 = `${pcfg.endereco_bold1 ? `<b>${escHtml(pcfg.endereco_bold1)}</b>` : ''}${escHtml(pcfg.endereco||'')}${pcfg.endereco_bold2 ? `<b>${escHtml(pcfg.endereco_bold2)}</b>` : ''}`;
     FOOT = `<div class="pdf-foot">
-      <div class="pdf-foot-row"><span>${linha1}</span><span>${escHtml(pc.tel1||'')}</span></div>
-      <div class="pdf-foot-row"><span>${escHtml(pc.email||'')}</span><span>${escHtml(pc.tel2||'')}</span></div>
+      <div class="pdf-foot-row"><span>${linha1}</span><span>${escHtml(pcfg.tel1||'')}</span></div>
+      <div class="pdf-foot-row"><span>${escHtml(pcfg.email||'')}</span><span>${escHtml(pcfg.tel2||'')}</span></div>
     </div>`;
   } else {
     FOOT = `<div class="pdf-foot"><div class="pdf-foot-row"><span>${escHtml(clinica.rodape_pdf||'')}</span></div></div>`;
