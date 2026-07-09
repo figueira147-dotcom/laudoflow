@@ -1049,6 +1049,7 @@
         <div class="cfg-tab" onclick="showCfgTab('secoes',this)"><i class="ti ti-stethoscope"></i> Seções</div>
         <div class="cfg-tab" onclick="showCfgTab('presets',this)"><i class="ti ti-user-check"></i> Presets</div>
         <div class="cfg-tab" onclick="showCfgTab('usuarios',this)"><i class="ti ti-users"></i> Usuários</div>
+        <div class="cfg-tab" onclick="showCfgTab('estruturado',this)" id="cfg-tab-estruturado-btn" style="display:none"><i class="ti ti-table"></i> Laudo Estruturado</div>
       </div>
 
       <!-- PAINEL: Clínica -->
@@ -1150,6 +1151,32 @@
             <div class="field"><label>Senha inicial</label><input type="text" id="cfg-novo-user-senha" placeholder="Mínimo 6 caracteres"></div>
           </div>
           <button class="btn btn-primary" onclick="criarUsuario()">Criar usuário</button>
+        </div>
+      </div>
+
+      <!-- PAINEL: Laudo Estruturado (textos-modelo) -->
+      <div id="cfg-panel-estruturado" class="cfg-panel">
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:20px;max-width:640px">
+          Edite as frases usadas no gerador do Laudo Estruturado. Onde houver <code style="background:var(--off-white);padding:1px 5px;border-radius:4px">{nome}</code>,
+          o sistema substitui automaticamente pelo nome do vaso.
+        </p>
+
+        <div class="cfg-subhdr">Sistema Venoso</div>
+        <div class="field"><label>Perviedade normal</label><textarea id="tx-venoso_perviedade_normal" rows="2"></textarea></div>
+        <div class="field"><label>Nome do grupo venoso profundo</label><input type="text" id="tx-venoso_profundo_nome"></div>
+        <div class="field"><label>Sistema profundo — sem refluxo</label><textarea id="tx-venoso_profundo_sem_refluxo" rows="2"></textarea></div>
+        <div class="field"><label>Safena — calibre normal, sem refluxo</label><textarea id="tx-venoso_safena_normal" rows="2"></textarea></div>
+        <div class="field"><label>Perfurantes — não visualizadas</label><input type="text" id="tx-venoso_perfurantes_normal"></div>
+        <div class="field"><label>Varicosidades — presentes</label><textarea id="tx-venoso_varicosidades_presente" rows="2"></textarea></div>
+        <div class="field"><label>Varicosidades — ausentes</label><input type="text" id="tx-venoso_varicosidades_ausente"></div>
+
+        <div class="cfg-subhdr" style="margin-top:24px">Ecocolor Doppler Arterial</div>
+        <div class="field"><label>Frase de introdução</label><input type="text" id="tx-arterial_intro"></div>
+        <div class="field"><label>Impressão (quando tudo normal)</label><textarea id="tx-arterial_impressao" rows="3"></textarea></div>
+
+        <div style="display:flex;gap:10px;margin-top:8px">
+          <button class="btn btn-primary" style="width:auto" onclick="salvarConfigEstruturado()">Salvar textos</button>
+          <button class="btn btn-outline" style="width:auto" onclick="restaurarConfigEstruturado()">Restaurar padrão</button>
         </div>
       </div>
     </div>
@@ -1395,6 +1422,8 @@ async function afterLogin(session) {
   const tabEst = document.getElementById('tab-estruturado-btn');
   const temEstruturado = currentClinica.slug === 'ctdmi' || currentClinica.addon_estruturado === true;
   if (tabEst) tabEst.style.display = (temEstruturado && medico.papel !== 'secretaria') ? '' : 'none';
+  const cfgTabEst = document.getElementById('cfg-tab-estruturado-btn');
+  if (cfgTabEst) cfgTabEst.style.display = (temEstruturado && medico.papel === 'admin') ? '' : 'none';
 
   if (medico.papel === 'secretaria') {
     document.getElementById('sec-badge').textContent = medico.nome;
@@ -2027,6 +2056,7 @@ async function loadConfig() {
   document.getElementById('cfg-fonte').value     = currentClinica.login_fonte || "'Plus Jakarta Sans', sans-serif";
   cfgLogoData = currentClinica.login_logo || null;
   setIdModo(currentClinica.login_modo === 'logo' ? 'logo' : 'texto');
+  carregarConfigEstruturado();
 
   // Carrega todas as seções em paralelo
   await Promise.all([
@@ -2127,6 +2157,47 @@ async function salvarConfigClinica() {
   currentClinica.login_logo    = cfgLogoData || null;
   renderIdentity(currentClinica);
   toast('Configurações salvas.', 'ok');
+}
+
+// ══════════════════════════════════════════════════════
+// CONFIGURAÇÕES — TEXTOS DO LAUDO ESTRUTURADO (upsell)
+// ══════════════════════════════════════════════════════
+const TX_CAMPOS = [
+  'venoso_perviedade_normal','venoso_profundo_nome','venoso_profundo_sem_refluxo',
+  'venoso_safena_normal','venoso_perfurantes_normal','venoso_varicosidades_presente',
+  'venoso_varicosidades_ausente','arterial_intro','arterial_impressao',
+];
+
+function carregarConfigEstruturado() {
+  const el = document.getElementById('cfg-tab-estruturado-btn');
+  if (!el || el.style.display === 'none') return;
+  const cfg = Object.assign({}, EST.TEXTOS_DEFAULT, currentClinica.estruturado_config || {});
+  TX_CAMPOS.forEach(campo => {
+    const input = document.getElementById('tx-' + campo);
+    if (input) input.value = cfg[campo] || '';
+  });
+}
+
+async function salvarConfigEstruturado() {
+  const cfg = {};
+  TX_CAMPOS.forEach(campo => {
+    const input = document.getElementById('tx-' + campo);
+    if (input) cfg[campo] = input.value;
+  });
+  loading(true, 'Salvando...');
+  const { error } = await supa.from('clinicas').update({ estruturado_config: cfg }).eq('id', currentClinica.id);
+  loading(false);
+  if (error) { toast('Erro ao salvar: ' + error.message, 'err'); return; }
+  currentClinica.estruturado_config = cfg;
+  toast('Textos do laudo estruturado salvos.', 'ok');
+}
+
+function restaurarConfigEstruturado() {
+  TX_CAMPOS.forEach(campo => {
+    const input = document.getElementById('tx-' + campo);
+    if (input) input.value = EST.TEXTOS_DEFAULT[campo] || '';
+  });
+  toast('Textos restaurados ao padrão (clique em Salvar para confirmar).', 'ok');
 }
 
 // ══════════════════════════════════════════════════════
@@ -2504,28 +2575,46 @@ const EST = (() => {
     document.getElementById('est-preview-wrap').style.display='none';
   }
 
+  // ── TEXTOS-MODELO (editáveis pela clínica em Configurações → Laudo Estruturado) ──
+  const TEXTOS_DEFAULT = {
+    venoso_perviedade_normal: 'Veias do sistema superficial e profundo encontram-se pérvias, calibres normais, compressíveis, sem trombos visíveis ao mapeamento a cores, com fluxos fásicos com a respiração, sendo suas paredes lisas sem irregularidades parietais.',
+    venoso_profundo_nome: 'Veia Femoral Comum, Femoral Superficial, Poplítea, Tibiais Anteriores, Tibiais Posteriores, Fibulares, Gastrocnêmias e Soleares',
+    venoso_profundo_sem_refluxo: '{nome} não demonstram refluxos ao Doppler espectral, com manobras provocativas.',
+    venoso_safena_normal: '{nome} apresenta calibre normal, sem tortuosidades e ou refluxos significativos, detectáveis ao Doppler espectral, com manobras provocativas.',
+    venoso_perfurantes_normal: 'Não foram visualizadas veias perfurantes incompetentes.',
+    venoso_varicosidades_presente: 'Há varicosidades conforme ectoscopia. Telangiectasias e varizes reticulares subcutâneas, visualizadas veias extra-faciais insuficientes na face anterior e lateral e posterior da coxa e perna.',
+    venoso_varicosidades_ausente: 'Sem varicosidades visíveis ao exame físico.',
+    arterial_intro: 'O exame com Doppler espectral e colorido revela:',
+    arterial_impressao: 'Artérias de calibres normais sem dilatações aneurismáticas.\nAusência de estenoses hemodinamicamente significativas nos segmentos visualizados.\nPerfusão periférica adequada em repouso.',
+  };
+  function getTX(){
+    const cfg = (currentClinica && currentClinica.estruturado_config) || {};
+    return Object.assign({}, TEXTOS_DEFAULT, cfg);
+  }
+
   // ── GERAÇÃO DE TEXTO ──
   function gerarVenoso(l){
+    const TX=getTX();
     const ln=l==='D'?'MEMBRO INFERIOR DIREITO':'MEMBRO INFERIOR ESQUERDO', d=estado.venoso.dados; let t='';
     const pS=gv('venoso','perv',l,'status'), pO=(d[k('venoso','perv',l)]||{}).obs||'';
-    if(pS==='Pérvias (normal)') t+='PERVIEDADE:\nVeias do sistema superficial e profundo encontram-se pérvias, calibres normais, compressíveis, sem trombos visíveis ao mapeamento a cores, com fluxos fásicos com a respiração, sendo suas paredes lisas sem irregularidades parietais.\n\n';
+    if(pS==='Pérvias (normal)') t+='PERVIEDADE:\n'+TX.venoso_perviedade_normal+'\n\n';
     else if(pS&&pS!=='—') t+=`PERVIEDADE:\n${pO||'Alterações presentes — ver observações.'}\n\n`;
     t+=`COMPETÊNCIA:\n${ln}\n\n`;
     const prR=gv('venoso','profundo',l,'refluxo'), prO=(d[k('venoso','profundo',l)]||{}).obs||'';
-    if(prR==='Sem refluxo') t+='Veia Femoral Comum, Femoral Superficial, Poplítea, Tibiais Anteriores, Tibiais Posteriores, Fibulares, Gastrocnêmias e Soleares não demonstram refluxos ao Doppler espectral, com manobras provocativas.\n\n';
-    else if(prR&&prR!=='—') t+=`Veia Femoral Comum, Femoral Superficial, Poplítea, Tibiais Anteriores, Tibiais Posteriores, Fibulares, Gastrocnêmias e Soleares: ${prR}.${prO?' '+prO+'.':''}\n\n`;
+    if(prR==='Sem refluxo') t+=TX.venoso_profundo_sem_refluxo.replace('{nome}',TX.venoso_profundo_nome)+'\n\n';
+    else if(prR&&prR!=='—') t+=`${TX.venoso_profundo_nome}: ${prR}.${prO?' '+prO+'.':''}\n\n`;
     [['vsm','Veia Safena Magna'],['vsp','Veia Safena Parva']].forEach(([id,nm])=>{
       const r=gv('venoso',id,l,'refluxo'), c=gv('venoso',id,l,'calibre'), o=(d[k('venoso',id,l)]||{}).obs||'';
       if(r==='—'&&c==='—') return;
-      if(r==='Sem refluxo'&&(c==='Normal'||c==='—')) t+=`${nm} apresenta calibre normal, sem tortuosidades e ou refluxos significativos, detectáveis ao Doppler espectral, com manobras provocativas.\n\n`;
+      if(r==='Sem refluxo'&&(c==='Normal'||c==='—')) t+=TX.venoso_safena_normal.replace('{nome}',nm)+'\n\n';
       else { let f=`${nm} apresenta`; if(c&&c!=='—'&&c!=='Normal') f+=` calibre ${c.toLowerCase()},`; if(r==='Refluxo presente') f+=' refluxo ao Doppler espectral, com manobras provocativas.'; else if(r&&r!=='—') f+=' sem refluxos significativos ao Doppler espectral.'; if(o) f+=' '+o+'.'; t+=f+'\n\n'; }
     });
     const peS=gv('venoso','perf',l,'status'), peO=(d[k('venoso','perf',l)]||{}).obs||'';
-    if(peS==='Não visualizadas') t+='Não foram visualizadas veias perfurantes incompetentes.\n\n';
+    if(peS==='Não visualizadas') t+=TX.venoso_perfurantes_normal+'\n\n';
     else if(peS&&peS!=='—') t+=`Perfurante incompetente presente.${peO?' Localização: '+peO+'.':''}\n\n`;
     const vS=gv('venoso','varic',l,'status'), vO=(d[k('venoso','varic',l)]||{}).obs||'';
-    if(vS==='Há varicosidades conforme ectoscopia') t+=`Há varicosidades conforme ectoscopia. Telangiectasias e varizes reticulares subcutâneas, visualizadas veias extra-faciais insuficientes na face anterior e lateral e posterior da coxa e perna.${vO?' '+vO:''}`;
-    else if(vS&&vS!=='—') t+=`Sem varicosidades visíveis ao exame físico.${vO?' '+vO:''}`;
+    if(vS==='Há varicosidades conforme ectoscopia') t+=TX.venoso_varicosidades_presente+`${vO?' '+vO:''}`;
+    else if(vS&&vS!=='—') t+=TX.venoso_varicosidades_ausente+`${vO?' '+vO:''}`;
     return t.trim();
   }
   function gerarArterial(l){
@@ -2595,9 +2684,10 @@ const EST = (() => {
     }
     const la=getLados('arterial'), aT=la.map(gerarArterial).filter(t=>t.trim().length>40);
     if(aT.length){
-      let corpo='O exame com Doppler espectral e colorido revela:\n\n'+aT.join('\n\n');
+      const TX=getTX();
+      let corpo=TX.arterial_intro+'\n\n'+aT.join('\n\n');
       const allN=la.every(l=>SEG_ARTERIAL.every(s=>{const c=gv('arterial',s.id,l,'calibre');return c==='Normal'||c==='—';}));
-      if(allN) corpo+='\n\nIMPRESSÃO:\nArtérias de calibres normais sem dilatações aneurismáticas.\nAusência de estenoses hemodinamicamente significativas nos segmentos visualizados.\nPerfusão periférica adequada em repouso.';
+      if(allN) corpo+='\n\nIMPRESSÃO:\n'+TX.arterial_impressao;
       units.push({titulo:'ECOCOLOR DOPPLER ARTERIAL DOS MEMBROS INFERIORES', corpo});
     }
     return units;
@@ -2732,7 +2822,7 @@ const EST = (() => {
     renderSec('venoso'); renderSec('arterial');
   }
 
-  return { init, sv, upd, setLado, toggleSec, aplicarNormal, limparSec, limparTudo, gerar, copiar, imprimir };
+  return { init, sv, upd, setLado, toggleSec, aplicarNormal, limparSec, limparTudo, gerar, copiar, imprimir, TEXTOS_DEFAULT };
 })();
 
 async function initNovoLaudo() {
