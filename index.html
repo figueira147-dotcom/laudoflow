@@ -1096,6 +1096,12 @@
           </div>
         </div>
 
+        <div class="cfg-subhdr" style="margin-top:26px">Cor da marca</div>
+        <div class="field" style="max-width:180px">
+          <label>Cor principal</label>
+          <input type="color" id="cfg-cor" value="#1a2d6e" oninput="previewCor()" style="height:42px;padding:4px;cursor:pointer">
+        </div>
+
         <div class="cfg-subhdr" style="margin-top:26px">Laudo impresso (PDF)</div>
         <div class="form-row cols-2" style="max-width:640px">
           <div class="field"><label>Cabeçalho do laudo</label><input type="text" id="cfg-cabecalho" placeholder="Aparece no topo do laudo impresso"></div>
@@ -1342,8 +1348,22 @@ function hexLighten(hex, pct) {
 }
 
 function applyTema(clinica) {
-  // Paleta é fixa (navy LAUDAR); a clínica define apenas nome/logo.
   renderIdentity(clinica);
+  aplicarCorMarca(clinica.cor_primaria);
+}
+
+// Aplica a cor principal da clínica nas variáveis CSS (--green e derivados).
+// Sem cor definida, mantém a paleta navy padrão do LAUDAR.
+function aplicarCorMarca(cor) {
+  const base = /^#[0-9a-fA-F]{6}$/.test(cor || '') ? cor : '#1a2d6e';
+  const root = document.documentElement.style;
+  root.setProperty('--green', base);
+  root.setProperty('--green-mid', hexLighten(base, 15));
+  root.setProperty('--green-pale', hexLighten(base, 92));
+}
+
+function previewCor() {
+  aplicarCorMarca(document.getElementById('cfg-cor').value);
 }
 
 // Renderiza a identidade da clínica (logo OU nome) no login e nos cabeçalhos.
@@ -2076,6 +2096,7 @@ async function loadConfig() {
   document.getElementById('cfg-cabecalho').value = currentClinica.cabecalho_pdf || '';
   document.getElementById('cfg-rodape').value    = currentClinica.rodape_pdf || '';
   document.getElementById('cfg-fonte').value     = currentClinica.login_fonte || "'Plus Jakarta Sans', sans-serif";
+  document.getElementById('cfg-cor').value       = currentClinica.cor_primaria || '#1a2d6e';
   cfgLogoData = currentClinica.login_logo || null;
   setIdModo(currentClinica.login_modo === 'logo' ? 'logo' : 'texto');
   carregarConfigEstruturado();
@@ -2157,6 +2178,7 @@ async function salvarConfigClinica() {
   const cabecalho = document.getElementById('cfg-cabecalho').value.trim();
   const rodape    = document.getElementById('cfg-rodape').value.trim();
   const fonte     = document.getElementById('cfg-fonte').value;
+  const cor       = document.getElementById('cfg-cor').value;
   const modo      = cfgIdModo;
 
   if (!nome) { toast('Informe o nome da clínica.', 'err'); return; }
@@ -2165,7 +2187,8 @@ async function salvarConfigClinica() {
   loading(true, 'Salvando...');
   const { error } = await supa.from('clinicas').update({
     nome, cabecalho_pdf: cabecalho, rodape_pdf: rodape,
-    login_modo: modo, login_fonte: fonte, login_logo: cfgLogoData || null
+    login_modo: modo, login_fonte: fonte, login_logo: cfgLogoData || null,
+    cor_primaria: cor
   }).eq('id', currentClinica.id);
   loading(false);
 
@@ -2177,7 +2200,9 @@ async function salvarConfigClinica() {
   currentClinica.login_modo    = modo;
   currentClinica.login_fonte   = fonte;
   currentClinica.login_logo    = cfgLogoData || null;
+  currentClinica.cor_primaria  = cor;
   renderIdentity(currentClinica);
+  aplicarCorMarca(cor);
   toast('Configurações salvas.', 'ok');
 }
 
