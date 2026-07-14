@@ -648,9 +648,12 @@
 
   <!-- Detalhe de um laudo -->
   <div id="pat-view-detalhe" class="app-main" style="display:none">
-    <div style="margin-bottom:16px">
+    <div style="margin-bottom:16px;display:flex;justify-content:space-between;align-items:center">
       <button class="btn btn-outline" onclick="patVoltarLista()" style="padding:7px 14px;font-size:13px">
         ← Voltar
+      </button>
+      <button class="btn btn-primary" onclick="patPrintLaudo()" style="padding:7px 14px;font-size:13px">
+        <i class="ti ti-download"></i> Baixar PDF
       </button>
     </div>
     <div class="card">
@@ -1262,6 +1265,7 @@ const supa = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 // ══════════════════════════════════════════════════════
 let currentClinica  = null;
 let currentDoctor   = null;
+let patLaudoAtual   = null;
 
 // ══════════════════════════════════════════════════════
 // BOOT — resolve clínica pelo subdomínio ou ?c=slug
@@ -2002,6 +2006,7 @@ async function loadPatLaudos(pacienteId) {
 }
 
 function patAbrirLaudo(laudo) {
+  patLaudoAtual = laudo;
   document.getElementById('pat-det-titulo').textContent = 'Laudo de ' + fmtDate(laudo.data_exame);
   document.getElementById('pat-det-data').textContent   = fmtDate(laudo.data_exame);
   document.getElementById('pat-det-convenio').textContent = laudo.convenio || '—';
@@ -2028,6 +2033,20 @@ function patAbrirLaudo(laudo) {
 function patVoltarLista() {
   document.getElementById('pat-view-detalhe').style.display = 'none';
   document.getElementById('pat-view-lista').style.display   = '';
+}
+
+async function patPrintLaudo() {
+  if (!patLaudoAtual?.id) return;
+  loading(true, 'Preparando PDF...');
+  const { data: laudo } = await supa.from('laudos').select('*').eq('id', patLaudoAtual.id).single();
+  let medico = null;
+  if (laudo?.medico_responsavel_id) {
+    const { data: m } = await supa.from('medicos').select('nome,crm').eq('id', laudo.medico_responsavel_id).single();
+    medico = m;
+  }
+  loading(false);
+  if (!laudo) { toast('Laudo não encontrado.', 'err'); return; }
+  buildPrint(laudo, medico);
 }
 
 function labelSecao(chave) {
