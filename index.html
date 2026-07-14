@@ -1145,13 +1145,16 @@
           <div class="form-row cols-2">
             <div class="field">
               <label>Papel</label>
-              <select id="cfg-novo-user-papel">
+              <select id="cfg-novo-user-papel" onchange="toggleCampoCrm()">
                 <option value="medico">Médico</option>
                 <option value="secretaria">Secretária</option>
                 <option value="admin">Admin</option>
               </select>
             </div>
             <div class="field"><label>Senha inicial</label><input type="text" id="cfg-novo-user-senha" placeholder="Mínimo 6 caracteres"></div>
+          </div>
+          <div class="form-row cols-2">
+            <div class="field" id="cfg-novo-user-crm-field"><label>CRM</label><input type="text" id="cfg-novo-user-crm" placeholder="Ex: CRM/RJ 12345"></div>
           </div>
           <button class="btn btn-primary" onclick="criarUsuario()">Criar usuário</button>
         </div>
@@ -2308,7 +2311,7 @@ async function deletarSecao(id) {
 // ══════════════════════════════════════════════════════
 async function loadConfigUsuarios() {
   const { data } = await supa.from('medicos')
-    .select('id,nome,email,papel,ativo')
+    .select('id,nome,email,papel,ativo,crm')
     .eq('clinica_id', currentClinica.id)
     .order('nome');
 
@@ -2319,7 +2322,7 @@ async function loadConfigUsuarios() {
     <div class="cfg-user-row">
       <div class="cfg-user-info">
         <div class="cfg-user-nome">${u.nome}</div>
-        <div class="cfg-user-meta">${u.email || '—'}</div>
+        <div class="cfg-user-meta">${u.email || '—'}${u.crm ? ' · ' + u.crm : ''}</div>
       </div>
       <span class="badge-papel badge-${u.papel}">${u.papel}</span>
       <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
@@ -2416,11 +2419,17 @@ async function salvarPresetsMedico() {
   toast('Presets salvos com sucesso.', 'ok');
 }
 
+function toggleCampoCrm() {
+  const papel = document.getElementById('cfg-novo-user-papel').value;
+  document.getElementById('cfg-novo-user-crm-field').style.display = papel === 'medico' ? '' : 'none';
+}
+
 async function criarUsuario() {
   const nome  = document.getElementById('cfg-novo-user-nome').value.trim();
   const email = document.getElementById('cfg-novo-user-email').value.trim();
   const papel = document.getElementById('cfg-novo-user-papel').value;
   const senha = document.getElementById('cfg-novo-user-senha').value;
+  const crm   = document.getElementById('cfg-novo-user-crm').value.trim();
 
   if (!nome || !email || !senha) { toast('Preencha todos os campos.', 'err'); return; }
   if (senha.length < 6) { toast('Senha mínima: 6 caracteres.', 'err'); return; }
@@ -2439,7 +2448,8 @@ async function criarUsuario() {
   const { error } = await supa.from('medicos').insert({
     clinica_id: currentClinica.id,
     auth_id: authData.user?.id,
-    nome, email, papel, ativo: true
+    nome, email, papel, ativo: true,
+    crm: papel === 'medico' && crm ? crm : null
   });
 
   loading(false);
@@ -2448,6 +2458,7 @@ async function criarUsuario() {
   document.getElementById('cfg-novo-user-nome').value  = '';
   document.getElementById('cfg-novo-user-email').value = '';
   document.getElementById('cfg-novo-user-senha').value = '';
+  document.getElementById('cfg-novo-user-crm').value   = '';
   toast('Usuário criado com sucesso.', 'ok');
   await loadConfigUsuarios();
 }
