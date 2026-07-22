@@ -2802,37 +2802,54 @@ const EST = (() => {
     }));
   }
 
-  // Monta as páginas de impressão: quando bilateral, o venoso vai em UMA
-  // página por membro (como no modelo impresso), evitando estourar a folha.
+  // Monta as unidades (páginas) de impressão de UM template a partir dos
+  // textos já gerados por lado. Serve pra qualquer template que não precise
+  // de comportamento especial: uma unidade por lado com o título padrão.
+  function montarUnidadesPadrao(tpl,textos){
+    return textos.filter(Boolean).map(corpo=>({titulo:tpl.tituloImpressao, corpo}));
+  }
+
+  // Venoso: quando bilateral, separa em UMA página por membro (como no
+  // modelo impresso) em vez de uma página só — evita estourar a folha.
+  TEMPLATES.venoso.montarUnidades = (textos,lados) => {
+    const vT = textos.filter(Boolean);
+    if(!vT.length) return [];
+    const titulo = TEMPLATES.venoso.tituloImpressao;
+    if(lados.length===2){
+      const p0=vT[0].split('COMPETÊNCIA')[0], p1=vT[1].split('COMPETÊNCIA')[0];
+      let corpo1, corpo2;
+      if(p0===p1&&p0.trim()){
+        corpo1 = p0.trim()+'\n\n'+vT[0].replace(p0,'').trim();
+        corpo2 = vT[1].replace(p1,'').replace(/^COMPETÊNCIA:\s*\n?/,'').trim();
+      } else {
+        corpo1 = vT[0];
+        corpo2 = vT[1];
+      }
+      return [{titulo,corpo:corpo1},{titulo,corpo:corpo2}];
+    }
+    return [{titulo,corpo:vT[0]}];
+  };
+
+  // Arterial: uma única unidade juntando os lados, com introdução fixa e,
+  // se tudo normal, um parágrafo de IMPRESSÃO automático no fim.
+  TEMPLATES.arterial.montarUnidades = (textos,lados) => {
+    const aT = textos.filter(t=>t.trim().length>40);
+    if(!aT.length) return [];
+    const TX=getTX();
+    let corpo=TX.arterial_intro+'\n\n'+aT.join('\n\n');
+    const allN=lados.every(l=>TEMPLATES.arterial.segmentos.every(s=>{const c=gv('arterial',s.id,l,'calibre');return c==='Normal'||c==='—';}));
+    if(allN) corpo+='\n\nIMPRESSÃO:\n'+TX.arterial_impressao;
+    return [{titulo:TEMPLATES.arterial.tituloImpressao, corpo}];
+  };
+
   function buildPrintUnits(){
     const units=[];
-    const lv=getLados('venoso'), vT=lv.map(l=>gerarTexto('venoso',l)).filter(Boolean);
-    if(vT.length){
-      const titulo=TEMPLATES.venoso.tituloImpressao;
-      if(lv.length===2){
-        const p0=vT[0].split('COMPETÊNCIA')[0], p1=vT[1].split('COMPETÊNCIA')[0];
-        let corpo1, corpo2;
-        if(p0===p1&&p0.trim()){
-          corpo1 = p0.trim()+'\n\n'+vT[0].replace(p0,'').trim();
-          corpo2 = vT[1].replace(p1,'').replace(/^COMPETÊNCIA:\s*\n?/,'').trim();
-        } else {
-          corpo1 = vT[0];
-          corpo2 = vT[1];
-        }
-        units.push({titulo, corpo:corpo1});
-        units.push({titulo, corpo:corpo2});
-      } else {
-        units.push({titulo, corpo:vT[0]});
-      }
-    }
-    const la=getLados('arterial'), aT=la.map(l=>gerarTexto('arterial',l)).filter(t=>t.trim().length>40);
-    if(aT.length){
-      const TX=getTX();
-      let corpo=TX.arterial_intro+'\n\n'+aT.join('\n\n');
-      const allN=la.every(l=>TEMPLATES.arterial.segmentos.every(s=>{const c=gv('arterial',s.id,l,'calibre');return c==='Normal'||c==='—';}));
-      if(allN) corpo+='\n\nIMPRESSÃO:\n'+TX.arterial_impressao;
-      units.push({titulo:TEMPLATES.arterial.tituloImpressao, corpo});
-    }
+    Object.values(TEMPLATES).forEach(tpl=>{
+      const lados=getLados(tpl.id);
+      const textos=lados.map(l=>gerarTexto(tpl.id,l));
+      const montar=tpl.montarUnidades||((t)=>montarUnidadesPadrao(tpl,t));
+      units.push(...montar(textos,lados));
+    });
     return units;
   }
   function copiar(){
