@@ -2554,6 +2554,68 @@ const EST = (() => {
     atib:{calibre:'Normal',parede:'Regular, sem placas',fluxo:'Trifásico (normal)'},
   };
 
+  // ══════════════════════════════════════════════════════
+  // SCHEMA DE TEMPLATES (Fase A — passo 1 do motor)
+  //
+  // Descreve cada exame como dado: seções, segmentos, e o "tipo" de cada
+  // segmento (que define quais campos ele tem e como vira frase — ver
+  // handlers de tipo nos passos 2 e 3). Ainda NÃO é lido em lugar nenhum:
+  // é só a forma, pra revisão, antes dos próximos passos trocarem
+  // renderSec/gerarVenoso/gerarArterial/buildPrintUnits pra consumir isto
+  // em vez das constantes SECTIONS/SEG_VENOSO/SEG_ARTERIAL/NORMAL_* acima
+  // (que continuam sendo o que roda de fato, por enquanto).
+  //
+  // "tipo" é um dos handlers já existentes hoje em código (perv,
+  // refluxo_profundo, safena, perfurantes, varicosidades, arterial,
+  // arterial_simples) — migrar o vascular MMII pra dentro do motor não
+  // inventa tipos novos, só move os que já existem pra dado.
+  // ══════════════════════════════════════════════════════
+  const TEMPLATES = {
+    venoso: {
+      id: 'venoso',
+      especialidade: 'Vascular',
+      modalidade: 'DOPPLER',
+      icone: '🩸',
+      titulo: 'Sistema Venoso Superficial e Profundo dos MMII',
+      tituloImpressao: 'SISTEMA VENOSO SUPERFICIAL E PROFUNDO DOS MEMBROS INFERIORES',
+      abertoPorPadrao: true,
+      segmentos: [
+        { id:'perv',     nome:'Perviedade geral',        sub:'Superficial e profundo',            tipo:'perv' },
+        { id:'profundo', nome:'Sistema Venoso Profundo', sub:'FC, FS, Pop, Tib, Fib, Gastr, Sol',  tipo:'refluxo_profundo', nomeCompleto:'Veia Femoral Comum, Femoral Superficial, Poplítea, Tibiais Anteriores, Tibiais Posteriores, Fibulares, Gastrocnêmias e Soleares' },
+        { id:'vsm',      nome:'Veia Safena Magna',       sub:'VSM',                                tipo:'safena', nomeCompleto:'Veia Safena Magna' },
+        { id:'vsp',      nome:'Veia Safena Parva',       sub:'VSP',                                tipo:'safena', nomeCompleto:'Veia Safena Parva' },
+        { id:'perf',     nome:'Veias Perfurantes',       sub:'',                                   tipo:'perfurantes' },
+        { id:'varic',    nome:'Varicosidades',           sub:'Ectoscopia',                         tipo:'varicosidades' },
+      ],
+      normal: {
+        perv:{status:'Pérvias (normal)'}, profundo:{refluxo:'Sem refluxo'},
+        vsm:{refluxo:'Sem refluxo',calibre:'Normal'}, vsp:{refluxo:'Sem refluxo',calibre:'Normal'},
+        perf:{status:'Não visualizadas'}, varic:{status:'Há varicosidades conforme ectoscopia'},
+      },
+    },
+    arterial: {
+      id: 'arterial',
+      especialidade: 'Vascular',
+      modalidade: 'DOPPLER',
+      icone: '❤️',
+      titulo: 'Ecocolor Doppler Arterial dos MMII',
+      tituloImpressao: 'ECOCOLOR DOPPLER ARTERIAL DOS MEMBROS INFERIORES',
+      abertoPorPadrao: false,
+      segmentos: [
+        { id:'afc',    nome:'A. Femoral Comum',           sub:'AFC',                    tipo:'arterial',         nomeCompleto:'Artéria Femoral Comum' },
+        { id:'afp',    nome:'A. Femoral Profunda',        sub:'AFP',                    tipo:'arterial_simples', nomeCompleto:'Artéria Femoral Profunda' },
+        { id:'afspop', nome:'A. Femoral Sup. + Poplítea', sub:'AFS + Pop',              tipo:'arterial',         nomeCompleto:'Artérias Femoral Superficial e Poplítea' },
+        { id:'atib',   nome:'Artérias Tibiais + Fibular', sub:'Tib Ant/Post + Fibular', tipo:'arterial',         nomeCompleto:'Artérias Tibiais (anterior e posterior) e artéria fibular' },
+      ],
+      normal: {
+        afc:{calibre:'Normal',parede:'Regular, sem placas',fluxo:'Trifásico (normal)'},
+        afp:{calibre:'Normal'},
+        afspop:{calibre:'Normal',parede:'Regular, sem placas',fluxo:'Trifásico (normal)'},
+        atib:{calibre:'Normal',parede:'Regular, sem placas',fluxo:'Trifásico (normal)'},
+      },
+    },
+  };
+
   const k  = (sec,id,l) => sec+'_'+id+'_'+l;
   const gv = (sec,id,l,f) => (estado[sec].dados[k(sec,id,l)]||{})[f]||'—';
   function sv(sec,id,l,f,v){ const key=k(sec,id,l); (estado[sec].dados[key]=estado[sec].dados[key]||{})[f]=v; }
