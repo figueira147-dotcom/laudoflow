@@ -2513,19 +2513,6 @@ const EST = (() => {
   const estado = { venoso:{lado:'B',dados:{}}, arterial:{lado:'B',dados:{}} };
   let iniciado = false;
 
-  const SECTIONS = [
-    { key:'venoso',   icon:'🩸', title:'Sistema Venoso Superficial e Profundo dos MMII', open:true },
-    { key:'arterial', icon:'❤️', title:'Ecocolor Doppler Arterial dos MMII', open:false },
-  ];
-
-  const SEG_VENOSO = [
-    { id:'perv',    nome:'Perviedade geral',        sub:'Superficial e profundo', tipo:'perv' },
-    { id:'profundo',nome:'Sistema Venoso Profundo', sub:'FC, FS, Pop, Tib, Fib, Gastr, Sol', tipo:'refluxo_profundo' },
-    { id:'vsm',     nome:'Veia Safena Magna',       sub:'VSM', tipo:'safena' },
-    { id:'vsp',     nome:'Veia Safena Parva',       sub:'VSP', tipo:'safena' },
-    { id:'perf',    nome:'Veias Perfurantes',       sub:'',    tipo:'perfurantes' },
-    { id:'varic',   nome:'Varicosidades',           sub:'Ectoscopia', tipo:'varicosidades' },
-  ];
   const SEG_ARTERIAL = [
     { id:'afc',   nome:'A. Femoral Comum',            sub:'AFC', tipo:'arterial' },
     { id:'afp',   nome:'A. Femoral Profunda',         sub:'AFP', tipo:'arterial_simples' },
@@ -2542,28 +2529,14 @@ const EST = (() => {
     art_fluxo:['—','Trifásico (normal)','Bifásico','Monofásico','Ausente'],
     art_parede:['—','Regular, sem placas','Placa < 10%','Placa 10–50%','Placa > 50%'],
   };
-  const NORMAL_VENOSO = {
-    perv:{status:'Pérvias (normal)'}, profundo:{refluxo:'Sem refluxo'},
-    vsm:{refluxo:'Sem refluxo',calibre:'Normal'}, vsp:{refluxo:'Sem refluxo',calibre:'Normal'},
-    perf:{status:'Não visualizadas'}, varic:{status:'Há varicosidades conforme ectoscopia'},
-  };
-  const NORMAL_ARTERIAL = {
-    afc:{calibre:'Normal',parede:'Regular, sem placas',fluxo:'Trifásico (normal)'},
-    afp:{calibre:'Normal'},
-    afspop:{calibre:'Normal',parede:'Regular, sem placas',fluxo:'Trifásico (normal)'},
-    atib:{calibre:'Normal',parede:'Regular, sem placas',fluxo:'Trifásico (normal)'},
-  };
-
   // ══════════════════════════════════════════════════════
-  // SCHEMA DE TEMPLATES (Fase A — passo 1 do motor)
+  // SCHEMA DE TEMPLATES (Fase A — motor)
   //
   // Descreve cada exame como dado: seções, segmentos, e o "tipo" de cada
   // segmento (que define quais campos ele tem e como vira frase — ver
-  // handlers de tipo nos passos 2 e 3). Ainda NÃO é lido em lugar nenhum:
-  // é só a forma, pra revisão, antes dos próximos passos trocarem
-  // renderSec/gerarVenoso/gerarArterial/buildPrintUnits pra consumir isto
-  // em vez das constantes SECTIONS/SEG_VENOSO/SEG_ARTERIAL/NORMAL_* acima
-  // (que continuam sendo o que roda de fato, por enquanto).
+  // TIPO_CELLS abaixo pro render; a geração de texto ainda não foi migrada,
+  // ver gerarVenoso/gerarArterial/buildPrintUnits e SEG_ARTERIAL, que por
+  // ora continuam sendo o que roda de fato pra texto/impressão).
   //
   // "tipo" é um dos handlers já existentes hoje em código (perv,
   // refluxo_profundo, safena, perfurantes, varicosidades, arterial,
@@ -2579,6 +2552,11 @@ const EST = (() => {
       titulo: 'Sistema Venoso Superficial e Profundo dos MMII',
       tituloImpressao: 'SISTEMA VENOSO SUPERFICIAL E PROFUNDO DOS MEMBROS INFERIORES',
       abertoPorPadrao: true,
+      colunas: [
+        { label:'Segmento', width:'36%' }, { label:'Status / Refluxo', width:'24%' },
+        { label:'Calibre', width:'18%' }, { label:'Observação' },
+      ],
+      obsPlaceholder: 'obs livre',
       segmentos: [
         { id:'perv',     nome:'Perviedade geral',        sub:'Superficial e profundo',            tipo:'perv' },
         { id:'profundo', nome:'Sistema Venoso Profundo', sub:'FC, FS, Pop, Tib, Fib, Gastr, Sol',  tipo:'refluxo_profundo', nomeCompleto:'Veia Femoral Comum, Femoral Superficial, Poplítea, Tibiais Anteriores, Tibiais Posteriores, Fibulares, Gastrocnêmias e Soleares' },
@@ -2601,6 +2579,11 @@ const EST = (() => {
       titulo: 'Ecocolor Doppler Arterial dos MMII',
       tituloImpressao: 'ECOCOLOR DOPPLER ARTERIAL DOS MEMBROS INFERIORES',
       abertoPorPadrao: false,
+      colunas: [
+        { label:'Artéria', width:'32%' }, { label:'Calibre / Estenose', width:'22%' },
+        { label:'Parede / Placa', width:'22%' }, { label:'Fluxo', width:'16%' }, { label:'Obs' },
+      ],
+      obsPlaceholder: 'obs',
       segmentos: [
         { id:'afc',    nome:'A. Femoral Comum',           sub:'AFC',                    tipo:'arterial',         nomeCompleto:'Artéria Femoral Comum' },
         { id:'afp',    nome:'A. Femoral Profunda',        sub:'AFP',                    tipo:'arterial_simples', nomeCompleto:'Artéria Femoral Profunda' },
@@ -2636,41 +2619,39 @@ const EST = (() => {
   }
   function upd(s){ s.nextElementSibling.innerHTML = pill(s.value); }
 
-  function renderVenoso(l){
+  // Handlers de "tipo" de segmento: cada um sabe quais campos tem e em quantas
+  // colunas eles caem (casando com o array `colunas` do template). Migrar o
+  // vascular MMII pra dentro do motor não inventa tipos novos — só move os
+  // 7 que já existiam (perv, refluxo_profundo, safena, perfurantes,
+  // varicosidades, arterial, arterial_simples) de código pra dado+handler.
+  const TIPO_CELLS = {
+    perv:             (sec,s,l) => `<td colspan="2">${sel(sec,s.id,l,'status',OPT.perv,gv(sec,s.id,l,'status'))}</td>`,
+    refluxo_profundo: (sec,s,l) => `<td colspan="2">${sel(sec,s.id,l,'refluxo',OPT.refluxo,gv(sec,s.id,l,'refluxo'))}</td>`,
+    safena:           (sec,s,l) => `<td>${sel(sec,s.id,l,'refluxo',OPT.refluxo,gv(sec,s.id,l,'refluxo'))}</td><td>${sel(sec,s.id,l,'calibre',OPT.calibre,gv(sec,s.id,l,'calibre'))}</td>`,
+    perfurantes:      (sec,s,l) => `<td colspan="2">${sel(sec,s.id,l,'status',OPT.perf,gv(sec,s.id,l,'status'))}</td>`,
+    varicosidades:    (sec,s,l) => `<td colspan="2">${sel(sec,s.id,l,'status',OPT.varic,gv(sec,s.id,l,'status'))}</td>`,
+    arterial:         (sec,s,l) => `<td>${sel(sec,s.id,l,'calibre',OPT.art_cal,gv(sec,s.id,l,'calibre'))}</td><td>${sel(sec,s.id,l,'parede',OPT.art_parede,gv(sec,s.id,l,'parede'))}</td><td>${sel(sec,s.id,l,'fluxo',OPT.art_fluxo,gv(sec,s.id,l,'fluxo'))}</td>`,
+    arterial_simples: (sec,s,l) => `<td>${sel(sec,s.id,l,'calibre',OPT.art_cal,gv(sec,s.id,l,'calibre'))}</td><td colspan="2"><span style="font-size:11px;color:var(--text-muted)">—</span></td>`,
+  };
+
+  function renderTabela(sec,l){
+    const tpl = TEMPLATES[sec];
     const ln = l==='D'?'Membro Inferior Direito':'Membro Inferior Esquerdo';
-    let h=`<div class="est-lado-title">${ln}</div><table class="est-table"><thead><tr>
-      <th style="width:36%">Segmento</th><th style="width:24%">Status / Refluxo</th><th style="width:18%">Calibre</th><th>Observação</th></tr></thead><tbody>`;
-    SEG_VENOSO.forEach(s=>{
-      const obs=(estado.venoso.dados[k('venoso',s.id,l)]||{}).obs||'';
+    let h=`<div class="est-lado-title">${ln}</div><table class="est-table"><thead><tr>`;
+    tpl.colunas.forEach(c=>{ h+=`<th${c.width?` style="width:${c.width}"`:''}>${c.label}</th>`; });
+    h+=`</tr></thead><tbody>`;
+    tpl.segmentos.forEach(s=>{
+      const obs=(estado[sec].dados[k(sec,s.id,l)]||{}).obs||'';
       h+=`<tr><td><div class="est-seg-nome">${s.nome}</div>${s.sub?`<div class="est-seg-sub">${s.sub}</div>`:''}</td>`;
-      if(s.tipo==='perv') h+=`<td colspan="2">${sel('venoso',s.id,l,'status',OPT.perv,gv('venoso',s.id,l,'status'))}</td>`;
-      else if(s.tipo==='refluxo_profundo') h+=`<td colspan="2">${sel('venoso',s.id,l,'refluxo',OPT.refluxo,gv('venoso',s.id,l,'refluxo'))}</td>`;
-      else if(s.tipo==='safena'){ h+=`<td>${sel('venoso',s.id,l,'refluxo',OPT.refluxo,gv('venoso',s.id,l,'refluxo'))}</td><td>${sel('venoso',s.id,l,'calibre',OPT.calibre,gv('venoso',s.id,l,'calibre'))}</td>`; }
-      else if(s.tipo==='perfurantes') h+=`<td colspan="2">${sel('venoso',s.id,l,'status',OPT.perf,gv('venoso',s.id,l,'status'))}</td>`;
-      else if(s.tipo==='varicosidades') h+=`<td colspan="2">${sel('venoso',s.id,l,'status',OPT.varic,gv('venoso',s.id,l,'status'))}</td>`;
-      h+=`<td><input class="est-obs" placeholder="obs livre" value="${esc(obs)}" onchange="EST.sv('venoso','${s.id}','${l}','obs',this.value)"></td></tr>`;
-    });
-    return h+`</tbody></table>`;
-  }
-  function renderArterial(l){
-    const ln = l==='D'?'Membro Inferior Direito':'Membro Inferior Esquerdo';
-    let h=`<div class="est-lado-title">${ln}</div><table class="est-table"><thead><tr>
-      <th style="width:32%">Artéria</th><th style="width:22%">Calibre / Estenose</th><th style="width:22%">Parede / Placa</th><th style="width:16%">Fluxo</th><th>Obs</th></tr></thead><tbody>`;
-    SEG_ARTERIAL.forEach(s=>{
-      const obs=(estado.arterial.dados[k('arterial',s.id,l)]||{}).obs||'';
-      h+=`<tr><td><div class="est-seg-nome">${s.nome}</div>${s.sub?`<div class="est-seg-sub">${s.sub}</div>`:''}</td>`;
-      h+=`<td>${sel('arterial',s.id,l,'calibre',OPT.art_cal,gv('arterial',s.id,l,'calibre'))}</td>`;
-      if(s.tipo==='arterial_simples') h+=`<td colspan="2"><span style="font-size:11px;color:var(--text-muted)">—</span></td>`;
-      else h+=`<td>${sel('arterial',s.id,l,'parede',OPT.art_parede,gv('arterial',s.id,l,'parede'))}</td><td>${sel('arterial',s.id,l,'fluxo',OPT.art_fluxo,gv('arterial',s.id,l,'fluxo'))}</td>`;
-      h+=`<td><input class="est-obs" placeholder="obs" value="${esc(obs)}" onchange="EST.sv('arterial','${s.id}','${l}','obs',this.value)"></td></tr>`;
+      h+=TIPO_CELLS[s.tipo](sec,s,l);
+      h+=`<td><input class="est-obs" placeholder="${tpl.obsPlaceholder}" value="${esc(obs)}" onchange="EST.sv('${sec}','${s.id}','${l}','obs',this.value)"></td></tr>`;
     });
     return h+`</tbody></table>`;
   }
   function renderSec(sec){
     const lados=getLados(sec), wrap=document.getElementById('est-tables-'+sec);
     if(!wrap) return;
-    const fn = sec==='venoso'?renderVenoso:renderArterial;
-    let html=''; lados.forEach((l,i)=>{ html+=fn(l); if(lados.length>1&&i===0) html+='<hr style="border:none;border-top:1px solid var(--border);margin:12px 0">'; });
+    let html=''; lados.forEach((l,i)=>{ html+=renderTabela(sec,l); if(lados.length>1&&i===0) html+='<hr style="border:none;border-top:1px solid var(--border);margin:12px 0">'; });
     wrap.innerHTML=html;
     ['D','E','B'].forEach(x=>{ const b=document.getElementById('est-lado-'+sec+'-'+x); if(b) b.classList.toggle('active', estado[sec].lado===x); });
   }
@@ -2681,7 +2662,7 @@ const EST = (() => {
     const open=b.classList.toggle('open'); b.style.display=open?'block':'none'; if(a) a.classList.toggle('open',open);
   }
   function aplicarNormal(sec){
-    const norm = sec==='venoso'?NORMAL_VENOSO:NORMAL_ARTERIAL;
+    const norm = TEMPLATES[sec].normal;
     getLados(sec).forEach(l=>Object.entries(norm).forEach(([id,c])=>Object.entries(c).forEach(([f,v])=>sv(sec,id,l,f,v))));
     renderSec(sec);
   }
@@ -2915,28 +2896,29 @@ const EST = (() => {
     if(iniciado) return;
     iniciado=true;
     const cont=document.getElementById('est-sections');
-    cont.innerHTML = SECTIONS.map(s=>`
+    const tpls = Object.values(TEMPLATES);
+    cont.innerHTML = tpls.map(s=>`
       <div class="est-sec">
-        <div class="est-sec-hdr" onclick="EST.toggleSec('${s.key}')">
-          <div class="est-sec-ico">${s.icon}</div>
-          <div class="est-sec-title">${s.title}</div>
-          <span class="est-sec-arrow${s.open?' open':''}" id="est-arrow-${s.key}">▼</span>
+        <div class="est-sec-hdr" onclick="EST.toggleSec('${s.id}')">
+          <div class="est-sec-ico">${s.icone}</div>
+          <div class="est-sec-title">${s.titulo}</div>
+          <span class="est-sec-arrow${s.abertoPorPadrao?' open':''}" id="est-arrow-${s.id}">▼</span>
         </div>
-        <div class="est-sec-body${s.open?' open':''}" id="est-body-${s.key}" style="display:${s.open?'block':'none'}">
+        <div class="est-sec-body${s.abertoPorPadrao?' open':''}" id="est-body-${s.id}" style="display:${s.abertoPorPadrao?'block':'none'}">
           <div class="est-quick">
-            <button class="est-qbtn" onclick="EST.aplicarNormal('${s.key}')">✓ Exame normal completo</button>
+            <button class="est-qbtn" onclick="EST.aplicarNormal('${s.id}')">✓ Exame normal completo</button>
             <div class="est-lado" style="margin:0">
-              <div class="est-lado-tab" id="est-lado-${s.key}-D" onclick="EST.setLado('${s.key}','D')">Direito</div>
-              <div class="est-lado-tab" id="est-lado-${s.key}-E" onclick="EST.setLado('${s.key}','E')">Esquerdo</div>
-              <div class="est-lado-tab" id="est-lado-${s.key}-B" onclick="EST.setLado('${s.key}','B')">Bilateral</div>
+              <div class="est-lado-tab" id="est-lado-${s.id}-D" onclick="EST.setLado('${s.id}','D')">Direito</div>
+              <div class="est-lado-tab" id="est-lado-${s.id}-E" onclick="EST.setLado('${s.id}','E')">Esquerdo</div>
+              <div class="est-lado-tab" id="est-lado-${s.id}-B" onclick="EST.setLado('${s.id}','B')">Bilateral</div>
             </div>
-            <button class="est-qbtn" style="margin-left:auto" onclick="EST.limparSec('${s.key}')">↺ Limpar</button>
+            <button class="est-qbtn" style="margin-left:auto" onclick="EST.limparSec('${s.id}')">↺ Limpar</button>
           </div>
-          <div id="est-tables-${s.key}"></div>
+          <div id="est-tables-${s.id}"></div>
         </div>
       </div>`).join('');
     const dt=document.getElementById('est-data'); if(dt&&!dt.value) dt.value=new Date().toISOString().split('T')[0];
-    renderSec('venoso'); renderSec('arterial');
+    tpls.forEach(s=>renderSec(s.id));
   }
 
   return { init, sv, upd, setLado, toggleSec, aplicarNormal, limparSec, limparTudo, gerar, copiar, imprimir, TEXTOS_DEFAULT };
