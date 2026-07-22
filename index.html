@@ -2513,12 +2513,6 @@ const EST = (() => {
   const estado = { venoso:{lado:'B',dados:{}}, arterial:{lado:'B',dados:{}} };
   let iniciado = false;
 
-  const SEG_ARTERIAL = [
-    { id:'afc',   nome:'A. Femoral Comum',            sub:'AFC', tipo:'arterial' },
-    { id:'afp',   nome:'A. Femoral Profunda',         sub:'AFP', tipo:'arterial_simples' },
-    { id:'afspop',nome:'A. Femoral Sup. + Poplítea',  sub:'AFS + Pop', tipo:'arterial' },
-    { id:'atib',  nome:'Artérias Tibiais + Fibular',  sub:'Tib Ant/Post + Fibular', tipo:'arterial' },
-  ];
   const OPT = {
     perv:['—','Pérvias (normal)','Alterado — ver obs'],
     refluxo:['—','Sem refluxo','Refluxo presente','Não avaliado'],
@@ -2533,10 +2527,9 @@ const EST = (() => {
   // SCHEMA DE TEMPLATES (Fase A — motor)
   //
   // Descreve cada exame como dado: seções, segmentos, e o "tipo" de cada
-  // segmento (que define quais campos ele tem e como vira frase — ver
-  // TIPO_CELLS abaixo pro render; a geração de texto ainda não foi migrada,
-  // ver gerarVenoso/gerarArterial/buildPrintUnits e SEG_ARTERIAL, que por
-  // ora continuam sendo o que roda de fato pra texto/impressão).
+  // segmento (que define quais campos ele tem, como vira célula de tabela —
+  // TIPO_CELLS — e como vira parágrafo de texto — TIPO_TEXTO — mais a ordem
+  // dos parágrafos em blocosTexto).
   //
   // "tipo" é um dos handlers já existentes hoje em código (perv,
   // refluxo_profundo, safena, perfurantes, varicosidades, arterial,
@@ -2570,6 +2563,19 @@ const EST = (() => {
         vsm:{refluxo:'Sem refluxo',calibre:'Normal'}, vsp:{refluxo:'Sem refluxo',calibre:'Normal'},
         perf:{status:'Não visualizadas'}, varic:{status:'Há varicosidades conforme ectoscopia'},
       },
+      // Ordem dos parágrafos do texto gerado. "fixo" é um cabeçalho de seção
+      // (não depende de nenhum segmento); "segmento" chama o handler de tipo
+      // (TIPO_TEXTO) daquele segmento. COMPETÊNCIA é sempre impresso — não é
+      // opcional como os demais parágrafos.
+      blocosTexto: [
+        { segmento:'perv' },
+        { fixo: ln => `COMPETÊNCIA:\n${ln}` },
+        { segmento:'profundo' },
+        { segmento:'vsm' },
+        { segmento:'vsp' },
+        { segmento:'perf' },
+        { segmento:'varic' },
+      ],
     },
     arterial: {
       id: 'arterial',
@@ -2596,6 +2602,13 @@ const EST = (() => {
         afspop:{calibre:'Normal',parede:'Regular, sem placas',fluxo:'Trifásico (normal)'},
         atib:{calibre:'Normal',parede:'Regular, sem placas',fluxo:'Trifásico (normal)'},
       },
+      blocosTexto: [
+        { fixo: ln => ln },
+        { segmento:'afc' },
+        { segmento:'afp' },
+        { segmento:'afspop' },
+        { segmento:'atib' },
+      ],
     },
   };
 
@@ -2633,6 +2646,74 @@ const EST = (() => {
     arterial:         (sec,s,l) => `<td>${sel(sec,s.id,l,'calibre',OPT.art_cal,gv(sec,s.id,l,'calibre'))}</td><td>${sel(sec,s.id,l,'parede',OPT.art_parede,gv(sec,s.id,l,'parede'))}</td><td>${sel(sec,s.id,l,'fluxo',OPT.art_fluxo,gv(sec,s.id,l,'fluxo'))}</td>`,
     arterial_simples: (sec,s,l) => `<td>${sel(sec,s.id,l,'calibre',OPT.art_cal,gv(sec,s.id,l,'calibre'))}</td><td colspan="2"><span style="font-size:11px;color:var(--text-muted)">—</span></td>`,
   };
+
+  // Handlers de "tipo" pra geração de texto: cada um lê o estado do segmento
+  // e devolve um parágrafo (string) ou '' se não houver nada a dizer sobre
+  // ele — o mesmo silêncio que o código antigo tinha ao pular campos vazios.
+  function arterialLinha(sec,s,l,temParedeFluxo){
+    const c=gv(sec,s.id,l,'calibre'), p=gv(sec,s.id,l,'parede'), fl=gv(sec,s.id,l,'fluxo');
+    const o=(estado[sec].dados[k(sec,s.id,l)]||{}).obs||'';
+    if(c==='—'&&p==='—'&&fl==='—') return '';
+    let linha=`${s.nomeCompleto}: `; if(c&&c!=='—') linha+=`Calibre ${c.toLowerCase()}`;
+    if(temParedeFluxo){
+      if(p&&p!=='—') linha+=`, paredes ${p==='Regular, sem placas'?'regulares, sem placas ateromatosas':p.toLowerCase()}`;
+      if(fl&&fl!=='—') linha+=`. Fluxo ${fl==='Trifásico (normal)'?'amplo laminar e trifásico':fl.toLowerCase()}`;
+    }
+    linha+='.'; if(o) linha+=' '+o+'.';
+    return linha;
+  }
+  const TIPO_TEXTO = {
+    perv: (sec,s,l,TX) => {
+      const st=gv(sec,s.id,l,'status'), o=(estado[sec].dados[k(sec,s.id,l)]||{}).obs||'';
+      if(st==='Pérvias (normal)') return 'PERVIEDADE:\n'+TX.venoso_perviedade_normal;
+      if(st&&st!=='—') return `PERVIEDADE:\n${o||'Alterações presentes — ver observações.'}`;
+      return '';
+    },
+    refluxo_profundo: (sec,s,l,TX) => {
+      const r=gv(sec,s.id,l,'refluxo'), o=(estado[sec].dados[k(sec,s.id,l)]||{}).obs||'';
+      if(r==='Sem refluxo') return TX.venoso_profundo_sem_refluxo.replace('{nome}',s.nomeCompleto);
+      if(r&&r!=='—') return `${s.nomeCompleto}: ${r}.${o?' '+o+'.':''}`;
+      return '';
+    },
+    safena: (sec,s,l,TX) => {
+      const r=gv(sec,s.id,l,'refluxo'), c=gv(sec,s.id,l,'calibre'), o=(estado[sec].dados[k(sec,s.id,l)]||{}).obs||'';
+      if(r==='—'&&c==='—') return '';
+      if(r==='Sem refluxo'&&(c==='Normal'||c==='—')) return TX.venoso_safena_normal.replace('{nome}',s.nomeCompleto);
+      let f=`${s.nomeCompleto} apresenta`;
+      if(c&&c!=='—'&&c!=='Normal') f+=` calibre ${c.toLowerCase()},`;
+      if(r==='Refluxo presente') f+=' refluxo ao Doppler espectral, com manobras provocativas.';
+      else if(r&&r!=='—') f+=' sem refluxos significativos ao Doppler espectral.';
+      if(o) f+=' '+o+'.';
+      return f;
+    },
+    perfurantes: (sec,s,l,TX) => {
+      const st=gv(sec,s.id,l,'status'), o=(estado[sec].dados[k(sec,s.id,l)]||{}).obs||'';
+      if(st==='Não visualizadas') return TX.venoso_perfurantes_normal;
+      if(st&&st!=='—') return `Perfurante incompetente presente.${o?' Localização: '+o+'.':''}`;
+      return '';
+    },
+    varicosidades: (sec,s,l,TX) => {
+      const st=gv(sec,s.id,l,'status'), o=(estado[sec].dados[k(sec,s.id,l)]||{}).obs||'';
+      if(st==='Há varicosidades conforme ectoscopia') return TX.venoso_varicosidades_presente+(o?' '+o:'');
+      if(st&&st!=='—') return TX.venoso_varicosidades_ausente+(o?' '+o:'');
+      return '';
+    },
+    arterial:         (sec,s,l) => arterialLinha(sec,s,l,true),
+    arterial_simples: (sec,s,l) => arterialLinha(sec,s,l,false),
+  };
+
+  function gerarTexto(sec,l){
+    const tpl=TEMPLATES[sec], TX=getTX();
+    const ln = l==='D'?'MEMBRO INFERIOR DIREITO':'MEMBRO INFERIOR ESQUERDO';
+    const partes=[];
+    tpl.blocosTexto.forEach(b=>{
+      if(b.fixo){ partes.push(b.fixo(ln)); return; }
+      const seg=tpl.segmentos.find(s=>s.id===b.segmento);
+      const frag=TIPO_TEXTO[seg.tipo](sec,seg,l,TX);
+      if(frag) partes.push(frag);
+    });
+    return partes.join('\n\n').trim();
+  }
 
   function renderTabela(sec,l){
     const tpl = TEMPLATES[sec];
@@ -2691,42 +2772,6 @@ const EST = (() => {
   }
 
   // ── GERAÇÃO DE TEXTO ──
-  function gerarVenoso(l){
-    const TX=getTX();
-    const ln=l==='D'?'MEMBRO INFERIOR DIREITO':'MEMBRO INFERIOR ESQUERDO', d=estado.venoso.dados; let t='';
-    const pS=gv('venoso','perv',l,'status'), pO=(d[k('venoso','perv',l)]||{}).obs||'';
-    if(pS==='Pérvias (normal)') t+='PERVIEDADE:\n'+TX.venoso_perviedade_normal+'\n\n';
-    else if(pS&&pS!=='—') t+=`PERVIEDADE:\n${pO||'Alterações presentes — ver observações.'}\n\n`;
-    t+=`COMPETÊNCIA:\n${ln}\n\n`;
-    const prR=gv('venoso','profundo',l,'refluxo'), prO=(d[k('venoso','profundo',l)]||{}).obs||'';
-    if(prR==='Sem refluxo') t+=TX.venoso_profundo_sem_refluxo.replace('{nome}',TX.venoso_profundo_nome)+'\n\n';
-    else if(prR&&prR!=='—') t+=`${TX.venoso_profundo_nome}: ${prR}.${prO?' '+prO+'.':''}\n\n`;
-    [['vsm','Veia Safena Magna'],['vsp','Veia Safena Parva']].forEach(([id,nm])=>{
-      const r=gv('venoso',id,l,'refluxo'), c=gv('venoso',id,l,'calibre'), o=(d[k('venoso',id,l)]||{}).obs||'';
-      if(r==='—'&&c==='—') return;
-      if(r==='Sem refluxo'&&(c==='Normal'||c==='—')) t+=TX.venoso_safena_normal.replace('{nome}',nm)+'\n\n';
-      else { let f=`${nm} apresenta`; if(c&&c!=='—'&&c!=='Normal') f+=` calibre ${c.toLowerCase()},`; if(r==='Refluxo presente') f+=' refluxo ao Doppler espectral, com manobras provocativas.'; else if(r&&r!=='—') f+=' sem refluxos significativos ao Doppler espectral.'; if(o) f+=' '+o+'.'; t+=f+'\n\n'; }
-    });
-    const peS=gv('venoso','perf',l,'status'), peO=(d[k('venoso','perf',l)]||{}).obs||'';
-    if(peS==='Não visualizadas') t+=TX.venoso_perfurantes_normal+'\n\n';
-    else if(peS&&peS!=='—') t+=`Perfurante incompetente presente.${peO?' Localização: '+peO+'.':''}\n\n`;
-    const vS=gv('venoso','varic',l,'status'), vO=(d[k('venoso','varic',l)]||{}).obs||'';
-    if(vS==='Há varicosidades conforme ectoscopia') t+=TX.venoso_varicosidades_presente+`${vO?' '+vO:''}`;
-    else if(vS&&vS!=='—') t+=TX.venoso_varicosidades_ausente+`${vO?' '+vO:''}`;
-    return t.trim();
-  }
-  function gerarArterial(l){
-    const ln=l==='D'?'MEMBRO INFERIOR DIREITO':'MEMBRO INFERIOR ESQUERDO', d=estado.arterial.dados; let t=`${ln}\n\n`;
-    const nomes={afc:'Artéria Femoral Comum',afp:'Artéria Femoral Profunda',afspop:'Artérias Femoral Superficial e Poplítea',atib:'Artérias Tibiais (anterior e posterior) e artéria fibular'};
-    SEG_ARTERIAL.forEach(s=>{
-      const c=gv('arterial',s.id,l,'calibre'), p=gv('arterial',s.id,l,'parede'), fl=gv('arterial',s.id,l,'fluxo'), o=(d[k('arterial',s.id,l)]||{}).obs||'';
-      if(c==='—'&&p==='—'&&fl==='—') return;
-      let linha=`${nomes[s.id]}: `; if(c&&c!=='—') linha+=`Calibre ${c.toLowerCase()}`;
-      if(s.tipo!=='arterial_simples'){ if(p&&p!=='—') linha+=`, paredes ${p==='Regular, sem placas'?'regulares, sem placas ateromatosas':p.toLowerCase()}`; if(fl&&fl!=='—') linha+=`. Fluxo ${fl==='Trifásico (normal)'?'amplo laminar e trifásico':fl.toLowerCase()}`; }
-      linha+='.'; if(o) linha+=' '+o+'.'; t+=linha+'\n\n';
-    });
-    return t.trim();
-  }
   let ultimasPartes = [];
 
   function gerar(){
@@ -2761,9 +2806,9 @@ const EST = (() => {
   // página por membro (como no modelo impresso), evitando estourar a folha.
   function buildPrintUnits(){
     const units=[];
-    const lv=getLados('venoso'), vT=lv.map(gerarVenoso).filter(Boolean);
+    const lv=getLados('venoso'), vT=lv.map(l=>gerarTexto('venoso',l)).filter(Boolean);
     if(vT.length){
-      const titulo='SISTEMA VENOSO SUPERFICIAL E PROFUNDO DOS MEMBROS INFERIORES';
+      const titulo=TEMPLATES.venoso.tituloImpressao;
       if(lv.length===2){
         const p0=vT[0].split('COMPETÊNCIA')[0], p1=vT[1].split('COMPETÊNCIA')[0];
         let corpo1, corpo2;
@@ -2780,13 +2825,13 @@ const EST = (() => {
         units.push({titulo, corpo:vT[0]});
       }
     }
-    const la=getLados('arterial'), aT=la.map(gerarArterial).filter(t=>t.trim().length>40);
+    const la=getLados('arterial'), aT=la.map(l=>gerarTexto('arterial',l)).filter(t=>t.trim().length>40);
     if(aT.length){
       const TX=getTX();
       let corpo=TX.arterial_intro+'\n\n'+aT.join('\n\n');
-      const allN=la.every(l=>SEG_ARTERIAL.every(s=>{const c=gv('arterial',s.id,l,'calibre');return c==='Normal'||c==='—';}));
+      const allN=la.every(l=>TEMPLATES.arterial.segmentos.every(s=>{const c=gv('arterial',s.id,l,'calibre');return c==='Normal'||c==='—';}));
       if(allN) corpo+='\n\nIMPRESSÃO:\n'+TX.arterial_impressao;
-      units.push({titulo:'ECOCOLOR DOPPLER ARTERIAL DOS MEMBROS INFERIORES', corpo});
+      units.push({titulo:TEMPLATES.arterial.tituloImpressao, corpo});
     }
     return units;
   }
