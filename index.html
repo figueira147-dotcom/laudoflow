@@ -2552,7 +2552,7 @@ const EST = (() => {
       obsPlaceholder: 'obs livre',
       segmentos: [
         { id:'perv',     nome:'Perviedade geral',        sub:'Superficial e profundo',            tipo:'perv' },
-        { id:'profundo', nome:'Sistema Venoso Profundo', sub:'FC, FS, Pop, Tib, Fib, Gastr, Sol',  tipo:'refluxo_profundo', nomeCompleto:'Veia Femoral Comum, Femoral Superficial, Poplítea, Tibiais Anteriores, Tibiais Posteriores, Fibulares, Gastrocnêmias e Soleares' },
+        { id:'profundo', nome:'Sistema Venoso Profundo', sub:'FC, FS, Pop, Tib, Fib, Gastr, Sol',  tipo:'refluxo_profundo' }, // nome do grupo vem de TX.venoso_profundo_nome, não daqui (ver TIPO_TEXTO)
         { id:'vsm',      nome:'Veia Safena Magna',       sub:'VSM',                                tipo:'safena', nomeCompleto:'Veia Safena Magna' },
         { id:'vsp',      nome:'Veia Safena Parva',       sub:'VSP',                                tipo:'safena', nomeCompleto:'Veia Safena Parva' },
         { id:'perf',     nome:'Veias Perfurantes',       sub:'',                                   tipo:'perfurantes' },
@@ -2670,9 +2670,13 @@ const EST = (() => {
       return '';
     },
     refluxo_profundo: (sec,s,l,TX) => {
+      // Nome do grupo profundo vem de TX (editável pela clínica em Configurações
+      // → Laudo Estruturado), não de s.nomeCompleto — ao contrário de vsm/vsp/
+      // arterial, que nunca foram customizáveis pela clínica.
       const r=gv(sec,s.id,l,'refluxo'), o=(estado[sec].dados[k(sec,s.id,l)]||{}).obs||'';
-      if(r==='Sem refluxo') return TX.venoso_profundo_sem_refluxo.replace('{nome}',s.nomeCompleto);
-      if(r&&r!=='—') return `${s.nomeCompleto}: ${r}.${o?' '+o+'.':''}`;
+      const nome=TX.venoso_profundo_nome;
+      if(r==='Sem refluxo') return TX.venoso_profundo_sem_refluxo.replace('{nome}',nome);
+      if(r&&r!=='—') return `${nome}: ${r}.${o?' '+o+'.':''}`;
       return '';
     },
     safena: (sec,s,l,TX) => {
