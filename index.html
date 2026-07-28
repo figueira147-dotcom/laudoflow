@@ -1214,6 +1214,8 @@
         <div class="field"><label>Perfurantes — não visualizadas</label><input type="text" id="tx-venoso_perfurantes_normal"></div>
         <div class="field"><label>Varicosidades — presentes</label><textarea id="tx-venoso_varicosidades_presente" rows="2"></textarea></div>
         <div class="field"><label>Varicosidades — ausentes</label><input type="text" id="tx-venoso_varicosidades_ausente"></div>
+        <div class="field"><label>Cisto de Baker — quando presente</label><input type="text" id="tx-venoso_cisto_baker_presente"></div>
+        <div class="field"><label>Linfedema — quando presente</label><input type="text" id="tx-venoso_linfedema_presente"></div>
 
         <div class="cfg-subhdr" style="margin-top:24px">Ecocolor Doppler Arterial</div>
         <div class="field"><label>Frase de introdução</label><input type="text" id="tx-arterial_intro"></div>
@@ -2304,6 +2306,7 @@ const TX_CAMPOS = [
   'venoso_varicosidades_ausente','arterial_intro','arterial_impressao',
   'carotidas_obs_gerais','carotidas_normal','carotidas_vertebrais',
   'carotidas_conclusao_normal','carotidas_conclusao_alterado',
+  'venoso_cisto_baker_presente','venoso_linfedema_presente',
 ];
 
 function carregarConfigEstruturado() {
@@ -2622,6 +2625,7 @@ const EST = (() => {
     art_fluxo:['—','Trifásico (normal)','Bifásico','Monofásico','Ausente'],
     art_parede:['—','Regular, sem placas','Placa < 10%','Placa 10–50%','Placa > 50%'],
     carotida_placa:['—','Sem placas ateromatosas','Pequenas placas ateromatosas em bulbo carotídeo menor que 10%','Placas ateromatosas em bulbo carotídeo entre 10% e 50%','Placas ateromatosas em bulbo carotídeo maior que 50%','Oclusão'],
+    achado_presente:['—','Não observado','Presente'],
   };
   // ══════════════════════════════════════════════════════
   // SCHEMA DE TEMPLATES (Fase A — motor; Fase B — vem do banco)
@@ -2738,9 +2742,9 @@ const EST = (() => {
 
   function pill(v){
     if(!v||v==='—') return '';
-    if(['Pérvias (normal)','Sem refluxo','Normal','Não visualizadas','Trifásico (normal)','Regular, sem placas','Sem placas ateromatosas'].includes(v)) return `<span class="est-pill est-pill-ok">${v}</span>`;
+    if(['Pérvias (normal)','Sem refluxo','Normal','Não visualizadas','Trifásico (normal)','Regular, sem placas','Sem placas ateromatosas','Não observado'].includes(v)) return `<span class="est-pill est-pill-ok">${v}</span>`;
     if(['Refluxo presente','Perfurante incompetente presente','Estenose > 70%','Ocluída','Ausente','Monofásico','Oclusão','Placas ateromatosas em bulbo carotídeo maior que 50%'].includes(v)) return `<span class="est-pill est-pill-danger">${v}</span>`;
-    if(['Aumentado','Estenose 50–70%','Placa 10–50%','Placa > 50%','Bifásico','Alterado — ver obs','Placas ateromatosas em bulbo carotídeo entre 10% e 50%'].includes(v)) return `<span class="est-pill est-pill-warn">${v}</span>`;
+    if(['Aumentado','Estenose 50–70%','Placa 10–50%','Placa > 50%','Bifásico','Alterado — ver obs','Placas ateromatosas em bulbo carotídeo entre 10% e 50%','Presente'].includes(v)) return `<span class="est-pill est-pill-warn">${v}</span>`;
     if(['Estenose < 50%','Placa < 10%','Reduzido','Pequenas placas ateromatosas em bulbo carotídeo menor que 10%'].includes(v)) return `<span class="est-pill est-pill-info">${v}</span>`;
     return `<span class="est-pill est-pill-gray">${v}</span>`;
   }
@@ -2773,6 +2777,8 @@ const EST = (() => {
     arterial:         { label:'Calibre + parede + fluxo (artéria completa)', standalone:true, campos:[{nome:'calibre', opcoes:'art_cal', normal:'Normal'},{nome:'parede', opcoes:'art_parede', normal:'Regular, sem placas'},{nome:'fluxo', opcoes:'art_fluxo', normal:'Trifásico (normal)'}] },
     arterial_simples: { label:'Só calibre (artéria simples)',            standalone:false, campos:[{nome:'calibre', opcoes:'art_cal', normal:'Normal'}] },
     carotida:         { label:'Placa ateromatosa (ex: carótida)',        standalone:true,  campos:[{nome:'placa',   opcoes:'carotida_placa', normal:'Sem placas ateromatosas'}] },
+    cisto_baker:      { label:'Achado presente/ausente (ex: cisto de Baker)', standalone:false, campos:[{nome:'status', opcoes:'achado_presente', normal:'Não observado'}] },
+    linfedema:        { label:'Achado presente/ausente (ex: linfedema)', standalone:false, campos:[{nome:'status', opcoes:'achado_presente', normal:'Não observado'}] },
   };
 
   // Handlers de "tipo" de segmento: cada um sabe quais campos tem e em quantas
@@ -2789,6 +2795,8 @@ const EST = (() => {
     arterial:         (sec,s,l) => `<td>${sel(sec,s.id,l,'calibre',OPT.art_cal,gv(sec,s.id,l,'calibre'))}</td><td>${sel(sec,s.id,l,'parede',OPT.art_parede,gv(sec,s.id,l,'parede'))}</td><td>${sel(sec,s.id,l,'fluxo',OPT.art_fluxo,gv(sec,s.id,l,'fluxo'))}</td>`,
     arterial_simples: (sec,s,l) => `<td>${sel(sec,s.id,l,'calibre',OPT.art_cal,gv(sec,s.id,l,'calibre'))}</td><td colspan="2"><span style="font-size:11px;color:var(--text-muted)">—</span></td>`,
     carotida:         (sec,s,l) => `<td>${sel(sec,s.id,l,'placa',OPT.carotida_placa,gv(sec,s.id,l,'placa'))}</td>`,
+    cisto_baker:      (sec,s,l) => `<td colspan="2">${sel(sec,s.id,l,'status',OPT.achado_presente,gv(sec,s.id,l,'status'))}</td>`,
+    linfedema:        (sec,s,l) => `<td colspan="2">${sel(sec,s.id,l,'status',OPT.achado_presente,gv(sec,s.id,l,'status'))}</td>`,
   };
 
   // Handlers de "tipo" pra geração de texto: cada um lê o estado do segmento
@@ -2859,6 +2867,19 @@ const EST = (() => {
       else corpo = `${p}. A análise espectral identificou curvas com morfologia preservada e velocidade normal em todos os segmentos estudados.`;
       if (o) corpo += ' '+o+'.';
       return `${nomeLado}:\n${corpo}`;
+    },
+    // Achados opcionais que só aparecem no texto quando presentes — o
+    // padrão real (visto nos laudos-modelo) é omitir completamente a menção
+    // quando ausentes, não escrever "sem cisto de Baker" etc.
+    cisto_baker: (sec,s,l,TX) => {
+      const o = (estado[sec].dados[k(sec,s.id,l)]||{}).obs || '';
+      if (gv(sec,s.id,l,'status')!=='Presente') return '';
+      return TX.venoso_cisto_baker_presente + (o?' '+o+'.':'');
+    },
+    linfedema: (sec,s,l,TX) => {
+      const o = (estado[sec].dados[k(sec,s.id,l)]||{}).obs || '';
+      if (gv(sec,s.id,l,'status')!=='Presente') return '';
+      return TX.venoso_linfedema_presente + (o?' '+o+'.':'');
     },
   };
 
@@ -3008,6 +3029,8 @@ const EST = (() => {
     carotidas_vertebrais: 'As artérias vertebrais foram avaliadas em suas origens e entre as apófises transversas, bilateralmente. Apresentam calibre normal e paredes regulares. Fluxo anterógrado com velocidade dentro dos limites normais. Não se evidenciou placas ateromatosas nos segmentos visualizados.',
     carotidas_conclusao_normal: 'Ausência de placas ateromatosas nas carótidas, sem alterações de fluxo ao Doppler em cores.\nDoppler em cores das artérias vertebrais sem alterações significativas de fluxo.',
     carotidas_conclusao_alterado: 'Placas ateromatosas identificadas — ver achados descritos acima.\nDoppler em cores das artérias vertebrais sem alterações significativas de fluxo.',
+    venoso_cisto_baker_presente: 'Presença de imagem hipoecoica no oco poplíteo, sugestiva de cisto de Baker.',
+    venoso_linfedema_presente: 'Presença de imagem trabecular no subcutâneo, sugestiva de linfedema.',
   };
   function getTX(){
     const cfg = (currentClinica && currentClinica.estruturado_config) || {};
