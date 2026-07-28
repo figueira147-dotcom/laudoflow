@@ -2700,6 +2700,22 @@ const EST = (() => {
   }
   function upd(s){ s.nextElementSibling.innerHTML = pill(s.value); }
 
+  // Catálogo descritivo dos tipos de campo (Fase E — autoria self-service):
+  // não roda nada, só documenta pra UI de criação de templates quais campos
+  // cada tipo tem e qual lista de opções (OPT) usar no preset "normal". Uma
+  // clínica só pode compor templates com os tipos daqui — um tipo genuíno
+  // novo continua exigindo código (handler em TIPO_CELLS/TIPO_TEXTO).
+  const TIPO_META = {
+    perv:             { label:'Status único (ex: perviedade)',            campos:[{nome:'status',  opcoes:'perv'}] },
+    refluxo_profundo: { label:'Refluxo único (ex: sistema profundo)',     campos:[{nome:'refluxo', opcoes:'refluxo'}] },
+    safena:           { label:'Refluxo + calibre (ex: safena)',           campos:[{nome:'refluxo', opcoes:'refluxo'},{nome:'calibre', opcoes:'calibre'}] },
+    perfurantes:      { label:'Status único (ex: perfurantes)',          campos:[{nome:'status',  opcoes:'perf'}] },
+    varicosidades:    { label:'Status único (ex: varicosidades)',        campos:[{nome:'status',  opcoes:'varic'}] },
+    arterial:         { label:'Calibre + parede + fluxo (artéria completa)', campos:[{nome:'calibre', opcoes:'art_cal'},{nome:'parede', opcoes:'art_parede'},{nome:'fluxo', opcoes:'art_fluxo'}] },
+    arterial_simples: { label:'Só calibre (artéria simples)',            campos:[{nome:'calibre', opcoes:'art_cal'}] },
+    carotida:         { label:'Placa ateromatosa (ex: carótida)',        campos:[{nome:'placa',   opcoes:'carotida_placa'}] },
+  };
+
   // Handlers de "tipo" de segmento: cada um sabe quais campos tem e em quantas
   // colunas eles caem (casando com o array `colunas` do template). Migrar o
   // vascular MMII pra dentro do motor não inventa tipos novos — só move os
