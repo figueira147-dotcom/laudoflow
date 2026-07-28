@@ -1228,6 +1228,30 @@
         <div class="field"><label>Conclusão — tudo normal</label><textarea id="tx-carotidas_conclusao_normal" rows="2"></textarea></div>
         <div class="field"><label>Conclusão — com placas</label><textarea id="tx-carotidas_conclusao_alterado" rows="2"></textarea></div>
 
+        <div class="cfg-subhdr" style="margin-top:24px">Aorta Abdominal</div>
+        <div class="field"><label>Frase de introdução</label><input type="text" id="tx-aorta_abdominal_intro"></div>
+        <div class="field"><label>Normal</label><textarea id="tx-aorta_abdominal_normal" rows="2"></textarea></div>
+        <div class="field"><label>Alterado</label><textarea id="tx-aorta_abdominal_alterado" rows="2"></textarea></div>
+        <div class="field"><label>Frase de fluxo</label><input type="text" id="tx-aorta_abdominal_fluxo"></div>
+
+        <div class="cfg-subhdr" style="margin-top:24px">Artérias Ilíacas</div>
+        <div class="field"><label>Frase de introdução</label><input type="text" id="tx-iliacas_arterial_intro"></div>
+        <div class="field"><label>Normal</label><textarea id="tx-iliacas_arterial_normal" rows="2"></textarea></div>
+        <div class="field"><label>Alterado</label><textarea id="tx-iliacas_arterial_alterado" rows="2"></textarea></div>
+        <div class="field"><label>Frase de fluxo</label><input type="text" id="tx-iliacas_arterial_fluxo"></div>
+
+        <div class="cfg-subhdr" style="margin-top:24px">Veia Cava Inferior e Ilíacas (venoso)</div>
+        <div class="field"><label>Frase de introdução</label><input type="text" id="tx-iliacas_venoso_intro"></div>
+        <div class="field"><label>Normal</label><textarea id="tx-iliacas_venoso_normal" rows="2"></textarea></div>
+        <div class="field"><label>Alterado</label><textarea id="tx-iliacas_venoso_alterado" rows="2"></textarea></div>
+
+        <div class="cfg-subhdr" style="margin-top:24px">Artérias Renais</div>
+        <div class="field"><label>Frase de introdução</label><input type="text" id="tx-renais_arterial_intro"></div>
+        <div class="field"><label>Normal</label><textarea id="tx-renais_arterial_normal" rows="2"></textarea></div>
+        <div class="field"><label>Alterado</label><textarea id="tx-renais_arterial_alterado" rows="2"></textarea></div>
+        <div class="field"><label>Frase de fluxo</label><input type="text" id="tx-renais_arterial_fluxo"></div>
+        <div class="field"><label>Bloco de medidas + impressão</label><textarea id="tx-renais_arterial_extra" rows="5"></textarea></div>
+
         <div style="display:flex;gap:10px;margin-top:8px">
           <button class="btn btn-primary" style="width:auto" onclick="salvarConfigEstruturado()">Salvar textos</button>
           <button class="btn btn-outline" style="width:auto" onclick="restaurarConfigEstruturado()">Restaurar padrão</button>
@@ -2307,6 +2331,10 @@ const TX_CAMPOS = [
   'carotidas_obs_gerais','carotidas_normal','carotidas_vertebrais',
   'carotidas_conclusao_normal','carotidas_conclusao_alterado',
   'venoso_cisto_baker_presente','venoso_linfedema_presente',
+  'aorta_abdominal_intro','aorta_abdominal_normal','aorta_abdominal_alterado','aorta_abdominal_fluxo',
+  'iliacas_arterial_intro','iliacas_arterial_normal','iliacas_arterial_alterado','iliacas_arterial_fluxo',
+  'iliacas_venoso_intro','iliacas_venoso_normal','iliacas_venoso_alterado',
+  'renais_arterial_intro','renais_arterial_normal','renais_arterial_alterado','renais_arterial_fluxo','renais_arterial_extra',
 ];
 
 function carregarConfigEstruturado() {
@@ -2626,6 +2654,7 @@ const EST = (() => {
     art_parede:['—','Regular, sem placas','Placa < 10%','Placa 10–50%','Placa > 50%'],
     carotida_placa:['—','Sem placas ateromatosas','Pequenas placas ateromatosas em bulbo carotídeo menor que 10%','Placas ateromatosas em bulbo carotídeo entre 10% e 50%','Placas ateromatosas em bulbo carotídeo maior que 50%','Oclusão'],
     achado_presente:['—','Não observado','Presente'],
+    vaso_tronco_status:['—','Normal','Alterado — ver observação'],
   };
   // ══════════════════════════════════════════════════════
   // SCHEMA DE TEMPLATES (Fase A — motor; Fase B — vem do banco)
@@ -2692,6 +2721,14 @@ const EST = (() => {
       const allN=lados.every(l=>tpl.segmentos.every(s=>{const p=gv(tpl.id,s.id,l,'placa');return p==='Sem placas ateromatosas'||p==='—';}));
       corpo+='\n\nCONCLUSÃO:\n'+(allN?TX.carotidas_conclusao_normal:TX.carotidas_conclusao_alterado);
       return [{titulo:tpl.tituloImpressao, corpo}];
+    },
+    // Vaso único não-lateralizado (aorta, ilíacas, renais): o texto não
+    // varia por lado (é uma narrativa combinada, não por membro), então em
+    // vez de gerar 1 página por lado como o padrão faz, usa só o primeiro
+    // texto não vazio — evita duplicar a mesma página duas vezes.
+    combinado_unico: (tpl) => (textos) => {
+      const t = textos.find(Boolean);
+      return t ? [{titulo:tpl.tituloImpressao, corpo:t}] : [];
     },
   };
 
@@ -2779,6 +2816,7 @@ const EST = (() => {
     carotida:         { label:'Placa ateromatosa (ex: carótida)',        standalone:true,  campos:[{nome:'placa',   opcoes:'carotida_placa', normal:'Sem placas ateromatosas'}] },
     cisto_baker:      { label:'Achado presente/ausente (ex: cisto de Baker)', standalone:false, campos:[{nome:'status', opcoes:'achado_presente', normal:'Não observado'}] },
     linfedema:        { label:'Achado presente/ausente (ex: linfedema)', standalone:false, campos:[{nome:'status', opcoes:'achado_presente', normal:'Não observado'}] },
+    vaso_tronco:      { label:'Vaso único normal/alterado (ex: aorta, ilíacas, renais)', standalone:true, campos:[{nome:'status', opcoes:'vaso_tronco_status', normal:'Normal'}] },
   };
 
   // Handlers de "tipo" de segmento: cada um sabe quais campos tem e em quantas
@@ -2797,6 +2835,7 @@ const EST = (() => {
     carotida:         (sec,s,l) => `<td>${sel(sec,s.id,l,'placa',OPT.carotida_placa,gv(sec,s.id,l,'placa'))}</td>`,
     cisto_baker:      (sec,s,l) => `<td colspan="2">${sel(sec,s.id,l,'status',OPT.achado_presente,gv(sec,s.id,l,'status'))}</td>`,
     linfedema:        (sec,s,l) => `<td colspan="2">${sel(sec,s.id,l,'status',OPT.achado_presente,gv(sec,s.id,l,'status'))}</td>`,
+    vaso_tronco:      (sec,s,l) => `<td>${sel(sec,s.id,l,'status',OPT.vaso_tronco_status,gv(sec,s.id,l,'status'))}</td>`,
   };
 
   // Handlers de "tipo" pra geração de texto: cada um lê o estado do segmento
@@ -2880,6 +2919,26 @@ const EST = (() => {
       const o = (estado[sec].dados[k(sec,s.id,l)]||{}).obs || '';
       if (gv(sec,s.id,l,'status')!=='Presente') return '';
       return TX.venoso_linfedema_presente + (o?' '+o+'.':'');
+    },
+    // Vaso único (aorta, ilíacas, renais...) — genérico e reaproveitável:
+    // a "chave" (sec, o template.id) escolhe qual conjunto de textos usar,
+    // via convenção de nome TX['<chave>_intro'|'_normal'|'_alterado'|
+    // '_fluxo'|'_extra']. Templates que não usam algum desses (ex: sem
+    // '_extra') simplesmente não definem esse campo em TEXTOS_DEFAULT —
+    // partes ausentes são filtradas, sem quebrar nada.
+    vaso_tronco: (sec,s,l,TX) => {
+      const st = gv(sec,s.id,l,'status');
+      const o = (estado[sec].dados[k(sec,s.id,l)]||{}).obs || '';
+      if (st==='—') return '';
+      const partes = [
+        TX[sec+'_intro'],
+        st==='Normal' ? TX[sec+'_normal'] : TX[sec+'_alterado'],
+        TX[sec+'_fluxo'],
+        TX[sec+'_extra'],
+      ].filter(Boolean);
+      let corpo = partes.join('\n\n');
+      if (o) corpo += '\n\n'+o;
+      return corpo;
     },
   };
 
@@ -3031,6 +3090,22 @@ const EST = (() => {
     carotidas_conclusao_alterado: 'Placas ateromatosas identificadas — ver achados descritos acima.\nDoppler em cores das artérias vertebrais sem alterações significativas de fluxo.',
     venoso_cisto_baker_presente: 'Presença de imagem hipoecoica no oco poplíteo, sugestiva de cisto de Baker.',
     venoso_linfedema_presente: 'Presença de imagem trabecular no subcutâneo, sugestiva de linfedema.',
+    aorta_abdominal_intro: 'O exame com mapeamento ao Doppler espectral e a cores, revela:',
+    aorta_abdominal_normal: 'A aorta abdominal apresenta calibres e pulsatilidades normais, sendo observadas discretas tortuosidades destes vasos.\n\nAusência de lesões obstrutivas.',
+    aorta_abdominal_alterado: 'A aorta abdominal apresenta calibres e pulsatilidades normais, sendo observadas discretas tortuosidades destes vasos.\n\nAusência de lesões obstrutivas, sendo observado espessamento mediointimal e pequenas placas de ateroma que causam estenoses segmentares inferiores a 30%, sem causar repercussão hemodinâmica.',
+    aorta_abdominal_fluxo: 'Ao Doppler, foram detectados fluxos com morfologia e velocidade características.',
+    iliacas_arterial_intro: 'O exame com mapeamento ao Doppler espectral e a cores, revela:',
+    iliacas_arterial_normal: 'As artérias ilíacas apresentam calibres e pulsatilidades normais, sendo observadas discretas tortuosidades destes vasos.\n\nAusência de lesões obstrutivas.',
+    iliacas_arterial_alterado: 'As artérias ilíacas apresentam calibres e pulsatilidades normais, sendo observadas discretas tortuosidades destes vasos.\n\nAusência de lesões obstrutivas, sendo observado espessamento mediointimal e pequenas placas de ateroma que causam estenoses segmentares inferiores a 30%, sem causar repercussão hemodinâmica.',
+    iliacas_arterial_fluxo: 'Ao Doppler, foram detectados fluxos com morfologia e velocidade características.',
+    iliacas_venoso_intro: 'O exame com mapeamento ao Doppler espectral e a cores, revela:',
+    iliacas_venoso_normal: 'As veias cava inferior e ilíacas apresentam-se de calibres normais, compressíveis, sem trombos visíveis ao mapeamento a cores, com fluxos fásicos à respiração, sendo suas paredes lisas e sem irregularidades parietais.',
+    iliacas_venoso_alterado: 'Alterações identificadas — ver observação.',
+    renais_arterial_intro: 'O exame com mapeamento ao Doppler espectral e a cores, revela:',
+    renais_arterial_normal: 'As artérias renais apresentam calibres e pulsatilidades normais, sendo observadas discretas tortuosidades destes vasos.\n\nAusência de lesões obstrutivas.',
+    renais_arterial_alterado: 'As artérias renais apresentam calibres e pulsatilidades normais, sendo observadas discretas tortuosidades destes vasos.\n\nAusência de lesões obstrutivas, sendo observado espessamento mediointimal e pequenas placas de ateroma que causam estenoses segmentares inferiores a 30%, sem causar repercussão hemodinâmica.',
+    renais_arterial_fluxo: 'Ao Doppler, foram detectados fluxos laminares de baixa resistência, com morfologia e velocidade características.',
+    renais_arterial_extra: 'O rim direito mede cerca de __ cm e o esquerdo cerca de __ cm.\n\nVPS / VPD / Índice R-AO\nArtéria Renal Direita: __ cm/s / __ cm/s\nArtéria Renal Esquerda: __ cm/s / __ cm/s\nAorta: __ cm/s / __ cm/s\n\nIMPRESSÃO: Ausência de lesões hemodinamicamente significativas.',
   };
   function getTX(){
     const cfg = (currentClinica && currentClinica.estruturado_config) || {};
