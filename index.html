@@ -1218,6 +1218,13 @@
         <div class="field"><label>Frase de introdução</label><input type="text" id="tx-arterial_intro"></div>
         <div class="field"><label>Impressão (quando tudo normal)</label><textarea id="tx-arterial_impressao" rows="3"></textarea></div>
 
+        <div class="cfg-subhdr" style="margin-top:24px">Carótidas e Vertebrais</div>
+        <div class="field"><label>Observações gerais</label><textarea id="tx-carotidas_obs_gerais" rows="2"></textarea></div>
+        <div class="field"><label>Carótida — sem placas (normal)</label><textarea id="tx-carotidas_normal" rows="2"></textarea></div>
+        <div class="field"><label>Vertebrais (normal)</label><textarea id="tx-carotidas_vertebrais" rows="2"></textarea></div>
+        <div class="field"><label>Conclusão — tudo normal</label><textarea id="tx-carotidas_conclusao_normal" rows="2"></textarea></div>
+        <div class="field"><label>Conclusão — com placas</label><textarea id="tx-carotidas_conclusao_alterado" rows="2"></textarea></div>
+
         <div style="display:flex;gap:10px;margin-top:8px">
           <button class="btn btn-primary" style="width:auto" onclick="salvarConfigEstruturado()">Salvar textos</button>
           <button class="btn btn-outline" style="width:auto" onclick="restaurarConfigEstruturado()">Restaurar padrão</button>
@@ -2245,6 +2252,8 @@ const TX_CAMPOS = [
   'venoso_perviedade_normal','venoso_profundo_nome','venoso_profundo_sem_refluxo',
   'venoso_safena_normal','venoso_perfurantes_normal','venoso_varicosidades_presente',
   'venoso_varicosidades_ausente','arterial_intro','arterial_impressao',
+  'carotidas_obs_gerais','carotidas_normal','carotidas_vertebrais',
+  'carotidas_conclusao_normal','carotidas_conclusao_alterado',
 ];
 
 function carregarConfigEstruturado() {
@@ -2562,6 +2571,7 @@ const EST = (() => {
     art_cal:['—','Normal','Estenose < 50%','Estenose 50–70%','Estenose > 70%','Ocluída'],
     art_fluxo:['—','Trifásico (normal)','Bifásico','Monofásico','Ausente'],
     art_parede:['—','Regular, sem placas','Placa < 10%','Placa 10–50%','Placa > 50%'],
+    carotida_placa:['—','Sem placas ateromatosas','Pequenas placas ateromatosas em bulbo carotídeo menor que 10%','Placas ateromatosas em bulbo carotídeo entre 10% e 50%','Placas ateromatosas em bulbo carotídeo maior que 50%','Oclusão'],
   };
   // ══════════════════════════════════════════════════════
   // SCHEMA DE TEMPLATES (Fase A — motor; Fase B — vem do banco)
@@ -2616,6 +2626,19 @@ const EST = (() => {
       if(allN) corpo+='\n\nIMPRESSÃO:\n'+TX.arterial_impressao;
       return [{titulo:tpl.tituloImpressao, corpo}];
     },
+    // Carótidas: junta os lados numa unidade só, com observações gerais no
+    // início e parágrafos fixos de VERTEBRAIS/CONCLUSÃO no fim (a conclusão
+    // muda conforme haja ou não placas em alguma carótida).
+    carotidas_unico: (tpl) => (textos,lados) => {
+      const cT = textos.filter(Boolean);
+      if(!cT.length) return [];
+      const TX=getTX();
+      let corpo=TX.carotidas_obs_gerais+'\n\n'+cT.join('\n\n');
+      corpo+='\n\nVERTEBRAIS:\n'+TX.carotidas_vertebrais;
+      const allN=lados.every(l=>tpl.segmentos.every(s=>{const p=gv(tpl.id,s.id,l,'placa');return p==='Sem placas ateromatosas'||p==='—';}));
+      corpo+='\n\nCONCLUSÃO:\n'+(allN?TX.carotidas_conclusao_normal:TX.carotidas_conclusao_alterado);
+      return [{titulo:tpl.tituloImpressao, corpo}];
+    },
   };
 
   // Carrega os templates ativos de est_templates e reconstrói o formato que
@@ -2638,6 +2661,7 @@ const EST = (() => {
         abertoPorPadrao: row.aberto_por_padrao,
         colunas: row.colunas,
         obsPlaceholder: row.obs_placeholder,
+        ladoNomes: row.lado_nomes,
         segmentos: row.segmentos,
         normal: row.normal,
         // "fixo" vem do banco como string com {ln}; vira função aqui, igual
@@ -2664,10 +2688,10 @@ const EST = (() => {
 
   function pill(v){
     if(!v||v==='—') return '';
-    if(['Pérvias (normal)','Sem refluxo','Normal','Não visualizadas','Trifásico (normal)','Regular, sem placas'].includes(v)) return `<span class="est-pill est-pill-ok">${v}</span>`;
-    if(['Refluxo presente','Perfurante incompetente presente','Estenose > 70%','Ocluída','Ausente','Monofásico'].includes(v)) return `<span class="est-pill est-pill-danger">${v}</span>`;
-    if(['Aumentado','Estenose 50–70%','Placa 10–50%','Placa > 50%','Bifásico','Alterado — ver obs'].includes(v)) return `<span class="est-pill est-pill-warn">${v}</span>`;
-    if(['Estenose < 50%','Placa < 10%','Reduzido'].includes(v)) return `<span class="est-pill est-pill-info">${v}</span>`;
+    if(['Pérvias (normal)','Sem refluxo','Normal','Não visualizadas','Trifásico (normal)','Regular, sem placas','Sem placas ateromatosas'].includes(v)) return `<span class="est-pill est-pill-ok">${v}</span>`;
+    if(['Refluxo presente','Perfurante incompetente presente','Estenose > 70%','Ocluída','Ausente','Monofásico','Oclusão','Placas ateromatosas em bulbo carotídeo maior que 50%'].includes(v)) return `<span class="est-pill est-pill-danger">${v}</span>`;
+    if(['Aumentado','Estenose 50–70%','Placa 10–50%','Placa > 50%','Bifásico','Alterado — ver obs','Placas ateromatosas em bulbo carotídeo entre 10% e 50%'].includes(v)) return `<span class="est-pill est-pill-warn">${v}</span>`;
+    if(['Estenose < 50%','Placa < 10%','Reduzido','Pequenas placas ateromatosas em bulbo carotídeo menor que 10%'].includes(v)) return `<span class="est-pill est-pill-info">${v}</span>`;
     return `<span class="est-pill est-pill-gray">${v}</span>`;
   }
   function sel(sec,id,l,campo,opts,cur){
@@ -2689,6 +2713,7 @@ const EST = (() => {
     varicosidades:    (sec,s,l) => `<td colspan="2">${sel(sec,s.id,l,'status',OPT.varic,gv(sec,s.id,l,'status'))}</td>`,
     arterial:         (sec,s,l) => `<td>${sel(sec,s.id,l,'calibre',OPT.art_cal,gv(sec,s.id,l,'calibre'))}</td><td>${sel(sec,s.id,l,'parede',OPT.art_parede,gv(sec,s.id,l,'parede'))}</td><td>${sel(sec,s.id,l,'fluxo',OPT.art_fluxo,gv(sec,s.id,l,'fluxo'))}</td>`,
     arterial_simples: (sec,s,l) => `<td>${sel(sec,s.id,l,'calibre',OPT.art_cal,gv(sec,s.id,l,'calibre'))}</td><td colspan="2"><span style="font-size:11px;color:var(--text-muted)">—</span></td>`,
+    carotida:         (sec,s,l) => `<td>${sel(sec,s.id,l,'placa',OPT.carotida_placa,gv(sec,s.id,l,'placa'))}</td>`,
   };
 
   // Handlers de "tipo" pra geração de texto: cada um lê o estado do segmento
@@ -2748,11 +2773,23 @@ const EST = (() => {
     },
     arterial:         (sec,s,l) => arterialLinha(sec,s,l,true),
     arterial_simples: (sec,s,l) => arterialLinha(sec,s,l,false),
+    carotida: (sec,s,l,TX) => {
+      const p = gv(sec,s.id,l,'placa');
+      const o = (estado[sec].dados[k(sec,s.id,l)]||{}).obs || '';
+      if (p==='—') return '';
+      const nomeLado = TEMPLATES[sec].ladoNomes[l].toUpperCase();
+      let corpo;
+      if (p==='Sem placas ateromatosas') corpo = TX.carotidas_normal;
+      else if (p==='Oclusão') corpo = 'Artéria ocluída, sem fluxo detectável ao Doppler.';
+      else corpo = `${p}. A análise espectral identificou curvas com morfologia preservada e velocidade normal em todos os segmentos estudados.`;
+      if (o) corpo += ' '+o+'.';
+      return `${nomeLado}:\n${corpo}`;
+    },
   };
 
   function gerarTexto(sec,l){
     const tpl=TEMPLATES[sec], TX=getTX();
-    const ln = l==='D'?'MEMBRO INFERIOR DIREITO':'MEMBRO INFERIOR ESQUERDO';
+    const ln = tpl.ladoNomes[l].toUpperCase();
     const partes=[];
     tpl.blocosTexto.forEach(b=>{
       if(b.fixo){ partes.push(b.fixo(ln)); return; }
@@ -2765,7 +2802,7 @@ const EST = (() => {
 
   function renderTabela(sec,l){
     const tpl = TEMPLATES[sec];
-    const ln = l==='D'?'Membro Inferior Direito':'Membro Inferior Esquerdo';
+    const ln = tpl.ladoNomes[l];
     let h=`<div class="est-lado-title">${ln}</div><table class="est-table"><thead><tr>`;
     tpl.colunas.forEach(c=>{ h+=`<th${c.width?` style="width:${c.width}"`:''}>${c.label}</th>`; });
     h+=`</tr></thead><tbody>`;
@@ -2891,6 +2928,11 @@ const EST = (() => {
     venoso_varicosidades_ausente: 'Sem varicosidades visíveis ao exame físico.',
     arterial_intro: 'O exame com Doppler espectral e colorido revela:',
     arterial_impressao: 'Artérias de calibres normais sem dilatações aneurismáticas.\nAusência de estenoses hemodinamicamente significativas nos segmentos visualizados.\nPerfusão periférica adequada em repouso.',
+    carotidas_obs_gerais: 'Foram avaliadas as carótidas comuns, bulbos carotídeos, carótidas internas e externas bilateralmente. As carótidas apresentam trajeto habitual, sem sinais de acotovelamentos (kinking).',
+    carotidas_normal: 'Complexo intimal normal. Ausência de placas ateromatosas. A análise espectral identificou curvas com morfologia preservada e velocidade normal em todos os segmentos estudados.',
+    carotidas_vertebrais: 'As artérias vertebrais foram avaliadas em suas origens e entre as apófises transversas, bilateralmente. Apresentam calibre normal e paredes regulares. Fluxo anterógrado com velocidade dentro dos limites normais. Não se evidenciou placas ateromatosas nos segmentos visualizados.',
+    carotidas_conclusao_normal: 'Ausência de placas ateromatosas nas carótidas, sem alterações de fluxo ao Doppler em cores.\nDoppler em cores das artérias vertebrais sem alterações significativas de fluxo.',
+    carotidas_conclusao_alterado: 'Placas ateromatosas identificadas — ver achados descritos acima.\nDoppler em cores das artérias vertebrais sem alterações significativas de fluxo.',
   };
   function getTX(){
     const cfg = (currentClinica && currentClinica.estruturado_config) || {};
@@ -2938,6 +2980,7 @@ const EST = (() => {
   function buildPrintUnits(){
     const units=[];
     Object.values(TEMPLATES).forEach(tpl=>{
+      if(!selecionados.has(tpl.id)) return;
       const lados=getLados(tpl.id);
       const textos=lados.map(l=>gerarTexto(tpl.id,l));
       const montar=tpl.montarUnidades||((t)=>montarUnidadesPadrao(tpl,t));
