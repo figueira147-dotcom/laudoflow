@@ -2519,7 +2519,7 @@ function showTab(name, el) {
 // Namespaced em EST.* para não colidir com o app.
 // ══════════════════════════════════════════════════════
 const EST = (() => {
-  const estado = { venoso:{lado:'B',dados:{}}, arterial:{lado:'B',dados:{}} };
+  const estado = {};
   let iniciado = false;
 
   const OPT = {
@@ -2533,7 +2533,7 @@ const EST = (() => {
     art_parede:['—','Regular, sem placas','Placa < 10%','Placa 10–50%','Placa > 50%'],
   };
   // ══════════════════════════════════════════════════════
-  // SCHEMA DE TEMPLATES (Fase A — motor)
+  // SCHEMA DE TEMPLATES (Fase A — motor; Fase B — vem do banco)
   //
   // Descreve cada exame como dado: seções, segmentos, e o "tipo" de cada
   // segmento (que define quais campos ele tem, como vira célula de tabela —
@@ -2542,84 +2542,88 @@ const EST = (() => {
   //
   // "tipo" é um dos handlers já existentes hoje em código (perv,
   // refluxo_profundo, safena, perfurantes, varicosidades, arterial,
-  // arterial_simples) — migrar o vascular MMII pra dentro do motor não
-  // inventa tipos novos, só move os que já existem pra dado.
+  // arterial_simples) — um template novo só pode ser 100% dado se reaproveitar
+  // um tipo já existente; um tipo genuinamente novo ainda exige código aqui.
+  //
+  // TEMPLATES é carregado da tabela est_templates no boot (carregarTemplates).
+  // Cada linha do banco vira um objeto neste formato; "montar_unidades" no
+  // banco é só uma CHAVE ('padrao' | 'venoso_bilateral' | 'arterial_unico')
+  // que resolve pra uma função de paginação via MONTAR_UNIDADES_REGISTRY —
+  // a lógica de paginação em si continua em código, só a referência é dado.
   // ══════════════════════════════════════════════════════
-  const TEMPLATES = {
-    venoso: {
-      id: 'venoso',
-      especialidade: 'Vascular',
-      modalidade: 'DOPPLER',
-      icone: '🩸',
-      titulo: 'Sistema Venoso Superficial e Profundo dos MMII',
-      tituloImpressao: 'SISTEMA VENOSO SUPERFICIAL E PROFUNDO DOS MEMBROS INFERIORES',
-      abertoPorPadrao: true,
-      colunas: [
-        { label:'Segmento', width:'36%' }, { label:'Status / Refluxo', width:'24%' },
-        { label:'Calibre', width:'18%' }, { label:'Observação' },
-      ],
-      obsPlaceholder: 'obs livre',
-      segmentos: [
-        { id:'perv',     nome:'Perviedade geral',        sub:'Superficial e profundo',            tipo:'perv' },
-        { id:'profundo', nome:'Sistema Venoso Profundo', sub:'FC, FS, Pop, Tib, Fib, Gastr, Sol',  tipo:'refluxo_profundo' }, // nome do grupo vem de TX.venoso_profundo_nome, não daqui (ver TIPO_TEXTO)
-        { id:'vsm',      nome:'Veia Safena Magna',       sub:'VSM',                                tipo:'safena', nomeCompleto:'Veia Safena Magna' },
-        { id:'vsp',      nome:'Veia Safena Parva',       sub:'VSP',                                tipo:'safena', nomeCompleto:'Veia Safena Parva' },
-        { id:'perf',     nome:'Veias Perfurantes',       sub:'',                                   tipo:'perfurantes' },
-        { id:'varic',    nome:'Varicosidades',           sub:'Ectoscopia',                         tipo:'varicosidades' },
-      ],
-      normal: {
-        perv:{status:'Pérvias (normal)'}, profundo:{refluxo:'Sem refluxo'},
-        vsm:{refluxo:'Sem refluxo',calibre:'Normal'}, vsp:{refluxo:'Sem refluxo',calibre:'Normal'},
-        perf:{status:'Não visualizadas'}, varic:{status:'Há varicosidades conforme ectoscopia'},
-      },
-      // Ordem dos parágrafos do texto gerado. "fixo" é um cabeçalho de seção
-      // (não depende de nenhum segmento); "segmento" chama o handler de tipo
-      // (TIPO_TEXTO) daquele segmento. COMPETÊNCIA é sempre impresso — não é
-      // opcional como os demais parágrafos.
-      blocosTexto: [
-        { segmento:'perv' },
-        { fixo: ln => `COMPETÊNCIA:\n${ln}` },
-        { segmento:'profundo' },
-        { segmento:'vsm' },
-        { segmento:'vsp' },
-        { segmento:'perf' },
-        { segmento:'varic' },
-      ],
+  let TEMPLATES = {};
+
+  const MONTAR_UNIDADES_REGISTRY = {
+    // Venoso: quando bilateral, separa em UMA página por membro (como no
+    // modelo impresso) em vez de uma página só — evita estourar a folha.
+    venoso_bilateral: (tpl) => (textos,lados) => {
+      const vT = textos.filter(Boolean);
+      if(!vT.length) return [];
+      const titulo = tpl.tituloImpressao;
+      if(lados.length===2){
+        const p0=vT[0].split('COMPETÊNCIA')[0], p1=vT[1].split('COMPETÊNCIA')[0];
+        let corpo1, corpo2;
+        if(p0===p1&&p0.trim()){
+          corpo1 = p0.trim()+'\n\n'+vT[0].replace(p0,'').trim();
+          corpo2 = vT[1].replace(p1,'').replace(/^COMPETÊNCIA:\s*\n?/,'').trim();
+        } else {
+          corpo1 = vT[0];
+          corpo2 = vT[1];
+        }
+        return [{titulo,corpo:corpo1},{titulo,corpo:corpo2}];
+      }
+      return [{titulo,corpo:vT[0]}];
     },
-    arterial: {
-      id: 'arterial',
-      especialidade: 'Vascular',
-      modalidade: 'DOPPLER',
-      icone: '❤️',
-      titulo: 'Ecocolor Doppler Arterial dos MMII',
-      tituloImpressao: 'ECOCOLOR DOPPLER ARTERIAL DOS MEMBROS INFERIORES',
-      abertoPorPadrao: false,
-      colunas: [
-        { label:'Artéria', width:'32%' }, { label:'Calibre / Estenose', width:'22%' },
-        { label:'Parede / Placa', width:'22%' }, { label:'Fluxo', width:'16%' }, { label:'Obs' },
-      ],
-      obsPlaceholder: 'obs',
-      segmentos: [
-        { id:'afc',    nome:'A. Femoral Comum',           sub:'AFC',                    tipo:'arterial',         nomeCompleto:'Artéria Femoral Comum' },
-        { id:'afp',    nome:'A. Femoral Profunda',        sub:'AFP',                    tipo:'arterial_simples', nomeCompleto:'Artéria Femoral Profunda' },
-        { id:'afspop', nome:'A. Femoral Sup. + Poplítea', sub:'AFS + Pop',              tipo:'arterial',         nomeCompleto:'Artérias Femoral Superficial e Poplítea' },
-        { id:'atib',   nome:'Artérias Tibiais + Fibular', sub:'Tib Ant/Post + Fibular', tipo:'arterial',         nomeCompleto:'Artérias Tibiais (anterior e posterior) e artéria fibular' },
-      ],
-      normal: {
-        afc:{calibre:'Normal',parede:'Regular, sem placas',fluxo:'Trifásico (normal)'},
-        afp:{calibre:'Normal'},
-        afspop:{calibre:'Normal',parede:'Regular, sem placas',fluxo:'Trifásico (normal)'},
-        atib:{calibre:'Normal',parede:'Regular, sem placas',fluxo:'Trifásico (normal)'},
-      },
-      blocosTexto: [
-        { fixo: ln => ln },
-        { segmento:'afc' },
-        { segmento:'afp' },
-        { segmento:'afspop' },
-        { segmento:'atib' },
-      ],
+    // Arterial: uma única unidade juntando os lados, com introdução fixa e,
+    // se tudo normal, um parágrafo de IMPRESSÃO automático no fim.
+    arterial_unico: (tpl) => (textos,lados) => {
+      const aT = textos.filter(t=>t.trim().length>40);
+      if(!aT.length) return [];
+      const TX=getTX();
+      let corpo=TX.arterial_intro+'\n\n'+aT.join('\n\n');
+      const allN=lados.every(l=>tpl.segmentos.every(s=>{const c=gv(tpl.id,s.id,l,'calibre');return c==='Normal'||c==='—';}));
+      if(allN) corpo+='\n\nIMPRESSÃO:\n'+TX.arterial_impressao;
+      return [{titulo:tpl.tituloImpressao, corpo}];
     },
   };
+
+  // Carrega os templates ativos de est_templates e reconstrói o formato que
+  // o motor espera (o mesmo TEMPLATES.venoso/.arterial de antes, só que
+  // agora vindo do banco em vez de hardcoded).
+  async function carregarTemplates(){
+    const { data, error } = await supa.from('est_templates')
+      .select('*').eq('ativo', true).order('ordem');
+    if (error || !data) { toast('Erro ao carregar templates do Laudo Estruturado.', 'err'); return false; }
+
+    const novo = {};
+    data.forEach(row => {
+      const tpl = {
+        id: row.chave,
+        especialidade: row.especialidade,
+        modalidade: row.modalidade,
+        icone: row.icone,
+        titulo: row.nome,
+        tituloImpressao: row.titulo_impressao,
+        abertoPorPadrao: row.aberto_por_padrao,
+        colunas: row.colunas,
+        obsPlaceholder: row.obs_placeholder,
+        segmentos: row.segmentos,
+        normal: row.normal,
+        // "fixo" vem do banco como string com {ln}; vira função aqui, igual
+        // ao formato que gerarTexto() já espera.
+        blocosTexto: row.blocos_texto.map(b => b.fixo != null
+          ? { fixo: (ln) => b.fixo.replace('{ln}', ln) }
+          : { segmento: b.segmento }),
+      };
+      if (MONTAR_UNIDADES_REGISTRY[row.montar_unidades]) {
+        tpl.montarUnidades = MONTAR_UNIDADES_REGISTRY[row.montar_unidades](tpl);
+      }
+      novo[row.chave] = tpl;
+      estado[row.chave] = estado[row.chave] || { lado:'B', dados:{} };
+    });
+    TEMPLATES = novo;
+    return true;
+  }
 
   const k  = (sec,id,l) => sec+'_'+id+'_'+l;
   const gv = (sec,id,l,f) => (estado[sec].dados[k(sec,id,l)]||{})[f]||'—';
@@ -2822,39 +2826,6 @@ const EST = (() => {
     return textos.filter(Boolean).map(corpo=>({titulo:tpl.tituloImpressao, corpo}));
   }
 
-  // Venoso: quando bilateral, separa em UMA página por membro (como no
-  // modelo impresso) em vez de uma página só — evita estourar a folha.
-  TEMPLATES.venoso.montarUnidades = (textos,lados) => {
-    const vT = textos.filter(Boolean);
-    if(!vT.length) return [];
-    const titulo = TEMPLATES.venoso.tituloImpressao;
-    if(lados.length===2){
-      const p0=vT[0].split('COMPETÊNCIA')[0], p1=vT[1].split('COMPETÊNCIA')[0];
-      let corpo1, corpo2;
-      if(p0===p1&&p0.trim()){
-        corpo1 = p0.trim()+'\n\n'+vT[0].replace(p0,'').trim();
-        corpo2 = vT[1].replace(p1,'').replace(/^COMPETÊNCIA:\s*\n?/,'').trim();
-      } else {
-        corpo1 = vT[0];
-        corpo2 = vT[1];
-      }
-      return [{titulo,corpo:corpo1},{titulo,corpo:corpo2}];
-    }
-    return [{titulo,corpo:vT[0]}];
-  };
-
-  // Arterial: uma única unidade juntando os lados, com introdução fixa e,
-  // se tudo normal, um parágrafo de IMPRESSÃO automático no fim.
-  TEMPLATES.arterial.montarUnidades = (textos,lados) => {
-    const aT = textos.filter(t=>t.trim().length>40);
-    if(!aT.length) return [];
-    const TX=getTX();
-    let corpo=TX.arterial_intro+'\n\n'+aT.join('\n\n');
-    const allN=lados.every(l=>TEMPLATES.arterial.segmentos.every(s=>{const c=gv('arterial',s.id,l,'calibre');return c==='Normal'||c==='—';}));
-    if(allN) corpo+='\n\nIMPRESSÃO:\n'+TX.arterial_impressao;
-    return [{titulo:TEMPLATES.arterial.tituloImpressao, corpo}];
-  };
-
   function buildPrintUnits(){
     const units=[];
     Object.values(TEMPLATES).forEach(tpl=>{
@@ -2967,9 +2938,13 @@ const EST = (() => {
     w.document.close(); w.focus(); setTimeout(()=>w.print(), 200);
   }
 
-  function init(){
+  async function init(){
     if(iniciado) return;
     iniciado=true;
+    loading(true, 'Carregando templates...');
+    const ok = await carregarTemplates();
+    loading(false);
+    if(!ok){ iniciado=false; return; }
     const cont=document.getElementById('est-sections');
     const tpls = Object.values(TEMPLATES);
     cont.innerHTML = tpls.map(s=>`
