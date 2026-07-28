@@ -458,7 +458,8 @@
     @page { size: A4 portrait; margin: 0; }
     .print-page { width: 210mm; height: 297mm; box-sizing: border-box; padding: 12mm 20mm 34mm 20mm; font-family: 'Garamond','Times New Roman',Times,serif; color: #000; page-break-after: always; break-after: page; background: #fff; position: relative; overflow: hidden; }
     .print-page:last-child { page-break-after: avoid; break-after: avoid; }
-    .print-body { display: block; }
+    .print-body { display: block; position: relative; z-index: 1; }
+    .pdf-watermark { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); max-width: 65%; max-height: 65%; opacity: .12; z-index: 0; }
 
     /* ── CABEÇALHO ── */
     .pdf-hd { text-align: center; margin-bottom: 14px; }
@@ -1138,6 +1139,15 @@
         <div class="form-row cols-2" style="max-width:640px">
           <div class="field"><label>Cabeçalho do laudo</label><input type="text" id="cfg-cabecalho" placeholder="Aparece no topo do laudo impresso"></div>
           <div class="field"><label>Rodapé do laudo</label><input type="text" id="cfg-rodape" placeholder="CRM, endereço, telefone..."></div>
+        </div>
+        <div class="field" style="max-width:420px;margin-top:6px">
+          <label>Marca d'água (opcional)</label>
+          <input type="file" id="cfg-marca-dagua-file" accept="image/jpeg,image/png,image/webp" onchange="onMarcaDaguaFile(event)">
+          <div style="font-size:11px;color:var(--text-muted);margin-top:6px">Aparece esmaecida atrás do texto, em toda página do laudo impresso.</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:14px;margin:8px 0 4px">
+          <img id="cfg-preview-marca-dagua" alt="" style="display:none;max-height:60px;max-width:200px;object-fit:contain;opacity:.5">
+          <button type="button" class="btn btn-outline" id="cfg-marca-dagua-remove" style="width:auto;padding:8px 14px;font-size:12px;display:none" onclick="removerMarcaDagua()"><i class="ti ti-trash"></i> Remover marca d'água</button>
         </div>
         <button class="btn btn-primary" onclick="salvarConfigClinica()" style="width:auto;padding:12px 28px;margin-top:10px">Salvar alterações</button>
       </div>
@@ -2204,6 +2214,7 @@ function showCfgTab(name, el) {
 
 let cfgIdModo = 'texto';
 let cfgLogoData = null;
+let cfgMarcaDaguaData = null;
 
 async function loadConfig() {
   document.getElementById('cfg-nome').value      = currentClinica.nome || '';
@@ -2212,6 +2223,8 @@ async function loadConfig() {
   document.getElementById('cfg-fonte').value     = currentClinica.login_fonte || "'Plus Jakarta Sans', sans-serif";
   document.getElementById('cfg-cor').value       = currentClinica.cor_primaria || '#1a2d6e';
   cfgLogoData = currentClinica.login_logo || null;
+  cfgMarcaDaguaData = currentClinica.marca_dagua || null;
+  atualizarPreviewMarcaDagua();
   setIdModo(currentClinica.login_modo === 'logo' ? 'logo' : 'texto');
   carregarConfigEstruturado();
   EST.carregarConfigMeusTemplates();
@@ -2288,6 +2301,51 @@ function removerLogo() {
   atualizarPreview();
 }
 
+function atualizarPreviewMarcaDagua() {
+  const pl = document.getElementById('cfg-preview-marca-dagua');
+  const rm = document.getElementById('cfg-marca-dagua-remove');
+  if (!pl || !rm) return;
+  pl.style.display = cfgMarcaDaguaData ? 'block' : 'none';
+  if (cfgMarcaDaguaData) pl.src = cfgMarcaDaguaData;
+  rm.style.display = cfgMarcaDaguaData ? 'inline-flex' : 'none';
+}
+
+function onMarcaDaguaFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async () => {
+    const keepAlpha = file.type === 'image/png';
+    cfgMarcaDaguaData = await resizeImagemGenerica(reader.result, keepAlpha, 900, 900);
+    atualizarPreviewMarcaDagua();
+  };
+  reader.readAsDataURL(file);
+}
+
+function resizeImagemGenerica(b64, keepAlpha, maxW, maxH) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      let { width: w, height: h } = img;
+      const scale = Math.min(1, maxW / w, maxH / h);
+      w = Math.round(w * scale); h = Math.round(h * scale);
+      const cv = document.createElement('canvas');
+      cv.width = w; cv.height = h;
+      cv.getContext('2d').drawImage(img, 0, 0, w, h);
+      resolve(cv.toDataURL(keepAlpha ? 'image/png' : 'image/jpeg', 0.85));
+    };
+    img.onerror = () => resolve(b64);
+    img.src = b64;
+  });
+}
+
+function removerMarcaDagua() {
+  cfgMarcaDaguaData = null;
+  const f = document.getElementById('cfg-marca-dagua-file');
+  if (f) f.value = '';
+  atualizarPreviewMarcaDagua();
+}
+
 async function salvarConfigClinica() {
   const nome      = document.getElementById('cfg-nome').value.trim();
   const cabecalho = document.getElementById('cfg-cabecalho').value.trim();
@@ -2303,7 +2361,7 @@ async function salvarConfigClinica() {
   const { error } = await supa.from('clinicas').update({
     nome, cabecalho_pdf: cabecalho, rodape_pdf: rodape,
     login_modo: modo, login_fonte: fonte, login_logo: cfgLogoData || null,
-    cor_primaria: cor
+    cor_primaria: cor, marca_dagua: cfgMarcaDaguaData || null
   }).eq('id', currentClinica.id);
   loading(false);
 
@@ -2316,6 +2374,7 @@ async function salvarConfigClinica() {
   currentClinica.login_fonte   = fonte;
   currentClinica.login_logo    = cfgLogoData || null;
   currentClinica.cor_primaria  = cor;
+  currentClinica.marca_dagua   = cfgMarcaDaguaData || null;
   renderIdentity(currentClinica);
   aplicarCorMarca(cor);
   toast('Configurações salvas.', 'ok');
@@ -3224,7 +3283,9 @@ const EST = (() => {
       FOOT = `<div class="pdf-foot"><div class="pdf-foot-row"><span>${esc(clinica.rodape_pdf||'')}</span></div></div>`;
     }
 
+    const watermarkImg = clinica.marca_dagua ? `<img class="pdf-watermark" src="${clinica.marca_dagua}" alt="">` : '';
     const pages = unidades.map(p => `<div class="print-page">
+      ${watermarkImg}
       <div class="print-body">
         ${HEADER}${PAT}
         <div class="pdf-sec-title">${esc(p.titulo)}</div>
@@ -3239,6 +3300,8 @@ const EST = (() => {
       body{background:#888;font-family:'Garamond','Times New Roman',Times,serif;color:#000}
       .print-page{width:210mm;height:297mm;box-sizing:border-box;padding:12mm 20mm 34mm 20mm;background:#fff;position:relative;margin:0 auto 16px;box-shadow:0 2px 14px rgba(0,0,0,.35);page-break-after:always;overflow:hidden}
       .print-page:last-child{page-break-after:avoid}
+      .print-body{position:relative;z-index:1}
+      .pdf-watermark{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);max-width:65%;max-height:65%;opacity:.12;z-index:0}
       .pdf-body p{page-break-inside:avoid;break-inside:avoid}
       .pdf-hd{text-align:center;margin-bottom:14px}
       .pdf-hd-title{font-family:'Times New Roman',Times,serif;font-size:16pt;font-weight:bold;line-height:1.15}
@@ -4152,11 +4215,13 @@ function buildPrint(laudo, medico) {
 
   const secoes = laudo.secoes || {};
   let pagesHtml = '';
+  const WATERMARK = clinica.marca_dagua ? `<img class="pdf-watermark" src="${clinica.marca_dagua}" alt="">` : '';
 
   secoesClinica.forEach(s => {
     const sec = secoes[s.chave];
     if (!sec || !sec.ativo || !sec.texto) return;
     pagesHtml += `<div class="print-page">
+      ${WATERMARK}
       <div class="print-body">
         ${HEADER}${PAT}
         <div class="pdf-sec-title">${escHtml(s.label)}</div>
@@ -4174,7 +4239,7 @@ function buildPrint(laudo, medico) {
       const grid = '<div class="pdf-img-grid">' +
         slice.map(img => img ? `<div class="pdf-img-cell"><img src="${img.src}" alt=""></div>` : `<div class="pdf-img-cell"></div>`).join('') +
         '</div>';
-      pagesHtml += `<div class="print-page"><div class="print-body">${HEADER}${grid}</div>${SIGN}${DISC}${FOOT}</div>`;
+      pagesHtml += `<div class="print-page">${WATERMARK}<div class="print-body">${HEADER}${grid}</div>${SIGN}${DISC}${FOOT}</div>`;
     }
   }
 
