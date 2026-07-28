@@ -402,8 +402,12 @@
   .est-prev-hint { font-size:11px; color:var(--text-muted); padding:10px 22px 0; }
   @media(max-width:600px){ .est-table th:nth-child(3), .est-table td:nth-child(3){ display:none; } }
   /* ── LAUDO ESTRUTURADO — biblioteca de templates (Fase B) ── */
-  .est-picker-search { width:100%; font-size:13px; padding:10px 14px; border:1.5px solid var(--border-dark); border-radius:9px; background:var(--white); color:var(--text); font-family:var(--font-ui); outline:none; transition:border-color .15s; }
+  .est-picker-toolbar { display:flex; gap:10px; }
+  .est-picker-search { flex:1; min-width:160px; font-size:13px; padding:10px 14px; border:1.5px solid var(--border-dark); border-radius:9px; background:var(--white); color:var(--text); font-family:var(--font-ui); outline:none; transition:border-color .15s; }
   .est-picker-search:focus { border-color:var(--green); }
+  .est-fav-toggle { flex-shrink:0; padding:9px 16px; border:1.5px solid var(--border-dark); border-radius:9px; font-size:12px; font-weight:700; cursor:pointer; background:var(--white); color:var(--text-muted); font-family:var(--font-ui); transition:all .15s; white-space:nowrap; }
+  .est-fav-toggle:hover { border-color:#e8cf6b; }
+  .est-fav-toggle.active { background:#fff7dd; color:#8a6d00; border-color:#e8cf6b; }
   .est-picker-grupo { margin-bottom:18px; }
   .est-picker-grupo-title { font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.8px; color:var(--text-muted); margin-bottom:10px; padding-bottom:6px; border-bottom:1px solid var(--border); }
   .est-picker-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:10px; }
@@ -416,6 +420,9 @@
   .est-picker-card-tag { font-size:10px; color:var(--text-muted); margin-top:2px; }
   .est-picker-card-check { font-size:16px; font-weight:800; color:var(--green); flex-shrink:0; visibility:hidden; }
   .est-picker-card.selected .est-picker-card-check { visibility:visible; }
+  .est-picker-card-fav { font-size:16px; color:var(--border-dark); flex-shrink:0; transition:color .15s; line-height:1; }
+  .est-picker-card-fav:hover { color:#e8b400; }
+  .est-picker-card-fav.active { color:#e8b400; }
   .est-picker-empty { color:var(--text-muted); font-size:13px; padding:16px 0; text-align:center; }
 
   /* ── PORTAL PACIENTE ── */
@@ -951,7 +958,10 @@
       </div>
 
       <div id="est-picker">
-        <input type="text" id="est-busca" class="est-picker-search" placeholder="🔍 Buscar template..." oninput="EST.filtrarPicker()">
+        <div class="est-picker-toolbar">
+          <input type="text" id="est-busca" class="est-picker-search" placeholder="🔍 Buscar template..." oninput="EST.filtrarPicker()">
+          <button type="button" class="est-fav-toggle" id="est-fav-toggle-btn" onclick="EST.toggleFiltroFavoritos()">★ Favoritos</button>
+        </div>
         <div id="est-picker-grupos" style="margin-top:14px"></div>
       </div>
 
@@ -2800,18 +2810,26 @@ const EST = (() => {
   // selecionados, preservando o comportamento de sempre-visível de antes.
   // ══════════════════════════════════════════════════════
   let selecionados = new Set();
+  let favoritos = new Set();
+  let apenasFavoritos = false;
 
   function renderPicker(){
     const busca = (document.getElementById('est-busca')?.value || '').toLowerCase().trim();
     const porEspecialidade = {};
     Object.values(TEMPLATES).forEach(tpl => {
+      if (apenasFavoritos && !favoritos.has(tpl.id)) return;
       const alvo = (tpl.titulo+' '+tpl.especialidade+' '+tpl.modalidade).toLowerCase();
       if (busca && !alvo.includes(busca)) return;
       (porEspecialidade[tpl.especialidade] = porEspecialidade[tpl.especialidade] || []).push(tpl);
     });
     const cont = document.getElementById('est-picker-grupos');
     const grupos = Object.keys(porEspecialidade);
-    if (!grupos.length) { cont.innerHTML = '<div class="est-picker-empty">Nenhum template encontrado.</div>'; return; }
+    const btnFav = document.getElementById('est-fav-toggle-btn');
+    if (btnFav) btnFav.classList.toggle('active', apenasFavoritos);
+    if (!grupos.length) {
+      cont.innerHTML = `<div class="est-picker-empty">${apenasFavoritos ? 'Nenhum favorito ainda.' : 'Nenhum template encontrado.'}</div>`;
+      return;
+    }
     cont.innerHTML = grupos.map(esp => `
       <div class="est-picker-grupo">
         <div class="est-picker-grupo-title">${esp}</div>
@@ -2823,6 +2841,7 @@ const EST = (() => {
                 <div class="est-picker-card-nome">${tpl.titulo}</div>
                 <div class="est-picker-card-tag">${tpl.modalidade}</div>
               </div>
+              <div class="est-picker-card-fav${favoritos.has(tpl.id)?' active':''}" onclick="event.stopPropagation();EST.toggleFavorito('${tpl.id}')">★</div>
               <div class="est-picker-card-check">✓</div>
             </div>
           `).join('')}
@@ -2832,6 +2851,21 @@ const EST = (() => {
   }
 
   function filtrarPicker(){ renderPicker(); }
+
+  function toggleFiltroFavoritos(){
+    apenasFavoritos = !apenasFavoritos;
+    renderPicker();
+  }
+
+  async function toggleFavorito(chave){
+    if (favoritos.has(chave)) favoritos.delete(chave); else favoritos.add(chave);
+    renderPicker();
+    if (!currentDoctor) return;
+    const lista = Array.from(favoritos);
+    const { error } = await supa.from('medicos').update({ templates_favoritos: lista }).eq('id', currentDoctor.id);
+    if (error) { toast('Erro ao salvar favorito: ' + error.message, 'err'); return; }
+    currentDoctor.templates_favoritos = lista;
+  }
 
   function aplicarVisibilidadeSecoes(){
     Object.keys(TEMPLATES).forEach(chave => {
@@ -3021,6 +3055,7 @@ const EST = (() => {
     loading(false);
     if(!ok){ iniciado=false; return; }
     selecionados = new Set(Object.keys(TEMPLATES));
+    favoritos = new Set((currentDoctor && currentDoctor.templates_favoritos) || []);
     const cont=document.getElementById('est-sections');
     const tpls = Object.values(TEMPLATES);
     cont.innerHTML = tpls.map(s=>`
@@ -3048,7 +3083,7 @@ const EST = (() => {
     renderPicker();
   }
 
-  return { init, sv, upd, setLado, toggleSec, aplicarNormal, limparSec, limparTudo, gerar, copiar, imprimir, TEXTOS_DEFAULT, filtrarPicker, toggleTemplateAtivo };
+  return { init, sv, upd, setLado, toggleSec, aplicarNormal, limparSec, limparTudo, gerar, copiar, imprimir, TEXTOS_DEFAULT, filtrarPicker, toggleTemplateAtivo, toggleFiltroFavoritos, toggleFavorito };
 })();
 
 async function initNovoLaudo() {
