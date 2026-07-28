@@ -1084,6 +1084,7 @@
         <div class="cfg-tab" onclick="showCfgTab('presets',this)"><i class="ti ti-user-check"></i> Presets</div>
         <div class="cfg-tab" onclick="showCfgTab('usuarios',this)"><i class="ti ti-users"></i> Usuários</div>
         <div class="cfg-tab" onclick="showCfgTab('estruturado',this)" id="cfg-tab-estruturado-btn" style="display:none"><i class="ti ti-table"></i> Laudo Estruturado</div>
+        <div class="cfg-tab" onclick="showCfgTab('meustemplates',this)" id="cfg-tab-meustemplates-btn" style="display:none"><i class="ti ti-apps"></i> Meus Templates</div>
       </div>
 
       <!-- PAINEL: Clínica -->
@@ -1228,6 +1229,52 @@
         <div style="display:flex;gap:10px;margin-top:8px">
           <button class="btn btn-primary" style="width:auto" onclick="salvarConfigEstruturado()">Salvar textos</button>
           <button class="btn btn-outline" style="width:auto" onclick="restaurarConfigEstruturado()">Restaurar padrão</button>
+        </div>
+      </div>
+
+      <!-- PAINEL: Meus Templates (Fase E — autoria self-service) -->
+      <div id="cfg-panel-meustemplates" class="cfg-panel">
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:20px;max-width:640px">
+          Crie exames novos pra biblioteca do Laudo Estruturado, reaproveitando um dos tipos de
+          campo já existentes. Só a sua clínica vê os templates criados aqui.
+        </p>
+
+        <div id="mt-lista" style="margin-bottom:20px"></div>
+
+        <div style="border-top:1px solid var(--border);padding-top:16px">
+          <div class="cfg-subhdr" id="mt-form-titulo">Novo template</div>
+
+          <div class="form-row cols-2">
+            <div class="field"><label>Nome do exame</label><input type="text" id="mt-nome" placeholder="Ex: Doppler Renal" oninput="EST.sugerirTituloTemplate()"></div>
+            <div class="field" style="max-width:100px"><label>Ícone</label><input type="text" id="mt-icone" placeholder="🩺" maxlength="4"></div>
+          </div>
+          <div class="form-row cols-2">
+            <div class="field"><label>Especialidade</label><input type="text" id="mt-especialidade" placeholder="Ex: Vascular"></div>
+            <div class="field"><label>Modalidade</label><input type="text" id="mt-modalidade" placeholder="Ex: DOPPLER"></div>
+          </div>
+          <div class="field"><label>Título no laudo impresso</label><input type="text" id="mt-titulo-impressao" placeholder="Gerado automaticamente a partir do nome"></div>
+          <div class="form-row cols-2">
+            <div class="field"><label>Rótulo lado direito</label><input type="text" id="mt-lado-d" placeholder="Ex: Rim Direito"></div>
+            <div class="field"><label>Rótulo lado esquerdo</label><input type="text" id="mt-lado-e" placeholder="Ex: Rim Esquerdo"></div>
+          </div>
+          <div class="field">
+            <label>Tipo de campo (o mesmo vale pra todos os segmentos deste exame)</label>
+            <select id="mt-tipo"></select>
+          </div>
+          <div id="mt-tipo-preview" style="font-size:12px;color:var(--text-muted);margin:-8px 0 16px"></div>
+
+          <div class="cfg-subhdr" style="margin-top:8px">Segmentos</div>
+          <div id="mt-segmentos-lista" style="margin-bottom:12px"></div>
+          <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+            <div class="field" style="flex:2;margin:0;min-width:200px"><label>Nome do segmento</label><input type="text" id="mt-novo-seg-nome" placeholder="Ex: Artéria Renal"></div>
+            <div class="field" style="flex:1;margin:0;min-width:140px"><label>Sub (opcional)</label><input type="text" id="mt-novo-seg-sub" placeholder="Ex: AR"></div>
+            <button type="button" class="btn btn-outline" style="flex-shrink:0;width:auto;height:40px;padding:0 20px;margin:0" onclick="EST.adicionarSegmentoTemplate()">+ Adicionar</button>
+          </div>
+
+          <div style="display:flex;gap:10px;margin-top:20px">
+            <button class="btn btn-primary" style="width:auto" onclick="EST.salvarMeuTemplate()" id="mt-salvar-btn">Criar template</button>
+            <button class="btn btn-outline" style="width:auto;display:none" id="mt-cancelar-btn" onclick="EST.cancelarEdicaoTemplate()">Cancelar edição</button>
+          </div>
         </div>
       </div>
     </div>
@@ -1490,6 +1537,8 @@ async function afterLogin(session) {
   if (tabEst) tabEst.style.display = (temEstruturado && medico.papel !== 'secretaria') ? '' : 'none';
   const cfgTabEst = document.getElementById('cfg-tab-estruturado-btn');
   if (cfgTabEst) cfgTabEst.style.display = (temEstruturado && medico.papel === 'admin') ? '' : 'none';
+  const cfgTabMeusTemplates = document.getElementById('cfg-tab-meustemplates-btn');
+  if (cfgTabMeusTemplates) cfgTabMeusTemplates.style.display = (temEstruturado && medico.papel === 'admin') ? '' : 'none';
 
   if (medico.papel === 'secretaria') {
     document.getElementById('sec-badge').textContent = medico.nome;
@@ -2139,6 +2188,7 @@ async function loadConfig() {
   cfgLogoData = currentClinica.login_logo || null;
   setIdModo(currentClinica.login_modo === 'logo' ? 'logo' : 'texto');
   carregarConfigEstruturado();
+  EST.carregarConfigMeusTemplates();
 
   // Carrega todas as seções em paralelo
   await Promise.all([
@@ -2702,18 +2752,27 @@ const EST = (() => {
 
   // Catálogo descritivo dos tipos de campo (Fase E — autoria self-service):
   // não roda nada, só documenta pra UI de criação de templates quais campos
-  // cada tipo tem e qual lista de opções (OPT) usar no preset "normal". Uma
+  // cada tipo tem, qual lista de opções (OPT) usar, e qual valor conta como
+  // "normal" em cada campo (usado no botão "Exame normal completo"). Uma
   // clínica só pode compor templates com os tipos daqui — um tipo genuíno
   // novo continua exigindo código (handler em TIPO_CELLS/TIPO_TEXTO).
+  //
+  // `standalone: true` = o handler em TIPO_CELLS usa <td> simples por campo,
+  // então o nº de colunas da tabela pode ser derivado automaticamente
+  // (2 + nº de campos) — seguro pra usar sozinho num template novo.
+  // `standalone: false` = o handler usa colspan pensado pro layout específico
+  // de 4 colunas do venoso (misturando com outro tipo de 2 campos); reusar
+  // sozinho quebraria o alinhamento da tabela, então esses ficam de fora da
+  // autoria self-service por ora (continuam existindo pro venoso).
   const TIPO_META = {
-    perv:             { label:'Status único (ex: perviedade)',            campos:[{nome:'status',  opcoes:'perv'}] },
-    refluxo_profundo: { label:'Refluxo único (ex: sistema profundo)',     campos:[{nome:'refluxo', opcoes:'refluxo'}] },
-    safena:           { label:'Refluxo + calibre (ex: safena)',           campos:[{nome:'refluxo', opcoes:'refluxo'},{nome:'calibre', opcoes:'calibre'}] },
-    perfurantes:      { label:'Status único (ex: perfurantes)',          campos:[{nome:'status',  opcoes:'perf'}] },
-    varicosidades:    { label:'Status único (ex: varicosidades)',        campos:[{nome:'status',  opcoes:'varic'}] },
-    arterial:         { label:'Calibre + parede + fluxo (artéria completa)', campos:[{nome:'calibre', opcoes:'art_cal'},{nome:'parede', opcoes:'art_parede'},{nome:'fluxo', opcoes:'art_fluxo'}] },
-    arterial_simples: { label:'Só calibre (artéria simples)',            campos:[{nome:'calibre', opcoes:'art_cal'}] },
-    carotida:         { label:'Placa ateromatosa (ex: carótida)',        campos:[{nome:'placa',   opcoes:'carotida_placa'}] },
+    perv:             { label:'Status único (ex: perviedade)',            standalone:false, campos:[{nome:'status',  opcoes:'perv',    normal:'Pérvias (normal)'}] },
+    refluxo_profundo: { label:'Refluxo único (ex: sistema profundo)',     standalone:false, campos:[{nome:'refluxo', opcoes:'refluxo', normal:'Sem refluxo'}] },
+    safena:           { label:'Refluxo + calibre (ex: safena)',           standalone:true,  campos:[{nome:'refluxo', opcoes:'refluxo', normal:'Sem refluxo'},{nome:'calibre', opcoes:'calibre', normal:'Normal'}] },
+    perfurantes:      { label:'Status único (ex: perfurantes)',          standalone:false, campos:[{nome:'status',  opcoes:'perf',    normal:'Não visualizadas'}] },
+    varicosidades:    { label:'Status único (ex: varicosidades)',        standalone:false, campos:[{nome:'status',  opcoes:'varic',   normal:'Há varicosidades conforme ectoscopia'}] },
+    arterial:         { label:'Calibre + parede + fluxo (artéria completa)', standalone:true, campos:[{nome:'calibre', opcoes:'art_cal', normal:'Normal'},{nome:'parede', opcoes:'art_parede', normal:'Regular, sem placas'},{nome:'fluxo', opcoes:'art_fluxo', normal:'Trifásico (normal)'}] },
+    arterial_simples: { label:'Só calibre (artéria simples)',            standalone:false, campos:[{nome:'calibre', opcoes:'art_cal', normal:'Normal'}] },
+    carotida:         { label:'Placa ateromatosa (ex: carótida)',        standalone:true,  campos:[{nome:'placa',   opcoes:'carotida_placa', normal:'Sem placas ateromatosas'}] },
   };
 
   // Handlers de "tipo" de segmento: cada um sabe quais campos tem e em quantas
@@ -3142,7 +3201,216 @@ const EST = (() => {
     renderPicker();
   }
 
-  return { init, sv, upd, setLado, toggleSec, aplicarNormal, limparSec, limparTudo, gerar, copiar, imprimir, TEXTOS_DEFAULT, filtrarPicker, toggleTemplateAtivo, toggleFiltroFavoritos, toggleFavorito };
+  // ══════════════════════════════════════════════════════
+  // AUTORIA SELF-SERVICE (Fase E) — a clínica compõe um template novo
+  // escolhendo UM tipo de campo (dos "standalone" em TIPO_META) e dando
+  // nome aos segmentos. Colunas, normal e blocosTexto são derivados
+  // automaticamente do tipo escolhido — a clínica não mexe nisso direto.
+  // ══════════════════════════════════════════════════════
+  let mtSegmentosDraft = [];
+  let mtEditandoId = null;
+
+  function mtSlug(s){
+    return s.normalize('NFD').replace(/[̀-ͯ]/g,'').trim().toLowerCase().replace(/[^a-z0-9\s]/g,'').trim().replace(/\s+/g,'_');
+  }
+
+  function tiposStandalone(){
+    return Object.entries(TIPO_META).filter(([,m]) => m.standalone);
+  }
+
+  async function carregarConfigMeusTemplates(){
+    const el = document.getElementById('cfg-tab-meustemplates-btn');
+    if (!el || el.style.display === 'none') return;
+
+    const sel = document.getElementById('mt-tipo');
+    if (sel && !sel.dataset.preenchido) {
+      sel.innerHTML = tiposStandalone().map(([chave,m]) => `<option value="${chave}">${m.label}</option>`).join('');
+      sel.dataset.preenchido = '1';
+      sel.onchange = atualizarPreviewTipoTemplate;
+      atualizarPreviewTipoTemplate();
+    }
+
+    const { data, error } = await supa.from('est_templates')
+      .select('id,chave,nome,especialidade,modalidade,icone,ativo')
+      .eq('clinica_id', currentClinica.id).order('nome');
+    const cont = document.getElementById('mt-lista');
+    if (error) { cont.innerHTML = '<p style="color:var(--text-muted);font-size:13px">Erro ao carregar seus templates.</p>'; return; }
+    if (!data.length) { cont.innerHTML = '<p style="color:var(--text-muted);font-size:13px">Nenhum template próprio ainda.</p>'; return; }
+    cont.innerHTML = data.map(t => `
+      <div class="cfg-user-row">
+        <div class="cfg-user-info">
+          <div class="cfg-user-nome">${t.icone||''} ${t.nome}</div>
+          <div class="cfg-user-meta">${t.especialidade} · ${t.modalidade}</div>
+        </div>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+          <input type="checkbox" ${t.ativo?'checked':''} onchange="EST.toggleAtivoMeuTemplate('${t.id}',this.checked)">
+          Ativo
+        </label>
+        <button class="btn btn-outline" style="padding:4px 10px;font-size:12px" onclick="EST.editarMeuTemplate('${t.id}')">Editar</button>
+        <button class="btn btn-danger" style="padding:4px 10px;font-size:12px" onclick="EST.apagarMeuTemplate('${t.id}')">🗑</button>
+      </div>
+    `).join('');
+  }
+
+  function atualizarPreviewTipoTemplate(){
+    const tipo = document.getElementById('mt-tipo').value;
+    const meta = TIPO_META[tipo];
+    const prev = document.getElementById('mt-tipo-preview');
+    if (meta && prev) prev.textContent = 'Campos deste tipo: ' + meta.campos.map(c=>c.nome).join(', ');
+  }
+
+  function sugerirTituloTemplate(){
+    const nome = document.getElementById('mt-nome').value;
+    document.getElementById('mt-titulo-impressao').value = nome.toUpperCase();
+  }
+
+  function renderSegmentosDraft(){
+    const cont = document.getElementById('mt-segmentos-lista');
+    if (!mtSegmentosDraft.length) { cont.innerHTML = '<p style="color:var(--text-muted);font-size:12px">Nenhum segmento adicionado ainda.</p>'; return; }
+    cont.innerHTML = mtSegmentosDraft.map((s,i) => `
+      <div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px">
+        <div style="flex:1">
+          <div style="font-size:12px;font-weight:700">${s.nome}</div>
+          ${s.sub?`<div style="font-size:10px;color:var(--text-muted)">${s.sub}</div>`:''}
+        </div>
+        <button type="button" class="btn btn-outline" style="width:auto;padding:3px 8px;font-size:11px" onclick="EST.moverSegmentoTemplate(${i},-1)" ${i===0?'disabled':''}>↑</button>
+        <button type="button" class="btn btn-outline" style="width:auto;padding:3px 8px;font-size:11px" onclick="EST.moverSegmentoTemplate(${i},1)" ${i===mtSegmentosDraft.length-1?'disabled':''}>↓</button>
+        <button type="button" class="btn btn-danger" style="width:auto;padding:3px 8px;font-size:11px" onclick="EST.removerSegmentoTemplate(${i})">🗑</button>
+      </div>
+    `).join('');
+  }
+
+  function adicionarSegmentoTemplate(){
+    const nomeEl = document.getElementById('mt-novo-seg-nome');
+    const subEl = document.getElementById('mt-novo-seg-sub');
+    const nome = nomeEl.value.trim();
+    if (!nome) { toast('Dê um nome ao segmento.', 'err'); return; }
+    let id = mtSlug(nome), sufixo = 2;
+    while (mtSegmentosDraft.some(s=>s.id===id)) { id = mtSlug(nome)+'_'+sufixo; sufixo++; }
+    mtSegmentosDraft.push({ id, nome, sub: subEl.value.trim() });
+    nomeEl.value = ''; subEl.value = '';
+    renderSegmentosDraft();
+  }
+
+  function removerSegmentoTemplate(i){ mtSegmentosDraft.splice(i,1); renderSegmentosDraft(); }
+  function moverSegmentoTemplate(i,dir){
+    const j = i+dir;
+    if (j<0 || j>=mtSegmentosDraft.length) return;
+    [mtSegmentosDraft[i], mtSegmentosDraft[j]] = [mtSegmentosDraft[j], mtSegmentosDraft[i]];
+    renderSegmentosDraft();
+  }
+
+  function limparFormMeuTemplate(){
+    ['mt-nome','mt-icone','mt-especialidade','mt-modalidade','mt-titulo-impressao','mt-lado-d','mt-lado-e'].forEach(id=>{
+      const el = document.getElementById(id); if (el) el.value = '';
+    });
+    mtSegmentosDraft = [];
+    mtEditandoId = null;
+    renderSegmentosDraft();
+    document.getElementById('mt-form-titulo').textContent = 'Novo template';
+    document.getElementById('mt-salvar-btn').textContent = 'Criar template';
+    document.getElementById('mt-cancelar-btn').style.display = 'none';
+  }
+
+  function cancelarEdicaoTemplate(){ limparFormMeuTemplate(); }
+
+  async function salvarMeuTemplate(){
+    const nome = document.getElementById('mt-nome').value.trim();
+    const icone = document.getElementById('mt-icone').value.trim();
+    const especialidade = document.getElementById('mt-especialidade').value.trim();
+    const modalidade = document.getElementById('mt-modalidade').value.trim();
+    const tituloImpressao = document.getElementById('mt-titulo-impressao').value.trim() || nome.toUpperCase();
+    const ladoD = document.getElementById('mt-lado-d').value.trim() || 'Lado Direito';
+    const ladoE = document.getElementById('mt-lado-e').value.trim() || 'Lado Esquerdo';
+    const tipo = document.getElementById('mt-tipo').value;
+
+    if (!nome || !especialidade || !modalidade) { toast('Preencha nome, especialidade e modalidade.', 'err'); return; }
+    if (!mtSegmentosDraft.length) { toast('Adicione pelo menos um segmento.', 'err'); return; }
+
+    const meta = TIPO_META[tipo];
+    const colunas = [{label:'Segmento'}, ...meta.campos.map(c=>({label:c.nome.charAt(0).toUpperCase()+c.nome.slice(1)})), {label:'Observação'}];
+    const segmentos = mtSegmentosDraft.map(s => ({ id:s.id, nome:s.nome, sub:s.sub||'', tipo, nomeCompleto:s.nome }));
+    const normal = {};
+    mtSegmentosDraft.forEach(s => {
+      const obj = {}; meta.campos.forEach(c => { obj[c.nome] = c.normal; }); normal[s.id] = obj;
+    });
+    const blocosTexto = mtSegmentosDraft.map(s => ({ segmento: s.id }));
+
+    const payload = {
+      nome, especialidade, modalidade, icone: icone || '📋',
+      titulo_impressao: tituloImpressao,
+      lado_nomes: { D: ladoD, E: ladoE },
+      aberto_por_padrao: false,
+      obs_placeholder: 'obs',
+      colunas, segmentos, normal, blocos_texto: blocosTexto,
+      montar_unidades: 'padrao',
+    };
+
+    loading(true, 'Salvando template...');
+    let error;
+    if (mtEditandoId) {
+      ({ error } = await supa.from('est_templates').update(payload).eq('id', mtEditandoId));
+    } else {
+      const chave = currentClinica.slug + '_' + mtSlug(nome);
+      ({ error } = await supa.from('est_templates').insert({ ...payload, chave, clinica_id: currentClinica.id, ordem: 100 }));
+    }
+    loading(false);
+    if (error) { toast('Erro ao salvar: ' + error.message, 'err'); return; }
+
+    toast(mtEditandoId ? 'Template atualizado.' : 'Template criado.', 'ok');
+    limparFormMeuTemplate();
+    await carregarConfigMeusTemplates();
+    iniciado = false; // força recarregar TEMPLATES da próxima vez que abrir a aba Estruturado
+  }
+
+  async function editarMeuTemplate(id){
+    const { data: t, error } = await supa.from('est_templates').select('*').eq('id', id).single();
+    if (error || !t) { toast('Erro ao carregar template.', 'err'); return; }
+
+    mtEditandoId = id;
+    document.getElementById('mt-nome').value = t.nome;
+    document.getElementById('mt-icone').value = t.icone || '';
+    document.getElementById('mt-especialidade').value = t.especialidade;
+    document.getElementById('mt-modalidade').value = t.modalidade;
+    document.getElementById('mt-titulo-impressao').value = t.titulo_impressao;
+    document.getElementById('mt-lado-d').value = (t.lado_nomes||{}).D || '';
+    document.getElementById('mt-lado-e').value = (t.lado_nomes||{}).E || '';
+    const primeiroTipo = (t.segmentos||[])[0]?.tipo;
+    if (primeiroTipo) document.getElementById('mt-tipo').value = primeiroTipo;
+    atualizarPreviewTipoTemplate();
+    mtSegmentosDraft = (t.segmentos||[]).map(s => ({ id:s.id, nome:s.nome, sub:s.sub||'' }));
+    renderSegmentosDraft();
+
+    document.getElementById('mt-form-titulo').textContent = 'Editando: ' + t.nome;
+    document.getElementById('mt-salvar-btn').textContent = 'Salvar alterações';
+    document.getElementById('mt-cancelar-btn').style.display = '';
+    document.getElementById('cfg-panel-meustemplates').scrollIntoView({behavior:'smooth'});
+  }
+
+  async function toggleAtivoMeuTemplate(id, ativo){
+    const { error } = await supa.from('est_templates').update({ ativo }).eq('id', id);
+    if (error) { toast('Erro: ' + error.message, 'err'); return; }
+    iniciado = false;
+  }
+
+  async function apagarMeuTemplate(id){
+    if (!confirm('Apagar este template? Essa ação não pode ser desfeita.')) return;
+    loading(true, 'Apagando...');
+    const { error } = await supa.from('est_templates').delete().eq('id', id);
+    loading(false);
+    if (error) { toast('Erro ao apagar: ' + error.message, 'err'); return; }
+    toast('Template apagado.', 'ok');
+    await carregarConfigMeusTemplates();
+    iniciado = false;
+  }
+
+  return {
+    init, sv, upd, setLado, toggleSec, aplicarNormal, limparSec, limparTudo, gerar, copiar, imprimir,
+    TEXTOS_DEFAULT, filtrarPicker, toggleTemplateAtivo, toggleFiltroFavoritos, toggleFavorito, TIPO_META,
+    carregarConfigMeusTemplates, sugerirTituloTemplate, adicionarSegmentoTemplate, removerSegmentoTemplate,
+    moverSegmentoTemplate, salvarMeuTemplate, editarMeuTemplate, cancelarEdicaoTemplate,
+    toggleAtivoMeuTemplate, apagarMeuTemplate,
+  };
 })();
 
 async function initNovoLaudo() {
