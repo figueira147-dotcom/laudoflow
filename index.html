@@ -401,6 +401,22 @@
   .est-unit-body:focus { background:var(--off-white); box-shadow:0 0 0 2px var(--green-pale); }
   .est-prev-hint { font-size:11px; color:var(--text-muted); padding:10px 22px 0; }
   @media(max-width:600px){ .est-table th:nth-child(3), .est-table td:nth-child(3){ display:none; } }
+  /* ── LAUDO ESTRUTURADO — biblioteca de templates (Fase B) ── */
+  .est-picker-search { width:100%; font-size:13px; padding:10px 14px; border:1.5px solid var(--border-dark); border-radius:9px; background:var(--white); color:var(--text); font-family:var(--font-ui); outline:none; transition:border-color .15s; }
+  .est-picker-search:focus { border-color:var(--green); }
+  .est-picker-grupo { margin-bottom:18px; }
+  .est-picker-grupo-title { font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.8px; color:var(--text-muted); margin-bottom:10px; padding-bottom:6px; border-bottom:1px solid var(--border); }
+  .est-picker-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:10px; }
+  .est-picker-card { border:1.5px solid var(--border); border-radius:var(--radius); padding:14px; cursor:pointer; background:var(--white); transition:all .15s; display:flex; align-items:center; gap:10px; }
+  .est-picker-card:hover { border-color:var(--green); }
+  .est-picker-card.selected { border-color:var(--green); background:var(--green-pale); }
+  .est-picker-card-ico { width:34px; height:34px; border-radius:9px; background:linear-gradient(135deg,var(--green),var(--green-mid)); color:#fff; display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0; }
+  .est-picker-card-body { flex:1; min-width:0; }
+  .est-picker-card-nome { font-size:12.5px; font-weight:700; color:var(--text); line-height:1.3; }
+  .est-picker-card-tag { font-size:10px; color:var(--text-muted); margin-top:2px; }
+  .est-picker-card-check { font-size:16px; font-weight:800; color:var(--green); flex-shrink:0; visibility:hidden; }
+  .est-picker-card.selected .est-picker-card-check { visibility:visible; }
+  .est-picker-empty { color:var(--text-muted); font-size:13px; padding:16px 0; text-align:center; }
 
   /* ── PORTAL PACIENTE ── */
   #screen-patient { flex-direction: column; min-height: 100vh; }
@@ -934,7 +950,12 @@
         <div class="field"><label>Convênio</label><input id="est-convenio" placeholder="Unimed, Bradesco..."></div>
       </div>
 
-      <div id="est-sections"></div>
+      <div id="est-picker">
+        <input type="text" id="est-busca" class="est-picker-search" placeholder="🔍 Buscar template..." oninput="EST.filtrarPicker()">
+        <div id="est-picker-grupos" style="margin-top:14px"></div>
+      </div>
+
+      <div id="est-sections" style="margin-top:18px"></div>
 
       <div class="est-actions">
         <button class="btn btn-outline" style="width:auto" onclick="EST.limparTudo()"><i class="ti ti-refresh"></i> Limpar tudo</button>
@@ -2766,9 +2787,63 @@ const EST = (() => {
   }
   function limparSec(sec){ estado[sec].dados={}; renderSec(sec); }
   function limparTudo(){
-    estado.venoso.dados={}; estado.arterial.dados={}; renderSec('venoso'); renderSec('arterial');
+    Object.keys(TEMPLATES).forEach(sec=>{ estado[sec].dados={}; renderSec(sec); });
     ultimasPartes=[]; document.getElementById('est-preview').innerHTML='';
     document.getElementById('est-preview-wrap').style.display='none';
+  }
+
+  // ══════════════════════════════════════════════════════
+  // BIBLIOTECA DE TEMPLATES (Fase B5a) — grade por especialidade + busca.
+  // "selecionados" funciona como um carrinho: os templates marcados aparecem
+  // na área de preenchimento abaixo, permitindo combinar mais de um no mesmo
+  // laudo (ex.: venoso + arterial no mesmo exame vascular). Todos começam
+  // selecionados, preservando o comportamento de sempre-visível de antes.
+  // ══════════════════════════════════════════════════════
+  let selecionados = new Set();
+
+  function renderPicker(){
+    const busca = (document.getElementById('est-busca')?.value || '').toLowerCase().trim();
+    const porEspecialidade = {};
+    Object.values(TEMPLATES).forEach(tpl => {
+      const alvo = (tpl.titulo+' '+tpl.especialidade+' '+tpl.modalidade).toLowerCase();
+      if (busca && !alvo.includes(busca)) return;
+      (porEspecialidade[tpl.especialidade] = porEspecialidade[tpl.especialidade] || []).push(tpl);
+    });
+    const cont = document.getElementById('est-picker-grupos');
+    const grupos = Object.keys(porEspecialidade);
+    if (!grupos.length) { cont.innerHTML = '<div class="est-picker-empty">Nenhum template encontrado.</div>'; return; }
+    cont.innerHTML = grupos.map(esp => `
+      <div class="est-picker-grupo">
+        <div class="est-picker-grupo-title">${esp}</div>
+        <div class="est-picker-grid">
+          ${porEspecialidade[esp].map(tpl => `
+            <div class="est-picker-card${selecionados.has(tpl.id)?' selected':''}" onclick="EST.toggleTemplateAtivo('${tpl.id}')">
+              <div class="est-picker-card-ico">${tpl.icone||'📋'}</div>
+              <div class="est-picker-card-body">
+                <div class="est-picker-card-nome">${tpl.titulo}</div>
+                <div class="est-picker-card-tag">${tpl.modalidade}</div>
+              </div>
+              <div class="est-picker-card-check">✓</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function filtrarPicker(){ renderPicker(); }
+
+  function aplicarVisibilidadeSecoes(){
+    Object.keys(TEMPLATES).forEach(chave => {
+      const el = document.querySelector(`.est-sec[data-chave="${chave}"]`);
+      if (el) el.style.display = selecionados.has(chave) ? '' : 'none';
+    });
+  }
+
+  function toggleTemplateAtivo(chave){
+    if (selecionados.has(chave)) selecionados.delete(chave); else selecionados.add(chave);
+    renderPicker();
+    aplicarVisibilidadeSecoes();
   }
 
   // ── TEXTOS-MODELO (editáveis pela clínica em Configurações → Laudo Estruturado) ──
@@ -2945,10 +3020,11 @@ const EST = (() => {
     const ok = await carregarTemplates();
     loading(false);
     if(!ok){ iniciado=false; return; }
+    selecionados = new Set(Object.keys(TEMPLATES));
     const cont=document.getElementById('est-sections');
     const tpls = Object.values(TEMPLATES);
     cont.innerHTML = tpls.map(s=>`
-      <div class="est-sec">
+      <div class="est-sec" data-chave="${s.id}">
         <div class="est-sec-hdr" onclick="EST.toggleSec('${s.id}')">
           <div class="est-sec-ico">${s.icone}</div>
           <div class="est-sec-title">${s.titulo}</div>
@@ -2969,9 +3045,10 @@ const EST = (() => {
       </div>`).join('');
     const dt=document.getElementById('est-data'); if(dt&&!dt.value) dt.value=new Date().toISOString().split('T')[0];
     tpls.forEach(s=>renderSec(s.id));
+    renderPicker();
   }
 
-  return { init, sv, upd, setLado, toggleSec, aplicarNormal, limparSec, limparTudo, gerar, copiar, imprimir, TEXTOS_DEFAULT };
+  return { init, sv, upd, setLado, toggleSec, aplicarNormal, limparSec, limparTudo, gerar, copiar, imprimir, TEXTOS_DEFAULT, filtrarPicker, toggleTemplateAtivo };
 })();
 
 async function initNovoLaudo() {
