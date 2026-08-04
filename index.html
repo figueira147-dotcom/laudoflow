@@ -456,27 +456,27 @@
     body { background: #fff !important; margin: 0 !important; padding: 0 !important; }
     #print-container { display: block !important; }
     @page { size: A4 portrait; margin: 0; }
-    .print-page { width: 210mm; height: 297mm; box-sizing: border-box; padding: 12mm 20mm 34mm 20mm; font-family: 'Garamond','Times New Roman',Times,serif; color: #000; page-break-after: always; break-after: page; background: #fff; position: relative; overflow: hidden; }
+    .print-page { width: 210mm; min-height: 297mm; box-sizing: border-box; padding: 12mm 20mm 34mm 20mm; font-family: 'Garamond','Times New Roman',Times,serif; color: #000; page-break-after: always; break-after: page; background: #fff; position: relative; }
     .print-page:last-child { page-break-after: avoid; break-after: avoid; }
     .print-body { display: block; position: relative; z-index: 1; }
     .pdf-watermark { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); max-width: 65%; max-height: 65%; opacity: .12; z-index: 0; }
 
     /* ── CABEÇALHO ── */
-    .pdf-hd { text-align: center; margin-bottom: 14px; }
+    .pdf-hd { text-align: center; margin-bottom: 6px; }
     .pdf-hd-title { font-family: 'Times New Roman',Times,serif; font-size: 16pt; font-weight: bold; line-height: 1.15; }
     .pdf-hd-sub { font-family: 'Times New Roman',Times,serif; font-size: 11pt; line-height: 1.3; }
 
     /* ── PACIENTE (caixa, formato antigo) ── */
-    .print-patient-box { border: 1.5px solid #000; border-radius: 4px; padding: 7px 12px; margin-bottom: 14px; font-family: 'Calibri','Segoe UI',Arial,sans-serif; }
+    .print-patient-box { border: 1.5px solid #000; border-radius: 4px; padding: 5px 12px; margin-bottom: 6px; font-family: 'Calibri','Segoe UI',Arial,sans-serif; }
     .ppb-row { display: flex; }
     .pp-cell { padding: 2px 6px 2px 0; min-width: 0; }
     .pp-label { font-size: 7.5pt; color: #555; text-transform: uppercase; letter-spacing: 0.5px; }
     .pp-value { font-weight: bold; font-size: 10pt; word-wrap: break-word; }
 
     /* ── SEÇÃO ── */
-    .pdf-sec-title { font-family: 'Cambria','Times New Roman',serif; font-size: 12pt; font-weight: bold; text-decoration: underline; text-transform: uppercase; margin: 4px 0 12px; letter-spacing: .2px; }
-    .pdf-body { font-family: 'Garamond','Times New Roman',Times,serif; font-size: 13pt; line-height: 1.5; text-align: justify; word-break: break-word; }
-    .pdf-body p { margin: 0 0 11px; }
+    .pdf-sec-title { font-family: 'Cambria','Times New Roman',serif; font-size: 11.5pt; font-weight: bold; text-decoration: underline; text-transform: uppercase; margin: 2px 0 6px; letter-spacing: .2px; }
+    .pdf-body { font-family: 'Garamond','Times New Roman',Times,serif; font-size: 11.5pt; line-height: 1.24; text-align: justify; word-break: break-word; }
+    .pdf-body p { margin: 0 0 5px; page-break-inside: avoid; break-inside: avoid; }
     .pdf-body b, .pdf-body strong { font-weight: bold; }
     .pdf-body span:not([style*="font-weight"]) { font-weight: normal; }
     .pdf-body [style*="line-height"] { line-height: inherit; }
@@ -918,7 +918,7 @@
       <i class="ti ti-hourglass"></i> Pendentes
       <span class="tab-badge" id="pending-count">0</span>
     </div>
-    <div class="tab" onclick="showTab('novo', this)">
+    <div class="tab" onclick="editingLaudoId = null; showTab('novo', this)">
       <i class="ti ti-file-plus"></i> Novo Laudo
     </div>
     <div class="tab" onclick="showTab('concluidos', this)">
@@ -1018,8 +1018,13 @@
         <span id="autosave-ind" class="autosave-ind"></span>
       </div>
       <div class="form-row cols-2">
-        <div class="field"><label>Nome</label><input type="text" id="doc-pac-nome" readonly style="background:var(--off-white)"></div>
-        <div class="field"><label>CPF</label><input type="text" id="doc-pac-cpf" readonly style="background:var(--off-white)"></div>
+        <div class="field"><label>Nome completo *</label><input type="text" id="doc-pac-nome" placeholder="Nome do paciente"></div>
+        <div class="field"><label>CPF</label><input type="text" id="doc-pac-cpf" placeholder="000.000.000-00"></div>
+      </div>
+      <div class="form-row cols-3">
+        <div class="field"><label>Data de nascimento</label><input type="date" id="doc-pac-nasc"></div>
+        <div class="field"><label>WhatsApp</label><input type="text" id="doc-pac-tel" placeholder="(00) 00000-0000"></div>
+        <div class="field"><label>E-mail</label><input type="email" id="doc-pac-email" placeholder="paciente@email.com"></div>
       </div>
       <div class="form-row cols-3">
         <div class="field"><label>Data do exame</label><input type="date" id="doc-data-exame"></div>
@@ -1059,10 +1064,10 @@
     <!-- Ações -->
     <div class="card" id="laudo-acoes">
       <div style="display:flex;gap:10px;flex-wrap:wrap">
-        <button class="btn btn-primary" onclick="salvarLaudo(false)" style="flex:1;min-width:140px">
+        <button class="btn btn-primary" id="btn-salvar-rascunho" onclick="salvarLaudo(false)" style="flex:1;min-width:140px">
           <i class="ti ti-device-floppy"></i> Salvar Rascunho
         </button>
-        <button class="btn" onclick="salvarLaudo(true)" style="flex:1;min-width:140px;background:var(--green-mid);color:#fff">
+        <button class="btn" id="btn-concluir-laudo" onclick="salvarLaudo(true)" style="flex:1;min-width:140px;background:var(--green-mid);color:#fff">
           <i class="ti ti-check"></i> Concluir Laudo
         </button>
         <button class="btn" onclick="printLaudo()" style="flex:1;min-width:140px;background:#154d87;color:#fff">
@@ -1149,6 +1154,18 @@
           <img id="cfg-preview-marca-dagua" alt="" style="display:none;max-height:60px;max-width:200px;object-fit:contain;opacity:.5">
           <button type="button" class="btn btn-outline" id="cfg-marca-dagua-remove" style="width:auto;padding:8px 14px;font-size:12px;display:none" onclick="removerMarcaDagua()"><i class="ti ti-trash"></i> Remover marca d'água</button>
         </div>
+
+        <div class="cfg-subhdr" style="margin-top:26px">Papel timbrado</div>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px;max-width:640px">Ative se você imprime em folha física que já tem cabeçalho e rodapé pré-impressos. O laudo deixa de desenhar seu próprio cabeçalho/rodapé e reserva as margens abaixo em branco pra não escrever por cima da arte da folha.</p>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-bottom:14px">
+          <input type="checkbox" id="cfg-papel-timbrado" onchange="document.getElementById('cfg-margens-timbrado').style.display = this.checked ? 'grid' : 'none'">
+          Uso papel timbrado (pular cabeçalho/rodapé do sistema)
+        </label>
+        <div class="form-row cols-2" id="cfg-margens-timbrado" style="max-width:420px;display:none">
+          <div class="field"><label>Margem superior (mm)</label><input type="number" id="cfg-margem-topo" min="0" step="1" placeholder="45"></div>
+          <div class="field"><label>Margem inferior (mm)</label><input type="number" id="cfg-margem-rodape" min="0" step="1" placeholder="70"></div>
+        </div>
+
         <button class="btn btn-primary" onclick="salvarConfigClinica()" style="width:auto;padding:12px 28px;margin-top:10px">Salvar alterações</button>
       </div>
 
@@ -2220,6 +2237,11 @@ async function loadConfig() {
   document.getElementById('cfg-nome').value      = currentClinica.nome || '';
   document.getElementById('cfg-cabecalho').value = currentClinica.cabecalho_pdf || '';
   document.getElementById('cfg-rodape').value    = currentClinica.rodape_pdf || '';
+  const pcfgLoad = currentClinica.pdf_config || {};
+  document.getElementById('cfg-papel-timbrado').checked = !!pcfgLoad.papel_timbrado;
+  document.getElementById('cfg-margem-topo').value   = pcfgLoad.margem_topo_mm   ?? '';
+  document.getElementById('cfg-margem-rodape').value = pcfgLoad.margem_rodape_mm ?? '';
+  document.getElementById('cfg-margens-timbrado').style.display = pcfgLoad.papel_timbrado ? 'grid' : 'none';
   document.getElementById('cfg-fonte').value     = currentClinica.login_fonte || "'Plus Jakarta Sans', sans-serif";
   document.getElementById('cfg-cor').value       = currentClinica.cor_primaria || '#1a2d6e';
   cfgLogoData = currentClinica.login_logo || null;
@@ -2354,14 +2376,29 @@ async function salvarConfigClinica() {
   const cor       = document.getElementById('cfg-cor').value;
   const modo      = cfgIdModo;
 
+  const papelTimbrado = document.getElementById('cfg-papel-timbrado').checked;
+  const margemTopo    = document.getElementById('cfg-margem-topo').value;
+  const margemRodape  = document.getElementById('cfg-margem-rodape').value;
+
   if (!nome) { toast('Informe o nome da clínica.', 'err'); return; }
   if (modo === 'logo' && !cfgLogoData) { toast('Envie um logo ou use o modo texto.', 'err'); return; }
+
+  const pdfConfig = { ...(currentClinica.pdf_config || {}) };
+  pdfConfig.papel_timbrado = papelTimbrado;
+  if (papelTimbrado) {
+    pdfConfig.margem_topo_mm   = margemTopo   !== '' ? Number(margemTopo)   : 45;
+    pdfConfig.margem_rodape_mm = margemRodape !== '' ? Number(margemRodape) : 70;
+  } else {
+    delete pdfConfig.margem_topo_mm;
+    delete pdfConfig.margem_rodape_mm;
+  }
 
   loading(true, 'Salvando...');
   const { error } = await supa.from('clinicas').update({
     nome, cabecalho_pdf: cabecalho, rodape_pdf: rodape,
     login_modo: modo, login_fonte: fonte, login_logo: cfgLogoData || null,
-    cor_primaria: cor, marca_dagua: cfgMarcaDaguaData || null
+    cor_primaria: cor, marca_dagua: cfgMarcaDaguaData || null,
+    pdf_config: pdfConfig
   }).eq('id', currentClinica.id);
   loading(false);
 
@@ -2372,6 +2409,7 @@ async function salvarConfigClinica() {
   currentClinica.rodape_pdf    = rodape;
   currentClinica.login_modo    = modo;
   currentClinica.login_fonte   = fonte;
+  currentClinica.pdf_config    = pdfConfig;
   currentClinica.login_logo    = cfgLogoData || null;
   currentClinica.cor_primaria  = cor;
   currentClinica.marca_dagua   = cfgMarcaDaguaData || null;
@@ -2439,7 +2477,7 @@ async function loadConfigSecoes() {
   const c = document.getElementById('cfg-secoes-lista');
   if (!secoesClinica.length) { c.innerHTML = '<p style="color:var(--text-muted);font-size:13px">Nenhuma seção cadastrada.</p>'; return; }
 
-  c.innerHTML = secoesClinica.map((s,_i) => `
+  const secaoRowHtml = s => `
     <div class="cfg-secao-row" style="flex-direction:column;align-items:stretch;gap:8px">
       <div style="display:flex;align-items:center;gap:10px">
         <div class="cfg-secao-label">
@@ -2457,7 +2495,22 @@ async function loadConfigSecoes() {
         <button class="btn btn-outline" style="margin-top:6px;padding:5px 12px;font-size:12px" onclick="salvarPadraoSecao('${s.id}')">Salvar padrão</button>
       </div>
     </div>
-  `).join('');
+  `;
+
+  // Agrupa visualmente por tipo de exame (Doppler vs USG comum), pelo texto do label —
+  // não altera a coluna `ordem` (que segue controlando a impressão e outras telas).
+  const isDoppler = s => /doppler/i.test(s.label);
+  const grupos = [
+    { titulo: 'Ultrassonografia', itens: secoesClinica.filter(s => !isDoppler(s)) },
+    { titulo: 'Ecocolor Doppler', itens: secoesClinica.filter(s => isDoppler(s)) }
+  ].filter(g => g.itens.length);
+
+  c.innerHTML = grupos.length <= 1
+    ? secoesClinica.map(secaoRowHtml).join('')
+    : grupos.map(g => `
+        <div class="saved-group-hdr">${g.titulo}</div>
+        ${g.itens.map(secaoRowHtml).join('')}
+      `).join('');
 
   // Inicializa Quill em cada seção após HTML no DOM
   secoesClinica.forEach(s => {
@@ -3253,7 +3306,16 @@ const EST = (() => {
     const pcfg = clinica.pdf_config || {};
     const titulo = pcfg.titulo || clinica.cabecalho_pdf || clinica.nome || 'LAUDAR';
 
-    const HEADER = `<div class="pdf-hd">
+    const papelTimbrado = !!pcfg.papel_timbrado;
+    const margemTopo    = pcfg.margem_topo_mm   != null ? pcfg.margem_topo_mm   : 12;
+    const margemRodape  = pcfg.margem_rodape_mm != null ? pcfg.margem_rodape_mm : 34;
+    const padTop     = papelTimbrado ? margemTopo : 12;
+    const padBottom  = papelTimbrado ? (margemRodape + 14) : 34;
+    const signBottom = papelTimbrado ? (margemRodape + 6) : 22;
+    const discBottom = papelTimbrado ? margemRodape : 17;
+    const PAGE_STYLE = `padding:${padTop}mm 20mm ${padBottom}mm 20mm`;
+
+    const HEADER = papelTimbrado ? '' : `<div class="pdf-hd">
       <div class="pdf-hd-title">${esc(titulo)}</div>
       ${pcfg.subtitulo ? `<div class="pdf-hd-sub">${esc(pcfg.subtitulo)}</div>` : ''}
       ${pcfg.crm ? `<div class="pdf-hd-sub">${esc(pcfg.crm)}</div>` : ''}
@@ -3266,25 +3328,27 @@ const EST = (() => {
     </div></div>`;
     const signNome = (currentDoctor?.nome || '').toUpperCase();
     const signCrm  = currentDoctor?.crm ? `CRM:${esc(currentDoctor.crm)}` : '';
-    const SIGN = `<div class="pdf-sign">
+    const SIGN = `<div class="pdf-sign" style="bottom:${signBottom}mm">
       <div class="pdf-sign-l">Laudado por:</div>
       <div class="pdf-sign-dr">${esc(signNome)}${signCrm?' '+signCrm:''}</div>
       <div class="pdf-sign-crm">${esc(pcfg.assinatura_texto || 'Este laudo foi assinado eletronicamente em '+dataFmt+'.')}</div>
     </div>`;
-    const DISC = `<div class="pdf-disc">${esc(pcfg.disclaimer || 'Atenção: Somente seu médico possui o conjunto de informações necessárias para qualquer conclusão diagnóstica ou indicação terapêutica sobre os resultados.')}</div>`;
-    let FOOT;
-    if (pcfg.endereco || pcfg.email || pcfg.tel1 || pcfg.tel2) {
-      const linha1 = `${pcfg.endereco_bold1?`<b>${esc(pcfg.endereco_bold1)}</b>`:''}${esc(pcfg.endereco||'')}${pcfg.endereco_bold2?`<b>${esc(pcfg.endereco_bold2)}</b>`:''}`;
-      FOOT = `<div class="pdf-foot">
-        <div class="pdf-foot-row"><span>${linha1}</span><span>${esc(pcfg.tel1||'')}</span></div>
-        <div class="pdf-foot-row"><span>${esc(pcfg.email||'')}</span><span>${esc(pcfg.tel2||'')}</span></div>
-      </div>`;
-    } else {
-      FOOT = `<div class="pdf-foot"><div class="pdf-foot-row"><span>${esc(clinica.rodape_pdf||'')}</span></div></div>`;
+    const DISC = `<div class="pdf-disc" style="bottom:${discBottom}mm">${esc(pcfg.disclaimer || 'Atenção: Somente seu médico possui o conjunto de informações necessárias para qualquer conclusão diagnóstica ou indicação terapêutica sobre os resultados.')}</div>`;
+    let FOOT = '';
+    if (!papelTimbrado) {
+      if (pcfg.endereco || pcfg.email || pcfg.tel1 || pcfg.tel2) {
+        const linha1 = `${pcfg.endereco_bold1?`<b>${esc(pcfg.endereco_bold1)}</b>`:''}${esc(pcfg.endereco||'')}${pcfg.endereco_bold2?`<b>${esc(pcfg.endereco_bold2)}</b>`:''}`;
+        FOOT = `<div class="pdf-foot">
+          <div class="pdf-foot-row"><span>${linha1}</span><span>${esc(pcfg.tel1||'')}</span></div>
+          <div class="pdf-foot-row"><span>${esc(pcfg.email||'')}</span><span>${esc(pcfg.tel2||'')}</span></div>
+        </div>`;
+      } else {
+        FOOT = `<div class="pdf-foot"><div class="pdf-foot-row"><span>${esc(clinica.rodape_pdf||'')}</span></div></div>`;
+      }
     }
 
     const watermarkImg = clinica.marca_dagua ? `<img class="pdf-watermark" src="${clinica.marca_dagua}" alt="">` : '';
-    const pages = unidades.map(p => `<div class="print-page">
+    const pages = unidades.map(p => `<div class="print-page" style="${PAGE_STYLE}">
       ${watermarkImg}
       <div class="print-body">
         ${HEADER}${PAT}
@@ -3298,22 +3362,22 @@ const EST = (() => {
     w.document.write(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Laudo</title><style>
       *{box-sizing:border-box;margin:0;padding:0}
       body{background:#888;font-family:'Garamond','Times New Roman',Times,serif;color:#000}
-      .print-page{width:210mm;height:297mm;box-sizing:border-box;padding:12mm 20mm 34mm 20mm;background:#fff;position:relative;margin:0 auto 16px;box-shadow:0 2px 14px rgba(0,0,0,.35);page-break-after:always;overflow:hidden}
+      .print-page{width:210mm;min-height:297mm;box-sizing:border-box;padding:12mm 20mm 34mm 20mm;background:#fff;position:relative;margin:0 auto 16px;box-shadow:0 2px 14px rgba(0,0,0,.35);page-break-after:always}
       .print-page:last-child{page-break-after:avoid}
       .print-body{position:relative;z-index:1}
       .pdf-watermark{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);max-width:65%;max-height:65%;opacity:.12;z-index:0}
       .pdf-body p{page-break-inside:avoid;break-inside:avoid}
-      .pdf-hd{text-align:center;margin-bottom:14px}
+      .pdf-hd{text-align:center;margin-bottom:6px}
       .pdf-hd-title{font-family:'Times New Roman',Times,serif;font-size:16pt;font-weight:bold;line-height:1.15}
       .pdf-hd-sub{font-family:'Times New Roman',Times,serif;font-size:11pt;line-height:1.3}
-      .print-patient-box{border:1.5px solid #000;border-radius:4px;padding:7px 12px;margin-bottom:14px;font-family:'Calibri','Segoe UI',Arial,sans-serif}
+      .print-patient-box{border:1.5px solid #000;border-radius:4px;padding:5px 12px;margin-bottom:6px;font-family:'Calibri','Segoe UI',Arial,sans-serif}
       .ppb-row{display:flex}
       .pp-cell{padding:2px 6px 2px 0;min-width:0}
       .pp-label{font-size:7.5pt;color:#555;text-transform:uppercase;letter-spacing:.5px}
       .pp-value{font-weight:bold;font-size:10pt;word-wrap:break-word}
-      .pdf-sec-title{font-family:'Cambria','Times New Roman',serif;font-size:12pt;font-weight:bold;text-decoration:underline;text-transform:uppercase;margin:4px 0 12px;letter-spacing:.2px}
-      .pdf-body{font-family:'Garamond','Times New Roman',Times,serif;font-size:13pt;line-height:1.5;text-align:justify;word-break:break-word}
-      .pdf-body p{margin:0 0 11px}
+      .pdf-sec-title{font-family:'Cambria','Times New Roman',serif;font-size:11.5pt;font-weight:bold;text-decoration:underline;text-transform:uppercase;margin:2px 0 6px;letter-spacing:.2px}
+      .pdf-body{font-family:'Garamond','Times New Roman',Times,serif;font-size:11.5pt;line-height:1.24;text-align:justify;word-break:break-word}
+      .pdf-body p{margin:0 0 5px}
       .pdf-sign{position:absolute;left:20mm;right:20mm;bottom:22mm;text-align:right}
       .pdf-sign-l{font-family:Arial,sans-serif;font-size:10pt}
       .pdf-sign-dr{font-family:'Times New Roman',serif;font-size:11pt}
@@ -3576,13 +3640,14 @@ const EST = (() => {
 
 async function initNovoLaudo() {
   if (!editingLaudoId) {
-    ['doc-nome','doc-cpf','doc-convenio','doc-solicitante'].forEach(id => {
+    ['doc-pac-nome','doc-pac-cpf','doc-pac-nasc','doc-pac-tel','doc-pac-email','doc-convenio','doc-solicitante'].forEach(id => {
       const el = document.getElementById(id);
-      if (el) el.value = '';
+      if (el) { el.value = ''; el.readOnly = false; }
     });
     const dataEl = document.getElementById('doc-data-exame');
-    if (dataEl) dataEl.value = new Date().toISOString().slice(0,10);
+    if (dataEl) { dataEl.value = new Date().toISOString().slice(0,10); dataEl.readOnly = false; }
     editingLaudoId = null;
+    currentPacienteId = null;
     laudoConcluido = false;
     laudoImages = [];
     renderLaudoImages();
@@ -3590,6 +3655,8 @@ async function initNovoLaudo() {
     if (dz) dz.style.display = '';
     document.getElementById('laudo-concluido-banner').style.display = 'none';
     document.getElementById('laudo-acoes').style.display = '';
+    document.getElementById('btn-salvar-rascunho').style.display = '';
+    document.getElementById('btn-concluir-laudo').style.display  = '';
   }
   if (!secoesClinica.length) await loadSecoesClinica();
   if (!editingLaudoId) {
@@ -3668,6 +3735,7 @@ function searchDocPending() {
 // MÉDICO — ABRIR / EDITAR LAUDO
 // ══════════════════════════════════════════════════════
 let editingLaudoId   = null;
+let currentPacienteId = null;
 let laudoConcluido   = false;
 let secoesClinica    = [];
 let autosaveTimer    = null;
@@ -3686,6 +3754,7 @@ async function abrirLaudo(id) {
   if (!laudo) { toast('Laudo não encontrado.', 'err'); return; }
 
   editingLaudoId = id;
+  currentPacienteId = laudo.paciente_id || null;
   laudoConcluido = laudo.status === 'concluido';
 
   // Monta mapa de presets do médico
@@ -3699,6 +3768,19 @@ async function abrirLaudo(id) {
   document.getElementById('doc-convenio').value    = laudo.convenio || '';
   document.getElementById('doc-solicitante').value = laudo.solicitante || '';
 
+  // Nascimento/WhatsApp/e-mail vivem no cadastro do paciente, não no laudo
+  document.getElementById('doc-pac-nasc').value  = '';
+  document.getElementById('doc-pac-tel').value   = '';
+  document.getElementById('doc-pac-email').value = '';
+  if (laudo.paciente_id) {
+    const { data: pac } = await supa.from('pacientes').select('data_nasc,telefone,email_rec').eq('id', laudo.paciente_id).single();
+    if (pac) {
+      document.getElementById('doc-pac-nasc').value  = pac.data_nasc || '';
+      document.getElementById('doc-pac-tel').value   = pac.telefone || '';
+      document.getElementById('doc-pac-email').value = pac.email_rec || '';
+    }
+  }
+
   // Carrega imagens
   laudoImages = (laudo.imagens || []).map(i => ({ id: Date.now() + Math.random(), src: i.src, name: i.name || '' }));
   renderLaudoImages();
@@ -3708,11 +3790,13 @@ async function abrirLaudo(id) {
   renderSecoesEditor(laudo.secoes || {}, presetMap);
 
   const banner = document.getElementById('laudo-concluido-banner');
-  const acoes  = document.getElementById('laudo-acoes');
   banner.style.display = laudoConcluido ? 'flex' : 'none';
-  acoes.style.display  = laudoConcluido ? 'none'  : '';
+  // Laudo concluído: some só as ações de edição (salvar/concluir) — imprimir/baixar
+  // PDF e voltar à fila continuam disponíveis, é o uso mais comum depois de concluir.
+  document.getElementById('btn-salvar-rascunho').style.display = laudoConcluido ? 'none' : '';
+  document.getElementById('btn-concluir-laudo').style.display  = laudoConcluido ? 'none' : '';
 
-  ['doc-data-exame','doc-convenio','doc-solicitante'].forEach(id => {
+  ['doc-pac-nome','doc-pac-cpf','doc-pac-nasc','doc-pac-tel','doc-pac-email','doc-data-exame','doc-convenio','doc-solicitante'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.readOnly = laudoConcluido;
   });
@@ -3802,14 +3886,69 @@ function coletarSecoes() {
 // MÉDICO — SALVAR / CONCLUIR
 // ══════════════════════════════════════════════════════
 async function salvarLaudo(concluir = false) {
-  if (!editingLaudoId) return;
+  const isNovo = !editingLaudoId;
+  const nome   = document.getElementById('doc-pac-nome').value.trim();
+  const cpfRaw = document.getElementById('doc-pac-cpf').value.trim();
+
+  if (isNovo && !nome) { toast('Informe o nome do paciente.', 'err'); return; }
   if (concluir && !confirm('Concluir este laudo? Ele ficará somente leitura.')) return;
 
   clearTimeout(autosaveTimer);
   loading(true, concluir ? 'Concluindo...' : 'Salvando...');
 
+  // Médico criando o laudo do zero (sem passar pela fila da secretária):
+  // localiza/cria o paciente pelo CPF, igual ao fluxo da secretária (mesmos
+  // campos, inclusive a conta de acesso ao portal quando há data de nascimento).
+  const nasc = document.getElementById('doc-pac-nasc').value;
+  const tel  = document.getElementById('doc-pac-tel').value.trim();
+  const email = document.getElementById('doc-pac-email').value.trim();
+
+  // Resolve/atualiza o cadastro do paciente (funciona tanto criando quanto
+  // reabrindo um laudo já existente — se o médico corrigir nasc/telefone/
+  // e-mail depois, isso também vai pro cadastro).
+  let pacienteId = currentPacienteId;
+  if (cpfRaw) {
+    const cpfLimpo = cpfRaw.replace(/\D/g,'');
+    if (pacienteId) {
+      await supa.from('pacientes').update({ nome, cpf: cpfLimpo, data_nasc: nasc||null, telefone: tel||null, email_rec: email||null })
+        .eq('id', pacienteId);
+    } else {
+      const { data: pacExist } = await supa.from('pacientes')
+        .select('id,auth_id').eq('clinica_id', currentClinica.id).eq('cpf', cpfLimpo).maybeSingle();
+
+      if (pacExist) {
+        pacienteId = pacExist.id;
+        await supa.from('pacientes').update({ nome, data_nasc: nasc||null, telefone: tel||null, email_rec: email||null })
+          .eq('id', pacienteId);
+      } else {
+        let authId = null;
+        if (nasc) {
+          const fakeEmail = `${cpfLimpo}@${currentClinica.slug}.pac`;
+          const senha = cpfLimpo + nasc.replace(/-/g,'');
+          const sessaoOriginal = (await supa.auth.getSession()).data.session;
+          const { data: authData } = await supa.auth.signUp({ email: fakeEmail, password: senha });
+          authId = authData?.user?.id || null;
+          if (sessaoOriginal?.access_token) {
+            await supa.auth.setSession({ access_token: sessaoOriginal.access_token, refresh_token: sessaoOriginal.refresh_token });
+          }
+        }
+
+        const { data: novoPac } = await supa.from('pacientes').insert({
+          clinica_id: currentClinica.id, nome, cpf: cpfLimpo,
+          auth_id: authId,
+          data_nasc: nasc||null, telefone: tel||null, email_rec: email||null
+        }).select('id').single();
+        pacienteId = novoPac?.id;
+      }
+    }
+    currentPacienteId = pacienteId;
+  }
+
   const imagensProcessadas = await processImagesForSave(laudoImages);
   const payload = {
+    paciente_nome: nome,
+    cpf_paciente: cpfRaw ? cpfRaw.replace(/\D/g,'') : null,
+    paciente_id:  pacienteId,
     data_exame:   document.getElementById('doc-data-exame').value || null,
     convenio:     document.getElementById('doc-convenio').value.trim() || null,
     solicitante:  document.getElementById('doc-solicitante').value.trim() || null,
@@ -3819,7 +3958,17 @@ async function salvarLaudo(concluir = false) {
   };
   if (concluir) payload.status = 'concluido';
 
-  const { error } = await supa.from('laudos').update(payload).eq('id', editingLaudoId);
+  let error;
+  if (isNovo) {
+    payload.clinica_id = currentClinica.id;
+    payload.medico_responsavel_id = currentDoctor.id;
+    if (!concluir) payload.status = 'pendente';
+    const { data: novoLaudo, error: insErr } = await supa.from('laudos').insert(payload).select('id').single();
+    error = insErr;
+    if (!error) { editingLaudoId = novoLaudo.id; startAutosave(); }
+  } else {
+    ({ error } = await supa.from('laudos').update(payload).eq('id', editingLaudoId));
+  }
   loading(false);
 
   if (error) { toast('Erro ao salvar: ' + error.message, 'err'); return; }
@@ -3828,18 +3977,22 @@ async function salvarLaudo(concluir = false) {
     laudoConcluido = true;
     toast('Laudo concluído com sucesso!', 'ok');
     document.getElementById('laudo-concluido-banner').style.display = 'flex';
-    document.getElementById('laudo-acoes').style.display = 'none';
-    ['doc-data-exame','doc-convenio','doc-solicitante'].forEach(id => {
+    document.getElementById('btn-salvar-rascunho').style.display = 'none';
+    document.getElementById('btn-concluir-laudo').style.display  = 'none';
+    ['doc-pac-nome','doc-pac-cpf','doc-pac-nasc','doc-pac-tel','doc-pac-email','doc-data-exame','doc-convenio','doc-solicitante'].forEach(id => {
       const el = document.getElementById(id); if (el) el.readOnly = true;
     });
     document.querySelectorAll('.editor-area').forEach(el => el.readOnly = true);
-    // Atualiza badge de pendentes
-    const count = parseInt(document.getElementById('pending-count').textContent || '0');
-    document.getElementById('pending-count').textContent = Math.max(0, count - 1);
+    if (!isNovo) {
+      // Atualiza badge de pendentes (só decrementa quem já estava contado como pendente)
+      const count = parseInt(document.getElementById('pending-count').textContent || '0');
+      document.getElementById('pending-count').textContent = Math.max(0, count - 1);
+    }
   } else {
     const ind = document.getElementById('autosave-ind');
     ind.textContent = '✓ Salvo';
     setTimeout(() => { ind.textContent = ''; }, 2000);
+    if (isNovo) toast('Laudo criado.', 'ok');
   }
 }
 
@@ -3851,8 +4004,9 @@ async function reabrirLaudo() {
   loading(false);
   laudoConcluido = false;
   document.getElementById('laudo-concluido-banner').style.display = 'none';
-  document.getElementById('laudo-acoes').style.display = '';
-  ['doc-data-exame','doc-convenio','doc-solicitante'].forEach(id => {
+  document.getElementById('btn-salvar-rascunho').style.display = '';
+  document.getElementById('btn-concluir-laudo').style.display  = '';
+  ['doc-pac-nome','doc-pac-cpf','doc-pac-nasc','doc-pac-tel','doc-pac-email','doc-data-exame','doc-convenio','doc-solicitante'].forEach(id => {
     const el = document.getElementById(id); if (el) el.readOnly = false;
   });
   document.querySelectorAll('.editor-area').forEach(el => el.readOnly = false);
@@ -4166,11 +4320,23 @@ function buildPrint(laudo, medico) {
   const pcfg = clinica.pdf_config || {};
   const dateEx = laudo.data_exame ? fmtDate(laudo.data_exame) : fmtDate(new Date().toISOString().slice(0,10));
 
+  // ── Papel timbrado (cabeçalho/rodapé já impressos na folha física): pula
+  // nosso próprio cabeçalho/rodapé e reserva margens maiores pra não sobrepor
+  // a arte pré-impressa. Ajustável por clínica via pdf_config.
+  const papelTimbrado = !!pcfg.papel_timbrado;
+  const margemTopo    = pcfg.margem_topo_mm   != null ? pcfg.margem_topo_mm   : 12;
+  const margemRodape  = pcfg.margem_rodape_mm != null ? pcfg.margem_rodape_mm : 34;
+  const padTop    = papelTimbrado ? margemTopo : 12;
+  const padBottom = papelTimbrado ? (margemRodape + 14) : 34;
+  const signBottom = papelTimbrado ? (margemRodape + 6) : 22;
+  const discBottom = papelTimbrado ? margemRodape : 17;
+  const PAGE_STYLE = `padding:${padTop}mm 20mm ${padBottom}mm 20mm`;
+
   // ── Cabeçalho (padrão CTDMI: título / subtítulo / CRM) ──
   const titulo    = pcfg.titulo    || clinica.cabecalho_pdf || clinica.nome || 'LAUDAR';
   const subtitulo = pcfg.subtitulo || '';
   const crmClin   = pcfg.crm       || '';
-  const HEADER = `<div class="pdf-hd">
+  const HEADER = papelTimbrado ? '' : `<div class="pdf-hd">
     <div class="pdf-hd-title">${escHtml(titulo)}</div>
     ${subtitulo ? `<div class="pdf-hd-sub">${escHtml(subtitulo)}</div>` : ''}
     ${crmClin ? `<div class="pdf-hd-sub">${escHtml(crmClin)}</div>` : ''}
@@ -4192,7 +4358,7 @@ function buildPrint(laudo, medico) {
   const signNome = (medico?.nome || '').toUpperCase();
   const signCrm  = medico?.crm ? `CRM:${escHtml(medico.crm)}` : '';
   const assinaTxt = (pcfg.assinatura_texto || 'Este laudo foi assinado eletronicamente em {data}.').replace('{data}', dateEx);
-  const SIGN = `<div class="pdf-sign">
+  const SIGN = `<div class="pdf-sign" style="bottom:${signBottom}mm">
     <div class="pdf-sign-l">Laudado por:</div>
     <div class="pdf-sign-dr">${escHtml(signNome)}${signCrm ? ' '+signCrm : ''}</div>
     <div class="pdf-sign-crm">${escHtml(assinaTxt)}</div>
@@ -4200,17 +4366,19 @@ function buildPrint(laudo, medico) {
 
   // ── Disclaimer + rodapé (endereço / e-mail / telefones) ──
   const disc = pcfg.disclaimer || 'Atenção: Somente seu médico possui o conjunto de informações necessárias para qualquer conclusão diagnóstica ou indicação terapêutica sobre os resultados.';
-  const DISC = `<div class="pdf-disc">${escHtml(disc)}</div>`;
+  const DISC = `<div class="pdf-disc" style="bottom:${discBottom}mm">${escHtml(disc)}</div>`;
 
-  let FOOT;
-  if (pcfg.endereco || pcfg.email || pcfg.tel1 || pcfg.tel2) {
-    const linha1 = `${pcfg.endereco_bold1 ? `<b>${escHtml(pcfg.endereco_bold1)}</b>` : ''}${escHtml(pcfg.endereco||'')}${pcfg.endereco_bold2 ? `<b>${escHtml(pcfg.endereco_bold2)}</b>` : ''}`;
-    FOOT = `<div class="pdf-foot">
-      <div class="pdf-foot-row"><span>${linha1}</span><span>${escHtml(pcfg.tel1||'')}</span></div>
-      <div class="pdf-foot-row"><span>${escHtml(pcfg.email||'')}</span><span>${escHtml(pcfg.tel2||'')}</span></div>
-    </div>`;
-  } else {
-    FOOT = `<div class="pdf-foot"><div class="pdf-foot-row"><span>${escHtml(clinica.rodape_pdf||'')}</span></div></div>`;
+  let FOOT = '';
+  if (!papelTimbrado) {
+    if (pcfg.endereco || pcfg.email || pcfg.tel1 || pcfg.tel2) {
+      const linha1 = `${pcfg.endereco_bold1 ? `<b>${escHtml(pcfg.endereco_bold1)}</b>` : ''}${escHtml(pcfg.endereco||'')}${pcfg.endereco_bold2 ? `<b>${escHtml(pcfg.endereco_bold2)}</b>` : ''}`;
+      FOOT = `<div class="pdf-foot">
+        <div class="pdf-foot-row"><span>${linha1}</span><span>${escHtml(pcfg.tel1||'')}</span></div>
+        <div class="pdf-foot-row"><span>${escHtml(pcfg.email||'')}</span><span>${escHtml(pcfg.tel2||'')}</span></div>
+      </div>`;
+    } else {
+      FOOT = `<div class="pdf-foot"><div class="pdf-foot-row"><span>${escHtml(clinica.rodape_pdf||'')}</span></div></div>`;
+    }
   }
 
   const secoes = laudo.secoes || {};
@@ -4220,7 +4388,7 @@ function buildPrint(laudo, medico) {
   secoesClinica.forEach(s => {
     const sec = secoes[s.chave];
     if (!sec || !sec.ativo || !sec.texto) return;
-    pagesHtml += `<div class="print-page">
+    pagesHtml += `<div class="print-page" style="${PAGE_STYLE}">
       ${WATERMARK}
       <div class="print-body">
         ${HEADER}${PAT}
@@ -4239,7 +4407,7 @@ function buildPrint(laudo, medico) {
       const grid = '<div class="pdf-img-grid">' +
         slice.map(img => img ? `<div class="pdf-img-cell"><img src="${img.src}" alt=""></div>` : `<div class="pdf-img-cell"></div>`).join('') +
         '</div>';
-      pagesHtml += `<div class="print-page">${WATERMARK}<div class="print-body">${HEADER}${grid}</div>${SIGN}${DISC}${FOOT}</div>`;
+      pagesHtml += `<div class="print-page" style="${PAGE_STYLE}">${WATERMARK}<div class="print-body">${HEADER}${grid}</div>${SIGN}${DISC}${FOOT}</div>`;
     }
   }
 
