@@ -353,6 +353,25 @@
   .cfg-id-preview-label { font-size:11px; font-weight:700; color:var(--text-muted); letter-spacing:.5px; text-transform:uppercase; margin-bottom:8px; }
   .cfg-id-preview-box { border:1px dashed var(--border-dark); border-radius:var(--radius); padding:26px 24px; background:var(--off-white); min-height:88px; display:flex; align-items:center; }
   .cfg-preview-nome { font-size:24px; font-weight:800; color:#1a2d6e; letter-spacing:-0.4px; }
+  /* ── PRODUÇÃO (admin) ── */
+  .prod-quickbtns { display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap; }
+  .prod-quickbtns .btn.active { background:var(--green); color:#fff; border-color:var(--green); }
+  .prod-filters { display:flex; flex-wrap:wrap; gap:14px; align-items:flex-end; margin-bottom:4px; }
+  .prod-filters .field { margin:0; }
+  .prod-stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:14px; margin-top:20px; }
+  .prod-stat-card { background:var(--off-white); border:1px solid var(--border); border-radius:var(--radius); padding:18px; text-align:center; }
+  .prod-stat-value { font-size:28px; font-weight:800; color:var(--green); line-height:1.1; }
+  .prod-stat-label { font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:.5px; margin-top:6px; }
+  .prod-table { width:100%; border-collapse:collapse; font-size:13px; }
+  .prod-table th { text-align:left; font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.5px; padding:8px; border-bottom:1px solid var(--border); white-space:nowrap; }
+  .prod-table td { padding:10px 8px; border-bottom:1px solid var(--border); vertical-align:top; }
+  .prod-chip { display:inline-block; background:var(--white); border:1px solid var(--border); border-radius:99px; padding:2px 9px; font-size:11px; margin:2px 3px 2px 0; white-space:nowrap; }
+  .prod-bar-row { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+  .prod-bar-label { width:140px; font-size:12px; font-weight:700; flex-shrink:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .prod-bar-track { flex:1; background:var(--green-pale); border-radius:6px; height:18px; overflow:hidden; }
+  .prod-bar-fill { background:var(--green); height:100%; border-radius:6px; }
+  .prod-bar-value { width:50px; text-align:right; font-size:12px; font-weight:700; flex-shrink:0; }
+
   /* ── LAUDO ESTRUTURADO (beta) ── */
   .est-patient { display:flex; gap:14px; flex-wrap:wrap; padding:16px; background:var(--off-white); border:1px solid var(--border); border-radius:var(--radius); margin-bottom:18px; }
   .est-patient .field { flex:1; min-width:150px; margin:0; }
@@ -927,6 +946,12 @@
     <div class="tab" onclick="showTab('estruturado', this)" id="tab-estruturado-btn" style="display:none">
       <i class="ti ti-table"></i> Estruturado
     </div>
+    <div class="tab" onclick="showTab('producao', this)" id="tab-producao-btn" style="display:none">
+      <i class="ti ti-chart-bar"></i> Produção
+    </div>
+    <div class="tab" onclick="showTab('lixeira', this)" id="tab-lixeira-btn" style="display:none">
+      <i class="ti ti-trash"></i> Lixeira
+    </div>
     <div class="tab" onclick="showTab('config', this)" id="tab-config-btn" style="display:none">
       <i class="ti ti-settings"></i> Configurações
     </div>
@@ -1077,6 +1102,83 @@
           Voltar à Fila
         </button>
       </div>
+    </div>
+  </div>
+
+  <!-- TAB PRODUÇÃO (admin) -->
+  <div id="tab-producao" class="app-main" style="display:none">
+    <div class="card">
+      <div class="card-hdr">
+        <div class="card-ico"><i class="ti ti-chart-bar"></i></div>
+        <div class="card-title">Produção Médica</div>
+        <button class="btn btn-outline" style="width:auto;padding:8px 16px;font-size:12px;margin-left:auto" onclick="exportarProducaoCSV()"><i class="ti ti-download"></i> Exportar CSV</button>
+      </div>
+
+      <div class="prod-quickbtns">
+        <button type="button" class="btn btn-outline" style="width:auto;padding:7px 14px;font-size:12px" onclick="prodQuickRange('hoje', this)">Hoje</button>
+        <button type="button" class="btn btn-outline" style="width:auto;padding:7px 14px;font-size:12px" onclick="prodQuickRange('semana', this)">Esta semana</button>
+        <button type="button" class="btn btn-outline active" style="width:auto;padding:7px 14px;font-size:12px" onclick="prodQuickRange('mes', this)">Este mês</button>
+        <button type="button" class="btn btn-outline" style="width:auto;padding:7px 14px;font-size:12px" onclick="prodQuickRange('mes-anterior', this)">Mês anterior</button>
+      </div>
+
+      <div class="prod-filters">
+        <div class="field" style="min-width:150px"><label>De</label><input type="date" id="prod-de"></div>
+        <div class="field" style="min-width:150px"><label>Até</label><input type="date" id="prod-ate"></div>
+        <div class="field" style="min-width:190px"><label>Médico</label>
+          <select id="prod-medico"><option value="">— Todos —</option></select>
+        </div>
+        <div class="field" style="min-width:170px"><label>Convênio</label><input type="text" id="prod-convenio" placeholder="Ex: UNIMED"></div>
+        <button class="btn btn-primary" style="width:auto;padding:11px 22px" onclick="loadProducao()"><i class="ti ti-search"></i> Filtrar</button>
+      </div>
+
+      <div class="prod-stats">
+        <div class="prod-stat-card"><div class="prod-stat-value" id="prod-total-exames">—</div><div class="prod-stat-label">Total de Exames</div></div>
+        <div class="prod-stat-card"><div class="prod-stat-value" id="prod-total-concluidos">—</div><div class="prod-stat-label">Laudos Concluídos</div></div>
+        <div class="prod-stat-card"><div class="prod-stat-value" id="prod-media-dia">—</div><div class="prod-stat-label">Média / Dia</div></div>
+        <div class="prod-stat-card"><div class="prod-stat-value" id="prod-top-convenio" style="font-size:16px">—</div><div class="prod-stat-label">Top Convênio</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-hdr">
+        <div class="card-ico"><i class="ti ti-stethoscope"></i></div>
+        <div class="card-title">Produção por Médico</div>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="prod-table">
+          <thead><tr><th>#</th><th>Médico</th><th>Laudos</th><th>Exames</th><th>Convênios</th><th></th></tr></thead>
+          <tbody id="prod-medicos-tbody"><tr><td colspan="6" style="color:var(--text-muted);padding:16px 8px">Selecione um período e clique em Filtrar.</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card" id="prod-detalhe-card" style="display:none">
+      <div class="card-hdr">
+        <div class="card-ico"><i class="ti ti-list"></i></div>
+        <div class="card-title" id="prod-detalhe-titulo">Detalhe</div>
+        <button class="btn btn-outline" style="width:auto;padding:6px 14px;font-size:12px;margin-left:auto" onclick="document.getElementById('prod-detalhe-card').style.display='none'">Fechar</button>
+      </div>
+      <div id="prod-detalhe-lista"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-hdr">
+        <div class="card-ico"><i class="ti ti-building-hospital"></i></div>
+        <div class="card-title">Exames por Convênio</div>
+      </div>
+      <div id="prod-convenios-bars"><p style="color:var(--text-muted);font-size:13px">Sem dados para o período.</p></div>
+    </div>
+  </div>
+
+  <!-- TAB LIXEIRA (admin) -->
+  <div id="tab-lixeira" class="app-main" style="display:none">
+    <div class="card">
+      <div class="card-hdr">
+        <div class="card-ico"><i class="ti ti-trash"></i></div>
+        <div class="card-title">Lixeira</div>
+      </div>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">Laudos excluídos ficam aqui por 30 dias, disponíveis pra restaurar. Depois disso são apagados em definitivo.</p>
+      <div id="lixeira-container"><div class="empty"><div class="ei">🗑</div><p>Carregando...</p></div></div>
     </div>
   </div>
 
@@ -1580,9 +1682,13 @@ async function afterLogin(session) {
 
   currentDoctor = medico;
 
-  // Mostra aba de configurações só para admin
+  // Mostra aba de configurações e produção só para admin
   const tabConfig = document.getElementById('tab-config-btn');
   if (tabConfig) tabConfig.style.display = medico.papel === 'admin' ? '' : 'none';
+  const tabProducao = document.getElementById('tab-producao-btn');
+  if (tabProducao) tabProducao.style.display = medico.papel === 'admin' ? '' : 'none';
+  const tabLixeira = document.getElementById('tab-lixeira-btn');
+  if (tabLixeira) tabLixeira.style.display = medico.papel === 'admin' ? '' : 'none';
 
   // Módulo estruturado (upsell) — gate por clínica (teste: CTDMI)
   const tabEst = document.getElementById('tab-estruturado-btn');
@@ -2736,7 +2842,7 @@ async function criarUsuario() {
 function showTab(name, el) {
   document.querySelectorAll('#app-nav .tab').forEach(t => t.classList.remove('active'));
   if (el) el.classList.add('active');
-  ['inicio','pendentes','novo','concluidos','estruturado','config'].forEach(t => {
+  ['inicio','pendentes','novo','concluidos','estruturado','producao','lixeira','config'].forEach(t => {
     const div = document.getElementById('tab-' + t);
     if (div) div.style.display = t === name ? '' : 'none';
   });
@@ -2745,6 +2851,8 @@ function showTab(name, el) {
   if (name === 'config')     loadConfig();
   if (name === 'novo')       initNovoLaudo();
   if (name === 'estruturado') EST.init();
+  if (name === 'producao')  initProducao();
+  if (name === 'lixeira')   loadLixeira();
 }
 
 // ══════════════════════════════════════════════════════
@@ -3718,6 +3826,7 @@ function renderDocPending(list) {
         </div>
         <div class="saved-actions">
           <button class="btn btn-primary" style="padding:7px 16px;font-size:12px" onclick="abrirLaudo('${r.id}')">✍️ Laudar</button>
+          ${currentDoctor.papel === 'admin' ? `<button class="btn btn-danger" style="padding:7px 12px;font-size:12px" onclick="excluirLaudo('${r.id}', '${escHtml(r.paciente_nome||'').replace(/'/g,"\\'")}')">🗑</button>` : ''}
         </div>
       </div>`;
     });
@@ -4090,6 +4199,7 @@ function renderDocConcluidos(list) {
       </div>
       <div class="saved-actions">
         <button class="btn btn-outline" style="padding:6px 12px;font-size:12px" onclick="abrirLaudo('${r.id}')">👁 Ver</button>
+        ${currentDoctor.papel === 'admin' ? `<button class="btn btn-danger" style="padding:6px 12px;font-size:12px" onclick="excluirLaudo('${r.id}', '${escHtml(r.paciente_nome||'').replace(/'/g,"\\'")}')">🗑</button>` : ''}
       </div>
     </div>`;
   });
@@ -4295,18 +4405,307 @@ async function processImagesForSave(imgs) {
 }
 
 // ══════════════════════════════════════════════════════
+// PRODUÇÃO (admin)
+// ══════════════════════════════════════════════════════
+let prodMedicosCarregados = false;
+let prodLaudosAtuais = [];   // laudos do último filtro, pra CSV e drill-down
+let prodStatsAtuais  = null; // { porMedico, porConvenio } do último filtro
+
+async function initProducao() {
+  if (!secoesClinica.length) await loadSecoesClinica();
+  if (!prodMedicosCarregados) {
+    const { data } = await supa.from('medicos').select('id,nome')
+      .eq('clinica_id', currentClinica.id).order('nome');
+    const sel = document.getElementById('prod-medico');
+    (data || []).forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m.id; opt.textContent = m.nome;
+      sel.appendChild(opt);
+    });
+    prodMedicosCarregados = true;
+  }
+  if (!document.getElementById('prod-de').value) {
+    prodQuickRange('mes', document.querySelector('.prod-quickbtns .btn.active'));
+  } else {
+    loadProducao();
+  }
+}
+
+function prodQuickRange(tipo, btnEl) {
+  document.querySelectorAll('.prod-quickbtns .btn').forEach(b => b.classList.remove('active'));
+  if (btnEl) btnEl.classList.add('active');
+
+  const hoje = new Date();
+  const y = hoje.getFullYear(), m = hoje.getMonth(), d = hoje.getDate();
+  let de, ate;
+  const toISO = dt => dt.toISOString().slice(0,10);
+
+  if (tipo === 'hoje') {
+    de = ate = new Date(y, m, d);
+  } else if (tipo === 'semana') {
+    const diaSemana = hoje.getDay(); // 0=domingo
+    de = new Date(y, m, d - diaSemana);
+    ate = new Date(y, m, d);
+  } else if (tipo === 'mes') {
+    de = new Date(y, m, 1);
+    ate = new Date(y, m, d);
+  } else if (tipo === 'mes-anterior') {
+    de = new Date(y, m - 1, 1);
+    ate = new Date(y, m, 0); // dia 0 do mês atual = último dia do mês anterior
+  }
+
+  document.getElementById('prod-de').value  = toISO(de);
+  document.getElementById('prod-ate').value = toISO(ate);
+  loadProducao();
+}
+
+async function loadProducao() {
+  const de  = document.getElementById('prod-de').value;
+  const ate = document.getElementById('prod-ate').value;
+  const medicoId  = document.getElementById('prod-medico').value;
+  const convenioF = document.getElementById('prod-convenio').value.trim();
+
+  if (!de || !ate) { toast('Informe o período (De / Até).', 'err'); return; }
+
+  let query = supa.from('laudos').select('id,paciente_nome,medico_responsavel_id,data_exame,convenio,status,secoes')
+    .eq('clinica_id', currentClinica.id)
+    .is('deleted_at', null)
+    .gte('data_exame', de).lte('data_exame', ate);
+  if (medicoId) query = query.eq('medico_responsavel_id', medicoId);
+  if (convenioF) query = query.ilike('convenio', `%${convenioF}%`);
+
+  const [{ data: laudos, error }, { data: medicos }] = await Promise.all([
+    query,
+    supa.from('medicos').select('id,nome').eq('clinica_id', currentClinica.id),
+  ]);
+
+  if (error) { toast('Erro ao carregar produção: ' + error.message, 'err'); return; }
+
+  const nomeMedico = {};
+  (medicos || []).forEach(m => { nomeMedico[m.id] = m.nome; });
+
+  prodLaudosAtuais = laudos || [];
+
+  const contarExames = l => Object.values(l.secoes || {}).filter(s => s && s.ativo).length;
+
+  let totalExames = 0, totalConcluidos = 0;
+  const porMedico = {};   // id -> { nome, laudos, exames, convenios:{nome:count} }
+  const porConvenio = {}; // nome -> exames
+
+  prodLaudosAtuais.forEach(l => {
+    const exames = contarExames(l);
+    totalExames += exames;
+    if (l.status === 'concluido') totalConcluidos++;
+
+    const mid = l.medico_responsavel_id || '—';
+    if (!porMedico[mid]) porMedico[mid] = { nome: nomeMedico[mid] || 'Sem médico', laudos: 0, exames: 0, convenios: {} };
+    porMedico[mid].laudos++;
+    porMedico[mid].exames += exames;
+    const conv = (l.convenio || 'Não informado').toUpperCase();
+    porMedico[mid].convenios[conv] = (porMedico[mid].convenios[conv] || 0) + exames;
+    porConvenio[conv] = (porConvenio[conv] || 0) + exames;
+  });
+
+  prodStatsAtuais = { porMedico, porConvenio };
+
+  const dias = Math.max(1, Math.round((new Date(ate) - new Date(de)) / 86400000) + 1);
+  const topConvenioEntry = Object.entries(porConvenio).sort((a,b) => b[1]-a[1])[0];
+
+  document.getElementById('prod-total-exames').textContent     = totalExames;
+  document.getElementById('prod-total-concluidos').textContent = totalConcluidos;
+  document.getElementById('prod-media-dia').textContent        = (totalExames / dias).toFixed(1);
+  document.getElementById('prod-top-convenio').textContent     = topConvenioEntry
+    ? `${topConvenioEntry[0]} · ${topConvenioEntry[1]}` : '—';
+
+  // Tabela por médico, ordenada por nº de exames desc
+  const linhasMedico = Object.entries(porMedico).sort((a,b) => b[1].exames - a[1].exames);
+  const tbody = document.getElementById('prod-medicos-tbody');
+  if (!linhasMedico.length) {
+    tbody.innerHTML = `<tr><td colspan="6" style="color:var(--text-muted);padding:16px 8px">Nenhum laudo no período.</td></tr>`;
+  } else {
+    tbody.innerHTML = linhasMedico.map(([mid, info], i) => {
+      const chips = Object.entries(info.convenios).sort((a,b) => b[1]-a[1])
+        .map(([c,n]) => `<span class="prod-chip">${escHtml(c)}: ${n}</span>`).join('');
+      return `<tr>
+        <td>${i+1}º</td>
+        <td><b>${escHtml(info.nome)}</b></td>
+        <td>${info.laudos}</td>
+        <td>${info.exames}</td>
+        <td>${chips}</td>
+        <td><button class="btn btn-outline" style="width:auto;padding:5px 12px;font-size:12px" onclick="verMedicoDetalhe('${mid}','${escHtml(info.nome).replace(/'/g,"\\'")}')">🔍 Detalhe</button></td>
+      </tr>`;
+    }).join('');
+  }
+
+  // Barras por convênio
+  const linhasConvenio = Object.entries(porConvenio).sort((a,b) => b[1]-a[1]);
+  const bars = document.getElementById('prod-convenios-bars');
+  if (!linhasConvenio.length) {
+    bars.innerHTML = '<p style="color:var(--text-muted);font-size:13px">Sem dados para o período.</p>';
+  } else {
+    const max = linhasConvenio[0][1];
+    bars.innerHTML = linhasConvenio.map(([c,n]) => `
+      <div class="prod-bar-row">
+        <div class="prod-bar-label" title="${escHtml(c)}">${escHtml(c)}</div>
+        <div class="prod-bar-track"><div class="prod-bar-fill" style="width:${max ? (n/max*100) : 0}%"></div></div>
+        <div class="prod-bar-value">${n}</div>
+      </div>`).join('');
+  }
+
+  document.getElementById('prod-detalhe-card').style.display = 'none';
+}
+
+function verMedicoDetalhe(medicoId, medicoNome) {
+  const laudosDoMedico = prodLaudosAtuais
+    .filter(l => (l.medico_responsavel_id || '—') === medicoId)
+    .sort((a,b) => (b.data_exame||'').localeCompare(a.data_exame||''));
+
+  document.getElementById('prod-detalhe-titulo').textContent = `Laudos de ${medicoNome} no período`;
+  const labelPorChave = {};
+  secoesClinica.forEach(s => { labelPorChave[s.chave] = s.label; });
+  const examesDoLaudo = l => Object.entries(l.secoes || {})
+    .filter(([,s]) => s && s.ativo)
+    .map(([chave]) => labelPorChave[chave] || chave)
+    .join(', ') || '—';
+
+  const lista = document.getElementById('prod-detalhe-lista');
+  if (!laudosDoMedico.length) {
+    lista.innerHTML = '<p style="color:var(--text-muted);font-size:13px">Nenhum laudo encontrado.</p>';
+  } else {
+    lista.innerHTML = `<table class="prod-table"><thead><tr><th>Paciente</th><th>Data</th><th>Convênio</th><th>Status</th><th>Exames realizados</th></tr></thead><tbody>` +
+      laudosDoMedico.map(l => `<tr>
+        <td>${escHtml(l.paciente_nome || '—')}</td>
+        <td>${l.data_exame ? fmtDate(l.data_exame) : '—'}</td>
+        <td>${escHtml(l.convenio || '—')}</td>
+        <td>${l.status === 'concluido' ? '✅ Concluído' : '⏳ Pendente'}</td>
+        <td>${escHtml(examesDoLaudo(l))}</td>
+      </tr>`).join('') + `</tbody></table>`;
+  }
+  const card = document.getElementById('prod-detalhe-card');
+  card.style.display = '';
+  card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function exportarProducaoCSV() {
+  if (!prodStatsAtuais) { toast('Filtre um período primeiro.', 'err'); return; }
+  const de  = document.getElementById('prod-de').value;
+  const ate = document.getElementById('prod-ate').value;
+
+  const linhas = [['Médico','Laudos','Exames','Convênios (exames)']];
+  Object.values(prodStatsAtuais.porMedico).sort((a,b) => b.exames - a.exames).forEach(info => {
+    const convStr = Object.entries(info.convenios).sort((a,b) => b[1]-a[1])
+      .map(([c,n]) => `${c}: ${n}`).join(' | ');
+    linhas.push([info.nome, info.laudos, info.exames, convStr]);
+  });
+
+  const csv = linhas.map(l => l.map(v => `"${String(v).replace(/"/g,'""')}"`).join(';')).join('\r\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `producao_${currentClinica.slug}_${de}_a_${ate}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
+// ══════════════════════════════════════════════════════
+// LIXEIRA (admin) — exclusão reversível, retida por 30 dias
+// ══════════════════════════════════════════════════════
+const LIXEIRA_DIAS = 30;
+
+async function excluirLaudo(id, nome) {
+  if (!confirm(`Excluir o laudo de "${nome}"? Ele fica na Lixeira por ${LIXEIRA_DIAS} dias antes de ser apagado em definitivo.`)) return;
+  loading(true, 'Excluindo...');
+  const { error } = await supa.from('laudos').update({ deleted_at: new Date().toISOString() }).eq('id', id);
+  loading(false);
+  if (error) { toast('Erro ao excluir: ' + error.message, 'err'); return; }
+  toast('Laudo movido pra Lixeira.', 'ok');
+  if (document.getElementById('tab-pendentes').style.display !== 'none') loadDocPending();
+  if (document.getElementById('tab-concluidos').style.display !== 'none') loadDocConcluidos();
+}
+
+async function loadLixeira() {
+  loading(true, 'Carregando lixeira...');
+
+  // Purga em definitivo o que já passou dos 30 dias (limpeza feita ao abrir a tela,
+  // já que o app não tem um cron/job de backend próprio pra isso).
+  const limite = new Date();
+  limite.setDate(limite.getDate() - LIXEIRA_DIAS);
+  await supa.from('laudos').delete()
+    .eq('clinica_id', currentClinica.id)
+    .lt('deleted_at', limite.toISOString());
+
+  const { data } = await supa.from('laudos')
+    .select('id,paciente_nome,data_exame,convenio,status,deleted_at,medicos(nome)')
+    .eq('clinica_id', currentClinica.id)
+    .not('deleted_at', 'is', null)
+    .order('deleted_at', { ascending: false });
+
+  loading(false);
+  renderLixeira(data || []);
+}
+
+function renderLixeira(list) {
+  const c = document.getElementById('lixeira-container');
+  if (!list.length) {
+    c.innerHTML = '<div class="empty"><div class="ei">🗑</div><p>Lixeira vazia.</p></div>';
+    return;
+  }
+  const hoje = Date.now();
+  let html = '<div class="saved-list">';
+  list.forEach(r => {
+    const excluidoEm = new Date(r.deleted_at);
+    const diasRestantes = Math.max(0, LIXEIRA_DIAS - Math.floor((hoje - excluidoEm.getTime()) / 86400000));
+    html += `<div class="saved-row" style="border-left:3px solid var(--red)">
+      <div>
+        <div class="saved-name">${escHtml(r.paciente_nome || '—')}</div>
+        <div class="saved-meta">📅 ${r.data_exame ? fmtDate(r.data_exame) : '—'} &nbsp;|&nbsp; 🏥 ${escHtml(r.convenio || '—')} &nbsp;|&nbsp; ${r.medicos?.nome ? '👨‍⚕️ ' + escHtml(r.medicos.nome) : ''}</div>
+        <div class="saved-meta" style="color:var(--red)">Excluído em ${excluidoEm.toLocaleDateString('pt-BR')} — apaga em definitivo em ${diasRestantes} dia${diasRestantes===1?'':'s'}</div>
+      </div>
+      <div class="saved-actions">
+        <button class="btn btn-outline" style="padding:7px 14px;font-size:12px" onclick="restaurarLaudo('${r.id}')">↩️ Restaurar</button>
+        <button class="btn btn-danger" style="padding:7px 14px;font-size:12px" onclick="excluirDefinitivo('${r.id}', '${escHtml(r.paciente_nome||'').replace(/'/g,"\\'")}')">Excluir definitivo</button>
+      </div>
+    </div>`;
+  });
+  html += '</div>';
+  c.innerHTML = html;
+}
+
+async function restaurarLaudo(id) {
+  loading(true, 'Restaurando...');
+  const { error } = await supa.from('laudos').update({ deleted_at: null }).eq('id', id);
+  loading(false);
+  if (error) { toast('Erro ao restaurar: ' + error.message, 'err'); return; }
+  toast('Laudo restaurado.', 'ok');
+  loadLixeira();
+}
+
+async function excluirDefinitivo(id, nome) {
+  if (!confirm(`Apagar em definitivo o laudo de "${nome}"? Essa ação não pode ser desfeita.`)) return;
+  loading(true, 'Apagando...');
+  const { error } = await supa.from('laudos').delete().eq('id', id);
+  loading(false);
+  if (error) { toast('Erro ao apagar: ' + error.message, 'err'); return; }
+  toast('Laudo apagado em definitivo.', 'ok');
+  loadLixeira();
+}
+
+// ══════════════════════════════════════════════════════
 // IMPRIMIR / PDF
 // ══════════════════════════════════════════════════════
 async function printLaudo() {
   if (!editingLaudoId) { toast('Nenhum laudo aberto.', 'err'); return; }
   loading(true, 'Preparando PDF...');
 
-  const [{ data: laudo }, { data: medico }] = await Promise.all([
-    supa.from('laudos').select('*').eq('id', editingLaudoId).single(),
-    supa.from('medicos').select('nome,crm').eq('id', currentDoctor.id).single(),
-  ]);
+  const { data: laudo } = await supa.from('laudos').select('*').eq('id', editingLaudoId).single();
+  if (!laudo) { loading(false); toast('Laudo não encontrado.', 'err'); return; }
+
+  // A assinatura tem que ser sempre do médico responsável pelo laudo, não de
+  // quem está com a sessão aberta (ex: admin vendo/imprimindo o laudo de outro médico).
+  const { data: medico } = await supa.from('medicos').select('nome,crm')
+    .eq('id', laudo.medico_responsavel_id || currentDoctor.id).single();
   loading(false);
-  if (!laudo) { toast('Laudo não encontrado.', 'err'); return; }
 
   buildPrint(laudo, medico);
 }
