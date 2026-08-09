@@ -510,6 +510,7 @@
     .pdf-sign-l  { font-family: Arial,sans-serif; font-size: 10pt; }
     .pdf-sign-dr { font-family: 'Times New Roman',serif; font-size: 11pt; }
     .pdf-sign-crm{ font-family: 'Times New Roman',serif; font-size: 9pt; }
+    .pdf-sign-rubrica { display: block; max-height: 18mm; max-width: 55mm; margin-left: auto; margin-bottom: 2px; }
     .pdf-disc { position: absolute; left: 16mm; right: 16mm; bottom: 17mm; text-align: center; font-family: Arial,sans-serif; font-size: 6pt; font-weight: bold; font-style: italic; line-height: 1.2; }
     .pdf-foot { position: absolute; left: 20mm; right: 20mm; bottom: 8mm; font-family: 'Calibri','Segoe UI',Arial,sans-serif; font-size: 11pt; line-height: 1.35; }
     .pdf-foot-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
@@ -1267,6 +1268,16 @@
           <div class="field"><label>Margem superior (mm)</label><input type="number" id="cfg-margem-topo" min="0" step="1" placeholder="45"></div>
           <div class="field"><label>Margem inferior (mm)</label><input type="number" id="cfg-margem-rodape" min="0" step="1" placeholder="70"></div>
         </div>
+
+        <div class="cfg-subhdr" style="margin-top:26px">Assinatura no laudo</div>
+        <div class="field" style="max-width:320px">
+          <label>Tipo de assinatura</label>
+          <select id="cfg-tipo-assinatura">
+            <option value="texto">Texto (padrão atual)</option>
+            <option value="rubrica">Rubrica escaneada + data</option>
+          </select>
+        </div>
+        <p style="font-size:11px;color:var(--text-muted);margin-top:6px;max-width:420px">A imagem da rubrica de cada médico é cadastrada em Configurações → Usuários. Se o médico responsável pelo laudo não tiver rubrica cadastrada, o texto normal é usado no lugar.</p>
 
         <button class="btn btn-primary" onclick="salvarConfigClinica()" style="width:auto;padding:12px 28px;margin-top:10px">Salvar alterações</button>
       </div>
@@ -2181,7 +2192,7 @@ async function secPrintLaudo(laudoId) {
   const { data: laudo } = await supa.from('laudos').select('*').eq('id', laudoId).single();
   let medico = null;
   if (laudo?.medico_responsavel_id) {
-    const { data: m } = await supa.from('medicos').select('nome,crm').eq('id', laudo.medico_responsavel_id).single();
+    const { data: m } = await supa.from('medicos').select('nome,crm,rubrica_img').eq('id', laudo.medico_responsavel_id).single();
     medico = m;
   }
   loading(false);
@@ -2311,7 +2322,7 @@ async function patPrintLaudo() {
   const { data: laudo } = await supa.from('laudos').select('*').eq('id', patLaudoAtual.id).single();
   let medico = null;
   if (laudo?.medico_responsavel_id) {
-    const { data: m } = await supa.from('medicos').select('nome,crm').eq('id', laudo.medico_responsavel_id).single();
+    const { data: m } = await supa.from('medicos').select('nome,crm,rubrica_img').eq('id', laudo.medico_responsavel_id).single();
     medico = m;
   }
   loading(false);
@@ -2348,6 +2359,7 @@ async function loadConfig() {
   document.getElementById('cfg-margem-topo').value   = pcfgLoad.margem_topo_mm   ?? '';
   document.getElementById('cfg-margem-rodape').value = pcfgLoad.margem_rodape_mm ?? '';
   document.getElementById('cfg-margens-timbrado').style.display = pcfgLoad.papel_timbrado ? 'grid' : 'none';
+  document.getElementById('cfg-tipo-assinatura').value = pcfgLoad.tipo_assinatura === 'rubrica' ? 'rubrica' : 'texto';
   document.getElementById('cfg-fonte').value     = currentClinica.login_fonte || "'Plus Jakarta Sans', sans-serif";
   document.getElementById('cfg-cor').value       = currentClinica.cor_primaria || '#1a2d6e';
   cfgLogoData = currentClinica.login_logo || null;
@@ -2498,6 +2510,7 @@ async function salvarConfigClinica() {
     delete pdfConfig.margem_topo_mm;
     delete pdfConfig.margem_rodape_mm;
   }
+  pdfConfig.tipo_assinatura = document.getElementById('cfg-tipo-assinatura').value;
 
   loading(true, 'Salvando...');
   const { error } = await supa.from('clinicas').update({
@@ -2684,7 +2697,7 @@ async function deletarSecao(id) {
 // ══════════════════════════════════════════════════════
 async function loadConfigUsuarios() {
   const { data } = await supa.from('medicos')
-    .select('id,nome,email,papel,ativo,crm')
+    .select('id,nome,email,papel,ativo,crm,rubrica_img')
     .eq('clinica_id', currentClinica.id)
     .order('nome');
 
@@ -2703,6 +2716,13 @@ async function loadConfigUsuarios() {
           ${u.id === currentDoctor.id ? 'disabled' : ''}>
         Ativo
       </label>
+      ${u.papel !== 'secretaria' ? `
+      <div style="display:flex;align-items:center;gap:6px">
+        ${u.rubrica_img ? `<img src="${u.rubrica_img}" alt="Rubrica" style="max-height:26px;max-width:70px;object-fit:contain;border:1px solid var(--border);border-radius:6px;padding:2px;background:#fff">` : ''}
+        <input type="file" accept="image/png,image/jpeg" style="display:none" id="rubrica-file-${u.id}" onchange="onRubricaFile('${u.id}', event)">
+        <button type="button" class="btn btn-outline" style="width:auto;padding:5px 10px;font-size:11px" onclick="document.getElementById('rubrica-file-${u.id}').click()">${u.rubrica_img ? 'Trocar rubrica' : '+ Rubrica'}</button>
+        ${u.rubrica_img ? `<button type="button" class="btn btn-outline" style="width:auto;padding:5px 8px;font-size:11px" onclick="removerRubrica('${u.id}')">✕</button>` : ''}
+      </div>` : ''}
     </div>
   `).join('');
 }
@@ -2710,6 +2730,34 @@ async function loadConfigUsuarios() {
 async function toggleUsuarioAtivo(id, ativo) {
   await supa.from('medicos').update({ ativo }).eq('id', id);
   toast(ativo ? 'Usuário ativado.' : 'Usuário desativado.', 'ok');
+}
+
+function onRubricaFile(userId, e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async () => {
+    const keepAlpha = file.type === 'image/png';
+    const img = await resizeImagemGenerica(reader.result, keepAlpha, 400, 150);
+    loading(true, 'Salvando rubrica...');
+    const { error } = await supa.from('medicos').update({ rubrica_img: img }).eq('id', userId);
+    loading(false);
+    if (error) { toast('Erro ao salvar rubrica: ' + error.message, 'err'); return; }
+    toast('Rubrica salva.', 'ok');
+    if (userId === currentDoctor.id) currentDoctor.rubrica_img = img;
+    loadConfigUsuarios();
+  };
+  reader.readAsDataURL(file);
+}
+
+async function removerRubrica(userId) {
+  loading(true, 'Removendo...');
+  const { error } = await supa.from('medicos').update({ rubrica_img: null }).eq('id', userId);
+  loading(false);
+  if (error) { toast('Erro: ' + error.message, 'err'); return; }
+  toast('Rubrica removida.', 'ok');
+  if (userId === currentDoctor.id) currentDoctor.rubrica_img = null;
+  loadConfigUsuarios();
 }
 
 // ══════════════════════════════════════════════════════
@@ -3436,7 +3484,11 @@ const EST = (() => {
     </div></div>`;
     const signNome = (currentDoctor?.nome || '').toUpperCase();
     const signCrm  = currentDoctor?.crm ? `CRM:${esc(currentDoctor.crm)}` : '';
-    const SIGN = `<div class="pdf-sign" style="bottom:${signBottom}mm">
+    const SIGN = (pcfg.tipo_assinatura === 'rubrica' && currentDoctor?.rubrica_img) ? `<div class="pdf-sign" style="bottom:${signBottom}mm">
+      <img class="pdf-sign-rubrica" src="${currentDoctor.rubrica_img}" alt="Rubrica">
+      <div class="pdf-sign-dr">${esc(signNome)}${signCrm?' '+signCrm:''}</div>
+      <div class="pdf-sign-crm">${dataFmt}</div>
+    </div>` : `<div class="pdf-sign" style="bottom:${signBottom}mm">
       <div class="pdf-sign-l">Laudado por:</div>
       <div class="pdf-sign-dr">${esc(signNome)}${signCrm?' '+signCrm:''}</div>
       <div class="pdf-sign-crm">${esc(pcfg.assinatura_texto || 'Este laudo foi assinado eletronicamente em '+dataFmt+'.')}</div>
@@ -3490,6 +3542,7 @@ const EST = (() => {
       .pdf-sign-l{font-family:Arial,sans-serif;font-size:10pt}
       .pdf-sign-dr{font-family:'Times New Roman',serif;font-size:11pt}
       .pdf-sign-crm{font-family:'Times New Roman',serif;font-size:9pt}
+      .pdf-sign-rubrica{display:block;max-height:18mm;max-width:55mm;margin-left:auto;margin-bottom:2px}
       .pdf-disc{position:absolute;left:16mm;right:16mm;bottom:17mm;text-align:center;font-family:Arial,sans-serif;font-size:6pt;font-weight:bold;font-style:italic;line-height:1.2}
       .pdf-foot{position:absolute;left:20mm;right:20mm;bottom:8mm;font-family:'Calibri','Segoe UI',Arial,sans-serif;font-size:11pt;line-height:1.35}
       .pdf-foot-row{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
@@ -4703,7 +4756,7 @@ async function printLaudo() {
 
   // A assinatura tem que ser sempre do médico responsável pelo laudo, não de
   // quem está com a sessão aberta (ex: admin vendo/imprimindo o laudo de outro médico).
-  const { data: medico } = await supa.from('medicos').select('nome,crm')
+  const { data: medico } = await supa.from('medicos').select('nome,crm,rubrica_img')
     .eq('id', laudo.medico_responsavel_id || currentDoctor.id).single();
   loading(false);
 
@@ -4753,11 +4806,15 @@ function buildPrint(laudo, medico) {
     </div>` : ''}
   </div>`;
 
-  // ── Assinatura ──
+  // ── Assinatura (texto padrão, ou rubrica escaneada + data se a clínica usar esse modo) ──
   const signNome = (medico?.nome || '').toUpperCase();
   const signCrm  = medico?.crm ? `CRM:${escHtml(medico.crm)}` : '';
   const assinaTxt = (pcfg.assinatura_texto || 'Este laudo foi assinado eletronicamente em {data}.').replace('{data}', dateEx);
-  const SIGN = `<div class="pdf-sign" style="bottom:${signBottom}mm">
+  const SIGN = (pcfg.tipo_assinatura === 'rubrica' && medico?.rubrica_img) ? `<div class="pdf-sign" style="bottom:${signBottom}mm">
+    <img class="pdf-sign-rubrica" src="${medico.rubrica_img}" alt="Rubrica">
+    <div class="pdf-sign-dr">${escHtml(signNome)}${signCrm ? ' '+signCrm : ''}</div>
+    <div class="pdf-sign-crm">${dateEx}</div>
+  </div>` : `<div class="pdf-sign" style="bottom:${signBottom}mm">
     <div class="pdf-sign-l">Laudado por:</div>
     <div class="pdf-sign-dr">${escHtml(signNome)}${signCrm ? ' '+signCrm : ''}</div>
     <div class="pdf-sign-crm">${escHtml(assinaTxt)}</div>
