@@ -394,6 +394,12 @@
   .est-table th { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.6px; color:var(--text-muted); padding:7px 10px; border-bottom:1px solid var(--border); background:var(--off-white); text-align:left; }
   .est-table td { padding:7px 8px; border-bottom:1px solid var(--border); vertical-align:middle; }
   .est-table tr:last-child td { border-bottom:none; }
+  /* Segmentos com muitos campos (ex: safena) — grade rotulada em vez de
+     dropdowns empilhados sem legenda. */
+  .est-fieldgrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(94px,1fr)); gap:9px 10px; align-items:start; }
+  .est-field-lbl { display:block; font-size:9.5px; font-weight:700; color:var(--text-muted); letter-spacing:.3px; text-transform:uppercase; margin-bottom:3px; white-space:nowrap; }
+  .est-field-num { font-size:11px; padding:6px 8px; border:1px solid var(--border-dark); border-radius:7px; background:var(--white); color:var(--text); font-family:var(--font-ui); width:100%; outline:none; transition:border-color .15s; }
+  .est-field-num:focus { border-color:var(--green); }
   .est-seg-nome { font-size:12px; color:var(--text); font-weight:700; min-width:150px; }
   .est-seg-sub { font-size:10px; color:var(--text-muted); font-weight:500; margin-top:1px; }
   .est-mini, .est-obs { font-size:11px; padding:6px 8px; border:1px solid var(--border-dark); border-radius:7px; background:var(--white); color:var(--text); font-family:var(--font-ui); width:100%; outline:none; transition:border-color .15s; }
@@ -3186,28 +3192,38 @@ const EST = (() => {
       const n = (estado[sec].achados||[]).filter(a=>a.lado===l).length;
       return `<td colspan="3"><span style="font-size:11px;color:var(--text-muted)">${n ? n+' achado'+(n>1?'s':'')+' detalhado'+(n>1?'s':'')+' — editar abaixo ↓' : 'Nenhum achado detalhado — editar abaixo ↓'}</span></td>`;
     },
+    // Safena tem muito mais campos que os outros segmentos (refluxo, calibre,
+    // tortuosidade, hipoplasia, medidas por segmento e — só na magna — junção
+    // safenofemoral). Empilhar tudo nas 2 colunas sem legenda ficava
+    // ilegível, então aqui o segmento ocupa as duas colunas e distribui os
+    // campos numa grade, cada um com seu próprio rótulo.
     safena:           (sec,s,l) => {
-      // Campos de medida em mm — croça/coxa/perna pra safena magna (vsm),
-      // só o diâmetro maior pra safena parva (vsp). Não passam pelo sel()
-      // genérico (não são dropdown) — por isso não usam EST.upd (não tem
-      // pill pra atualizar), só EST.sv pra salvar o valor digitado.
       const isParva = s.id === 'vsp';
-      const camposMedida = isParva ? [['diametro','Ø (mm)']] : [['croca','Croça (mm)'],['coxa','Coxa (mm)'],['perna','Perna (mm)']];
-      const medidas = camposMedida.map(([campo,ph]) => {
+      const fld = (lbl, inner) => `<div><label class="est-field-lbl">${lbl}</label>${inner}</div>`;
+      const num = (campo, ph) => {
         const v = gv(sec,s.id,l,campo);
-        return `<input type="number" step="0.1" min="0" class="est-medida" placeholder="${ph}" value="${v!=='—'?esc(v):''}" style="width:64px;font-size:10px;margin:2px 2px 0 0;padding:2px 4px" onchange="EST.sv('${sec}','${s.id}','${l}','${campo}',this.value)">`;
-      }).join('');
-      // Junção safenofemoral (pérvia/incompetente + diâmetro em mm) só existe
-      // na safena magna (vsp/safena parva não tem esse conceito no laudo).
-      const juncaoDiam = gv(sec,s.id,l,'juncao_diametro');
-      const juncaoHtml = isParva ? '' : `
-        <div style="margin-top:4px">${sel(sec,s.id,l,'juncao',OPT.juncao_status,gv(sec,s.id,l,'juncao'))}</div>
-        <input type="number" step="0.1" min="0" class="est-medida" placeholder="Ø junção (mm)" value="${juncaoDiam!=='—'?esc(juncaoDiam):''}" style="width:100%;font-size:10px;margin-top:3px;padding:2px 4px" onchange="EST.sv('${sec}','${s.id}','${l}','juncao_diametro',this.value)">`;
-      return `<td>${sel(sec,s.id,l,'refluxo',OPT.refluxo_safena,gv(sec,s.id,l,'refluxo'))}${juncaoHtml}</td>` +
-        `<td>${sel(sec,s.id,l,'calibre',OPT.calibre,gv(sec,s.id,l,'calibre'))}` +
-        `<div style="margin-top:3px">${sel(sec,s.id,l,'tortuosa',OPT.tortuosa,gv(sec,s.id,l,'tortuosa'))}</div>` +
-        `<div style="margin-top:3px">${sel(sec,s.id,l,'hipoplasica',OPT.hipoplasica,gv(sec,s.id,l,'hipoplasica'))}</div>` +
-        `<div style="display:flex;flex-wrap:wrap;margin-top:3px">${medidas}</div></td>`;
+        return `<input type="number" step="0.1" min="0" class="est-field-num est-medida" placeholder="${ph}" value="${v!=='—'?esc(v):''}" onchange="EST.sv('${sec}','${s.id}','${l}','${campo}',this.value)">`;
+      };
+
+      let g = '<div class="est-fieldgrid">';
+      g += fld('Refluxo', sel(sec,s.id,l,'refluxo',OPT.refluxo_safena,gv(sec,s.id,l,'refluxo')));
+      g += fld('Calibre', sel(sec,s.id,l,'calibre',OPT.calibre,gv(sec,s.id,l,'calibre')));
+      // Junção safenofemoral só existe na safena magna.
+      if (!isParva) {
+        g += fld('Junção SF', sel(sec,s.id,l,'juncao',OPT.juncao_status,gv(sec,s.id,l,'juncao')));
+        g += fld('Ø junção', num('juncao_diametro','mm'));
+      }
+      g += fld('Tortuosa', sel(sec,s.id,l,'tortuosa',OPT.tortuosa,gv(sec,s.id,l,'tortuosa')));
+      g += fld('Hipoplásica', sel(sec,s.id,l,'hipoplasica',OPT.hipoplasica,gv(sec,s.id,l,'hipoplasica')));
+      if (isParva) {
+        g += fld('Ø maior', num('diametro','mm'));
+      } else {
+        g += fld('Croça', num('croca','mm'));
+        g += fld('Coxa',  num('coxa','mm'));
+        g += fld('Perna', num('perna','mm'));
+      }
+      g += '</div>';
+      return `<td colspan="2">${g}</td>`;
     },
     perfurantes:      (sec,s,l) => `<td colspan="2">${sel(sec,s.id,l,'status',OPT.perf,gv(sec,s.id,l,'status'))}</td>`,
     varicosidades:    (sec,s,l) => `<td colspan="2">${sel(sec,s.id,l,'status',OPT.varic,gv(sec,s.id,l,'status'))}</td>`,
