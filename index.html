@@ -439,6 +439,14 @@
   .est-picker-card-tag { font-size:10px; color:var(--text-muted); margin-top:2px; }
   .est-picker-card-check { font-size:16px; font-weight:800; color:var(--green); flex-shrink:0; visibility:hidden; }
   .est-picker-card.selected .est-picker-card-check { visibility:visible; }
+  /* ── Achados por segmento (beta) ── */
+  .est-achados-wrap { margin-top:6px; }
+  .est-achado-card { border:1px solid var(--border); border-radius:var(--radius); padding:14px; margin-bottom:12px; background:var(--off-white); }
+  .est-achado-hdr { display:flex; align-items:center; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
+  .est-achado-hdr select { padding:6px 8px; border:1px solid var(--border); border-radius:8px; font-size:12px; background:var(--white); }
+  .est-achado-label { font-size:10.5px; font-weight:700; color:var(--text-muted); letter-spacing:.4px; text-transform:uppercase; margin:8px 0 5px; }
+  .est-achado-segs { display:flex; flex-wrap:wrap; gap:8px 14px; }
+  .est-achado-check { display:inline-flex; align-items:center; gap:5px; font-size:12px; white-space:nowrap; }
   .est-picker-card-fav { font-size:16px; color:var(--border-dark); flex-shrink:0; transition:color .15s; line-height:1; }
   .est-picker-card-fav:hover { color:#e8b400; }
   .est-picker-card-fav.active { color:#e8b400; }
@@ -2926,6 +2934,38 @@ const EST = (() => {
     vaso_tronco_status:['—','Normal','Alterado — ver observação'],
     tortuosa:['—','Sim','Não'],
   };
+
+  // ── Achados por segmento — Sistema Venoso Profundo (beta) ──────────────
+  // Modelo "registro por achado" (inspirado em ferramentas comerciais de
+  // laudo estruturado): em vez de um único dropdown por segmento, o médico
+  // adiciona quantos cartões de achado quiser, cada um com lado, tipo de
+  // trombose e os segmentos nomeados afetados.
+  const SEGMENTOS_VENOSOS = [
+    ['iliaca_ext','Ilíaca externa'],
+    ['femoral_comum','Femoral comum'],
+    ['femoral_superficial','Femoral superficial'],
+    ['femoral_profunda','Femoral profunda'],
+    ['poplitea','Poplítea'],
+    ['tibiais_post','Tibiais posteriores'],
+    ['tibiais_ant','Tibiais anteriores'],
+    ['fibulares','Fibulares'],
+  ];
+  const ACHADO_TIPOS = ['Trombose aguda','Trombose parcial (não oclusiva)','Recanalização parcial','Trombose crônica','Ausência de fasicidade respiratória'];
+  const ACHADO_DESCRICAO = {
+    'Trombose aguda': 'com distensão por material hipoecogênico, sem compressibilidade e sem fluxo ao Doppler — achado compatível com trombose venosa profunda aguda',
+    'Trombose parcial (não oclusiva)': 'com material hipoecogênico ocupando parcialmente a luz, compressibilidade parcial e fluxo residual ao Doppler — achado compatível com trombose venosa profunda parcial (não oclusiva)',
+    'Recanalização parcial': 'com traves fibrosas, irregularidades parietais e fluxo parcial ao Doppler — achado compatível com recanalização parcial de trombose venosa profunda prévia',
+    'Trombose crônica': 'com calibre reduzido, paredes espessadas e irregulares, sem fluxo ao Doppler — achado compatível com trombose venosa profunda crônica',
+    'Ausência de fasicidade respiratória': 'sem fasicidade respiratória à manobra de Valsalva — achado sugestivo de obstrução venosa proximal',
+  };
+  const ACHADO_CONCLUSAO = {
+    'Trombose aguda': 'trombose venosa profunda aguda',
+    'Trombose parcial (não oclusiva)': 'trombose venosa profunda parcial (não oclusiva)',
+    'Recanalização parcial': 'recanalização parcial de trombose venosa profunda prévia',
+    'Trombose crônica': 'trombose venosa profunda crônica',
+    'Ausência de fasicidade respiratória': 'obstrução venosa proximal (ausência de fasicidade respiratória)',
+  };
+
   // ══════════════════════════════════════════════════════
   // SCHEMA DE TEMPLATES (Fase A — motor; Fase B — vem do banco)
   //
@@ -3035,7 +3075,7 @@ const EST = (() => {
         tpl.montarUnidades = MONTAR_UNIDADES_REGISTRY[row.montar_unidades](tpl);
       }
       novo[row.chave] = tpl;
-      estado[row.chave] = estado[row.chave] || { lado:'B', dados:{} };
+      estado[row.chave] = estado[row.chave] || { lado:'B', dados:{}, achados:[] };
     });
     TEMPLATES = novo;
     return true;
@@ -3046,6 +3086,8 @@ const EST = (() => {
   function sv(sec,id,l,f,v){ const key=k(sec,id,l); (estado[sec].dados[key]=estado[sec].dados[key]||{})[f]=v; }
   const getLados = sec => estado[sec].lado==='B' ? ['D','E'] : [estado[sec].lado];
   const esc = s => (s||'').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  // "a, b e c" em vez de "a, b, c" — usado em qualquer lista de nomes no texto gerado.
+  const juntarComE = arr => arr.length>1 ? arr.slice(0,-1).join(', ')+' e '+arr[arr.length-1] : (arr[0]||'');
 
   function pill(v){
     if(!v||v==='—') return '';
@@ -3078,6 +3120,7 @@ const EST = (() => {
   const TIPO_META = {
     perv:             { label:'Status único (ex: perviedade)',            standalone:false, campos:[{nome:'status',  opcoes:'perv',    normal:'Pérvias (normal)'}] },
     refluxo_profundo: { label:'Refluxo único (ex: sistema profundo)',     standalone:false, campos:[{nome:'refluxo', opcoes:'refluxo', normal:'Sem refluxo'}] },
+    venoso_achados:   { label:'Achados por segmento (trombose venosa profunda) — beta', standalone:false, campos:[] },
     safena:           { label:'Refluxo + calibre (ex: safena)',           standalone:true,  campos:[{nome:'refluxo', opcoes:'refluxo', normal:'Sem refluxo'},{nome:'calibre', opcoes:'calibre', normal:'Normal'}] },
     perfurantes:      { label:'Status único (ex: perfurantes)',          standalone:false, campos:[{nome:'status',  opcoes:'perf',    normal:'Não visualizadas'}] },
     varicosidades:    { label:'Status único (ex: varicosidades)',        standalone:false, campos:[{nome:'status',  opcoes:'varic',   normal:'Há varicosidades conforme ectoscopia'}] },
@@ -3097,6 +3140,10 @@ const EST = (() => {
   const TIPO_CELLS = {
     perv:             (sec,s,l) => `<td colspan="2">${sel(sec,s.id,l,'status',OPT.perv,gv(sec,s.id,l,'status'))}</td>`,
     refluxo_profundo: (sec,s,l) => `<td colspan="2">${sel(sec,s.id,l,'refluxo',OPT.refluxo,gv(sec,s.id,l,'refluxo'))}</td>`,
+    venoso_achados: (sec,s,l) => {
+      const n = (estado[sec].achados||[]).filter(a=>a.lado===l).length;
+      return `<td colspan="2"><span style="font-size:11px;color:var(--text-muted)">${n ? n+' achado'+(n>1?'s':'')+' registrado'+(n>1?'s':'')+' — editar abaixo ↓' : 'Sem achados (normal) — editar abaixo ↓'}</span></td>`;
+    },
     safena:           (sec,s,l) => {
       // Campos de medida em mm — croça/coxa/perna pra safena magna (vsm),
       // só o diâmetro maior pra safena parva (vsp). Não passam pelo sel()
@@ -3168,13 +3215,47 @@ const EST = (() => {
       if(r&&r!=='—') return `${nome} apresentam ${r.toLowerCase()} ao Doppler espectral, com manobras provocativas.${o?' '+o+'.':''}`;
       return '';
     },
+    // Achados por segmento (beta) — cada "achado" é um cartão que o médico
+    // adiciona à parte (estado[sec].achados), não um campo de tabela comum;
+    // aqui só lemos os que pertencem a este lado (l) e montamos o parágrafo
+    // + uma CONCLUSÃO específica desse membro (a impressão do venoso já é
+    // uma página por membro, então a conclusão fica junto do próprio texto
+    // do lado em vez de um bloco só compartilhado entre os dois).
+    venoso_achados: (sec,s,l,TX) => {
+      const achadosLado = (estado[sec].achados||[]).filter(a=>a.lado===l);
+      if (!achadosLado.length) return TX.venoso_profundo_sem_refluxo.replace('{nome}', TX.venoso_profundo_nome);
+
+      const nomeSeg = id => (SEGMENTOS_VENOSOS.find(([sid])=>sid===id)||[null,id])[1];
+      const segmentosCobertos = new Set();
+      const frases = achadosLado.map(a => {
+        const segs = a.segmentos==='todos' ? SEGMENTOS_VENOSOS.map(([id])=>id) : (a.segmentos||[]);
+        segs.forEach(id=>segmentosCobertos.add(id));
+        const sujeito = a.segmentos==='todos'
+          ? 'Todas as veias profundas'
+          : `Vei${segs.length>1?'as':'a'} ${juntarComE(segs.map(nomeSeg))}`;
+        const desc = ACHADO_DESCRICAO[a.tipo] || a.tipo;
+        let f = `${sujeito}, ${desc}.`;
+        if (a.naoAvaliados && a.naoAvaliados.length) f += ` Segmento(s) não avaliado(s) por limitação técnica: ${juntarComE(a.naoAvaliados.map(nomeSeg))}.`;
+        if (a.obs) f += ` ${a.obs}.`;
+        return f;
+      });
+
+      const restantes = SEGMENTOS_VENOSOS.filter(([id])=>!segmentosCobertos.has(id)).map(([,nome])=>nome);
+      let corpo = frases.join('\n');
+      if (restantes.length) corpo += `\nVei${restantes.length>1?'as':'a'} ${juntarComE(restantes)} pérvia(s), compressível(is), com fluxo fásico espontâneo e resposta adequada às manobras de compressão distal.`;
+
+      const tiposUnicos = [...new Set(achadosLado.map(a=>a.tipo))];
+      const conclusao = juntarComE(tiposUnicos.map(t=>ACHADO_CONCLUSAO[t]||t));
+      const ln = TEMPLATES[sec].ladoNomes[l];
+      corpo += `\n\nCONCLUSÃO (${ln.toUpperCase()}):\n${conclusao.charAt(0).toUpperCase()+conclusao.slice(1)}.`;
+      return corpo;
+    },
     safena: (sec,s,l,TX) => {
       const r=gv(sec,s.id,l,'refluxo'), c=gv(sec,s.id,l,'calibre'), tort=gv(sec,s.id,l,'tortuosa');
       const o=(estado[sec].dados[k(sec,s.id,l)]||{}).obs||'';
       const isParva = s.id==='vsp';
       // Vírgula decimal (padrão BR) em vez do ponto que o <input type=number> devolve.
       const numCampo = campo => { const v=gv(sec,s.id,l,campo); return (v&&v!=='—') ? String(v).replace('.',',') : ''; };
-      const juntarComE = arr => arr.length>1 ? arr.slice(0,-1).join(', ')+' e '+arr[arr.length-1] : arr[0];
 
       // Frase de medida — croça/coxa/perna na magna, só o diâmetro na parva.
       // Só entra no texto quando o médico realmente preencheu algum valor.
@@ -3291,10 +3372,88 @@ const EST = (() => {
     });
     return h+`</tbody></table>`;
   }
+  // ── Achados por segmento (beta) — CRUD dos cartões + render ──
+  function achadoNovoId(){ return 'a'+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+
+  function adicionarAchado(sec, lado){
+    estado[sec].achados = estado[sec].achados || [];
+    estado[sec].achados.push({ id: achadoNovoId(), lado: lado||'D', tipo: ACHADO_TIPOS[0], segmentos: [], naoAvaliados: [], obs: '' });
+    renderSec(sec);
+  }
+  function removerAchado(sec, id){
+    estado[sec].achados = (estado[sec].achados||[]).filter(a=>a.id!==id);
+    renderSec(sec);
+  }
+  function setAchadoCampo(sec, id, campo, valor){
+    const a = (estado[sec].achados||[]).find(a=>a.id===id);
+    if (a) a[campo] = valor;
+  }
+  function toggleAchadoTodos(sec, id, checked){
+    const a = (estado[sec].achados||[]).find(a=>a.id===id);
+    if (!a) return;
+    a.segmentos = checked ? 'todos' : [];
+    renderSec(sec);
+  }
+  function toggleAchadoSegmento(sec, id, segId, checked, campo){
+    const a = (estado[sec].achados||[]).find(a=>a.id===id);
+    if (!a) return;
+    const lista = campo || 'segmentos';
+    if (a[lista]==='todos') a[lista]=[];
+    const set = new Set(a[lista]||[]);
+    checked ? set.add(segId) : set.delete(segId);
+    a[lista] = [...set];
+    renderSec(sec);
+  }
+
+  function renderAchados(sec){
+    const achados = estado[sec].achados || [];
+    const cardHtml = a => {
+      const segsMarcados = a.segmentos==='todos' ? new Set(SEGMENTOS_VENOSOS.map(([id])=>id)) : new Set(a.segmentos||[]);
+      const naoAvMarcados = new Set(a.naoAvaliados||[]);
+      return `<div class="est-achado-card">
+        <div class="est-achado-hdr">
+          <select onchange="EST.setAchadoCampo('${sec}','${a.id}','lado',this.value)">
+            <option value="D"${a.lado==='D'?' selected':''}>Direito</option>
+            <option value="E"${a.lado==='E'?' selected':''}>Esquerdo</option>
+          </select>
+          <select onchange="EST.setAchadoCampo('${sec}','${a.id}','tipo',this.value)">
+            ${ACHADO_TIPOS.map(t=>`<option${t===a.tipo?' selected':''}>${t}</option>`).join('')}
+          </select>
+          <button type="button" class="btn btn-danger" style="width:auto;padding:4px 10px;font-size:11px;margin-left:auto" onclick="EST.removerAchado('${sec}','${a.id}')">🗑</button>
+        </div>
+        <div class="est-achado-label">Segmentos afetados</div>
+        <label class="est-achado-check" style="font-weight:700">
+          <input type="checkbox" ${a.segmentos==='todos'?'checked':''} onchange="EST.toggleAchadoTodos('${sec}','${a.id}',this.checked)"> Todos os segmentos
+        </label>
+        <div class="est-achado-segs">
+          ${SEGMENTOS_VENOSOS.map(([id,nome])=>`<label class="est-achado-check">
+            <input type="checkbox" ${segsMarcados.has(id)?'checked':''} ${a.segmentos==='todos'?'disabled':''} onchange="EST.toggleAchadoSegmento('${sec}','${a.id}','${id}',this.checked)"> ${nome}
+          </label>`).join('')}
+        </div>
+        <div class="est-achado-label">Não avaliado(s) por limitação técnica</div>
+        <div class="est-achado-segs">
+          ${SEGMENTOS_VENOSOS.map(([id,nome])=>`<label class="est-achado-check">
+            <input type="checkbox" ${naoAvMarcados.has(id)?'checked':''} onchange="EST.toggleAchadoSegmento('${sec}','${a.id}','${id}',this.checked,'naoAvaliados')"> ${nome}
+          </label>`).join('')}
+        </div>
+        <input class="est-obs" style="margin-top:10px" placeholder="Observação adicional" value="${esc(a.obs||'')}" onchange="EST.setAchadoCampo('${sec}','${a.id}','obs',this.value)">
+      </div>`;
+    };
+    return `<div class="est-achados-wrap">
+      <div class="cfg-subhdr" style="margin-top:18px">Achados — Sistema Venoso Profundo (beta)</div>
+      ${achados.length ? achados.map(cardHtml).join('') : '<p style="font-size:12px;color:var(--text-muted)">Nenhum achado registrado — o texto sai normal pros dois membros.</p>'}
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button type="button" class="btn btn-outline" style="width:auto;padding:7px 14px;font-size:12px" onclick="EST.adicionarAchado('${sec}','D')">+ Achado (Direito)</button>
+        <button type="button" class="btn btn-outline" style="width:auto;padding:7px 14px;font-size:12px" onclick="EST.adicionarAchado('${sec}','E')">+ Achado (Esquerdo)</button>
+      </div>
+    </div>`;
+  }
+
   function renderSec(sec){
     const lados=getLados(sec), wrap=document.getElementById('est-tables-'+sec);
     if(!wrap) return;
     let html=''; lados.forEach((l,i)=>{ html+=renderTabela(sec,l); if(lados.length>1&&i===0) html+='<hr style="border:none;border-top:1px solid var(--border);margin:12px 0">'; });
+    if (TEMPLATES[sec].segmentos.some(s=>s.tipo==='venoso_achados')) html += renderAchados(sec);
     wrap.innerHTML=html;
     ['D','E','B'].forEach(x=>{ const b=document.getElementById('est-lado-'+sec+'-'+x); if(b) b.classList.toggle('active', estado[sec].lado===x); });
   }
@@ -3307,11 +3466,12 @@ const EST = (() => {
   function aplicarNormal(sec){
     const norm = TEMPLATES[sec].normal;
     getLados(sec).forEach(l=>Object.entries(norm).forEach(([id,c])=>Object.entries(c).forEach(([f,v])=>sv(sec,id,l,f,v))));
+    estado[sec].achados = [];
     renderSec(sec);
   }
-  function limparSec(sec){ estado[sec].dados={}; renderSec(sec); }
+  function limparSec(sec){ estado[sec].dados={}; estado[sec].achados=[]; renderSec(sec); }
   function limparTudo(){
-    Object.keys(TEMPLATES).forEach(sec=>{ estado[sec].dados={}; renderSec(sec); });
+    Object.keys(TEMPLATES).forEach(sec=>{ estado[sec].dados={}; estado[sec].achados=[]; renderSec(sec); });
     ultimasPartes=[]; document.getElementById('est-preview').innerHTML='';
     document.getElementById('est-preview-wrap').style.display='none';
   }
@@ -3846,6 +4006,7 @@ const EST = (() => {
 
   return {
     init, sv, upd, setLado, toggleSec, aplicarNormal, limparSec, limparTudo, gerar, copiar, imprimir,
+    adicionarAchado, removerAchado, setAchadoCampo, toggleAchadoTodos, toggleAchadoSegmento,
     TEXTOS_DEFAULT, filtrarPicker, toggleTemplateAtivo, toggleFiltroFavoritos, toggleFavorito, TIPO_META,
     carregarConfigMeusTemplates, sugerirTituloTemplate, adicionarSegmentoTemplate, removerSegmentoTemplate,
     moverSegmentoTemplate, salvarMeuTemplate, editarMeuTemplate, cancelarEdicaoTemplate,
