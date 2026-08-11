@@ -2913,10 +2913,10 @@ const EST = (() => {
   let iniciado = false;
 
   const OPT = {
-    perv:['—','Pérvias (normal)','Alterado — ver obs'],
-    refluxo:['—','Sem refluxo','Refluxo presente','Não avaliado'],
+    perv:['—','Pérvias (normal)','Trombose venosa aguda','Trombose venosa subaguda','Trombose venosa antiga — recanalizada','Trombose venosa antiga — sem recanalização','Tromboflebite superficial subaguda','Alterado — ver obs'],
+    refluxo:['—','Sem refluxo','Refluxo leve','Refluxo moderado','Refluxo severo','Não avaliado'],
     calibre:['—','Normal','Aumentado','Reduzido'],
-    perf:['—','Não visualizadas','Perfurante incompetente presente'],
+    perf:['—','Não visualizadas','Incompetente na linha de Linton','Incompetente na face posterior da perna','Incompetente no canal de Hunter (face interna da coxa)','Incompetente na face lateral da coxa'],
     varic:['—','Há varicosidades conforme ectoscopia','Sem varicosidades'],
     art_cal:['—','Normal','Estenose < 50%','Estenose 50–70%','Estenose > 70%','Ocluída'],
     art_fluxo:['—','Trifásico (normal)','Bifásico','Monofásico','Ausente'],
@@ -3049,9 +3049,9 @@ const EST = (() => {
   function pill(v){
     if(!v||v==='—') return '';
     if(['Pérvias (normal)','Sem refluxo','Normal','Não visualizadas','Trifásico (normal)','Regular, sem placas','Sem placas ateromatosas','Não observado'].includes(v)) return `<span class="est-pill est-pill-ok">${v}</span>`;
-    if(['Refluxo presente','Perfurante incompetente presente','Estenose > 70%','Ocluída','Ausente','Monofásico','Oclusão','Placas ateromatosas em bulbo carotídeo maior que 50%'].includes(v)) return `<span class="est-pill est-pill-danger">${v}</span>`;
-    if(['Aumentado','Estenose 50–70%','Placa 10–50%','Placa > 50%','Bifásico','Alterado — ver obs','Placas ateromatosas em bulbo carotídeo entre 10% e 50%','Presente'].includes(v)) return `<span class="est-pill est-pill-warn">${v}</span>`;
-    if(['Estenose < 50%','Placa < 10%','Reduzido','Pequenas placas ateromatosas em bulbo carotídeo menor que 10%'].includes(v)) return `<span class="est-pill est-pill-info">${v}</span>`;
+    if(['Refluxo severo','Perfurante incompetente presente','Estenose > 70%','Ocluída','Ausente','Monofásico','Oclusão','Placas ateromatosas em bulbo carotídeo maior que 50%','Trombose venosa aguda','Trombose venosa subaguda','Trombose venosa antiga — recanalizada','Trombose venosa antiga — sem recanalização','Tromboflebite superficial subaguda','Incompetente na linha de Linton','Incompetente na face posterior da perna','Incompetente no canal de Hunter (face interna da coxa)','Incompetente na face lateral da coxa'].includes(v)) return `<span class="est-pill est-pill-danger">${v}</span>`;
+    if(['Aumentado','Estenose 50–70%','Placa 10–50%','Placa > 50%','Bifásico','Alterado — ver obs','Placas ateromatosas em bulbo carotídeo entre 10% e 50%','Presente','Refluxo moderado'].includes(v)) return `<span class="est-pill est-pill-warn">${v}</span>`;
+    if(['Estenose < 50%','Placa < 10%','Reduzido','Pequenas placas ateromatosas em bulbo carotídeo menor que 10%','Refluxo leve'].includes(v)) return `<span class="est-pill est-pill-info">${v}</span>`;
     return `<span class="est-pill est-pill-gray">${v}</span>`;
   }
   function sel(sec,id,l,campo,opts,cur){
@@ -3122,10 +3122,22 @@ const EST = (() => {
     linha+='.'; if(o) linha+=' '+o+'.';
     return linha;
   }
+  // Frases-base pra cada achado de perviedade alterada (categorias do banco
+  // do Dr. Ednei Abertoni). Não são editáveis por clínica (como o resto do
+  // OPT, é vocabulário fixo do motor) — só a frase "normal" continua vindo
+  // de TX.venoso_perviedade_normal, configurável em Configurações → Laudo Estruturado.
+  const PERV_ALTERADO_SUFIXO = {
+    'Trombose venosa aguda': 'sugerindo trombose venosa aguda',
+    'Trombose venosa subaguda': 'sugerindo trombose venosa subaguda',
+    'Trombose venosa antiga — recanalizada': 'sugerindo trombose venosa antiga e recanalizada',
+    'Trombose venosa antiga — sem recanalização': 'sugerindo trombose venosa antiga sem sinais de recanalização',
+    'Tromboflebite superficial subaguda': 'sugerindo tromboflebite superficial subaguda',
+  };
   const TIPO_TEXTO = {
     perv: (sec,s,l,TX) => {
       const st=gv(sec,s.id,l,'status'), o=(estado[sec].dados[k(sec,s.id,l)]||{}).obs||'';
       if(st==='Pérvias (normal)') return 'PERVIEDADE:\n'+TX.venoso_perviedade_normal;
+      if(PERV_ALTERADO_SUFIXO[st]) return `PERVIEDADE:\nAlterações identificadas ao mapeamento a cores, ${PERV_ALTERADO_SUFIXO[st]}.${o?' '+o+'.':''}`;
       if(st&&st!=='—') return `PERVIEDADE:\n${o||'Alterações presentes — ver observações.'}`;
       return '';
     },
@@ -3136,7 +3148,8 @@ const EST = (() => {
       const r=gv(sec,s.id,l,'refluxo'), o=(estado[sec].dados[k(sec,s.id,l)]||{}).obs||'';
       const nome=TX.venoso_profundo_nome;
       if(r==='Sem refluxo') return TX.venoso_profundo_sem_refluxo.replace('{nome}',nome);
-      if(r&&r!=='—') return `${nome}: ${r}.${o?' '+o+'.':''}`;
+      if(r==='Não avaliado') return `${nome}: avaliação de refluxo prejudicada/não realizada.${o?' '+o+'.':''}`;
+      if(r&&r!=='—') return `${nome} apresentam ${r.toLowerCase()} ao Doppler espectral, com manobras provocativas.${o?' '+o+'.':''}`;
       return '';
     },
     safena: (sec,s,l,TX) => {
@@ -3145,7 +3158,8 @@ const EST = (() => {
       if(r==='Sem refluxo'&&(c==='Normal'||c==='—')) return TX.venoso_safena_normal.replace('{nome}',s.nomeCompleto);
       let f=`${s.nomeCompleto} apresenta`;
       if(c&&c!=='—'&&c!=='Normal') f+=` calibre ${c.toLowerCase()},`;
-      if(r==='Refluxo presente') f+=' refluxo ao Doppler espectral, com manobras provocativas.';
+      if(r==='Não avaliado') f+=' refluxo não avaliado ao Doppler espectral.';
+      else if(r&&r!=='—'&&r!=='Sem refluxo') f+=` ${r.toLowerCase()} ao Doppler espectral, com manobras provocativas.`;
       else if(r&&r!=='—') f+=' sem refluxos significativos ao Doppler espectral.';
       if(o) f+=' '+o+'.';
       return f;
@@ -3153,7 +3167,7 @@ const EST = (() => {
     perfurantes: (sec,s,l,TX) => {
       const st=gv(sec,s.id,l,'status'), o=(estado[sec].dados[k(sec,s.id,l)]||{}).obs||'';
       if(st==='Não visualizadas') return TX.venoso_perfurantes_normal;
-      if(st&&st!=='—') return `Perfurante incompetente presente.${o?' Localização: '+o+'.':''}`;
+      if(st&&st!=='—') return `Foi visualizada veia perfurante ${st.charAt(0).toLowerCase()+st.slice(1)}, que drena refluxo de tributárias.${o?' '+o+'.':''}`;
       return '';
     },
     varicosidades: (sec,s,l,TX) => {
