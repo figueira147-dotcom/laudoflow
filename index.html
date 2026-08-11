@@ -2966,6 +2966,39 @@ const EST = (() => {
     'Ausência de fasicidade respiratória': 'obstrução venosa proximal (ausência de fasicidade respiratória)',
   };
 
+  // ── Achados por artéria — Arterial MMII (beta) ──────────────────────────
+  // Complemento, não substituto: as linhas normais (AFC/AFP/AFS+Pop/Tibiais)
+  // continuam sendo a impressão geral por dropdown; isso aqui só entra
+  // quando o médico precisa registrar grau de estenose/PSV/placa de uma
+  // artéria específica.
+  const ARTERIAS_MMII = [
+    ['fem_comum','Femoral comum'],
+    ['fem_superficial','Femoral superficial'],
+    ['fem_profunda','Femoral profunda'],
+    ['poplitea','Poplítea'],
+    ['tibial_ant','Tibial anterior'],
+    ['tibial_post','Tibial posterior'],
+    ['fibular','Fibular'],
+  ];
+  const PATOLOGIA_ARTERIAL = ['Estenose (placa)','Ateromatose difusa','Oclusão / Trombose','Aneurisma','Stent / Endoprótese','Não caracterizada (janela limitada)'];
+  const GRAU_ESTENOSE_OPT = ['Não citar','< 50%','50–69%','> 70%','Suboclusiva (90–99%)','Oclusão'];
+  const TIPO_PLACA_OPT = ['—','Calcificada','Não calcificada','Mista'];
+  const PADRAO_ESPECTRAL_OPT = ['Não especificado','Bifásico','Monofásico','Tardus-Parvus'];
+  const PATOLOGIA_ARTERIAL_DESC = {
+    'Estenose (placa)': a => {
+      let f = `placa${a.tipoPlaca&&a.tipoPlaca!=='—'?' '+a.tipoPlaca.toLowerCase():''}, determinando estenose ${a.grauEstenose&&a.grauEstenose!=='Não citar'?a.grauEstenose:'de grau não especificado'}`;
+      if (a.psvEstenose) f += `, com PSV de ${a.psvEstenose} cm/s no ponto de maior estreitamento`;
+      if (a.psvProximal) f += ` (PSV proximal de referência: ${a.psvProximal} cm/s)`;
+      if (a.padraoEspectral && a.padraoEspectral!=='Não especificado') f += `, padrão espectral distal ${a.padraoEspectral.toLowerCase()}`;
+      return f;
+    },
+    'Ateromatose difusa': () => 'ateromatose difusa, sem lesão estenosante focal significativa',
+    'Oclusão / Trombose': () => 'oclusão/trombose, sem fluxo detectável ao Doppler no segmento acometido',
+    'Aneurisma': () => 'dilatação aneurismática',
+    'Stent / Endoprótese': () => 'stent/endoprótese pérvio(a), sem sinais de estenose intra-stent significativa',
+    'Não caracterizada (janela limitada)': () => 'avaliação prejudicada por janela acústica limitada',
+  };
+
   // ══════════════════════════════════════════════════════
   // SCHEMA DE TEMPLATES (Fase A — motor; Fase B — vem do banco)
   //
@@ -3015,7 +3048,8 @@ const EST = (() => {
       if(!aT.length) return [];
       const TX=getTX();
       let corpo=TX.arterial_intro+'\n\n'+aT.join('\n\n');
-      const allN=lados.every(l=>tpl.segmentos.every(s=>{const c=gv(tpl.id,s.id,l,'calibre');return c==='Normal'||c==='—';}));
+      const semAchados = !(estado[tpl.id].achados||[]).length;
+      const allN=semAchados && lados.every(l=>tpl.segmentos.every(s=>{const c=gv(tpl.id,s.id,l,'calibre');return c==='Normal'||c==='—';}));
       if(allN) corpo+='\n\nIMPRESSÃO:\n'+TX.arterial_impressao;
       return [{titulo:tpl.tituloImpressao, corpo}];
     },
@@ -3121,6 +3155,7 @@ const EST = (() => {
     perv:             { label:'Status único (ex: perviedade)',            standalone:false, campos:[{nome:'status',  opcoes:'perv',    normal:'Pérvias (normal)'}] },
     refluxo_profundo: { label:'Refluxo único (ex: sistema profundo)',     standalone:false, campos:[{nome:'refluxo', opcoes:'refluxo', normal:'Sem refluxo'}] },
     venoso_achados:   { label:'Achados por segmento (trombose venosa profunda) — beta', standalone:false, campos:[] },
+    arterial_achados: { label:'Achados detalhados por artéria (estenose/PSV) — beta', standalone:false, campos:[] },
     safena:           { label:'Refluxo + calibre (ex: safena)',           standalone:true,  campos:[{nome:'refluxo', opcoes:'refluxo', normal:'Sem refluxo'},{nome:'calibre', opcoes:'calibre', normal:'Normal'}] },
     perfurantes:      { label:'Status único (ex: perfurantes)',          standalone:false, campos:[{nome:'status',  opcoes:'perf',    normal:'Não visualizadas'}] },
     varicosidades:    { label:'Status único (ex: varicosidades)',        standalone:false, campos:[{nome:'status',  opcoes:'varic',   normal:'Há varicosidades conforme ectoscopia'}] },
@@ -3143,6 +3178,10 @@ const EST = (() => {
     venoso_achados: (sec,s,l) => {
       const n = (estado[sec].achados||[]).filter(a=>a.lado===l).length;
       return `<td colspan="2"><span style="font-size:11px;color:var(--text-muted)">${n ? n+' achado'+(n>1?'s':'')+' registrado'+(n>1?'s':'')+' — editar abaixo ↓' : 'Sem achados (normal) — editar abaixo ↓'}</span></td>`;
+    },
+    arterial_achados: (sec,s,l) => {
+      const n = (estado[sec].achados||[]).filter(a=>a.lado===l).length;
+      return `<td colspan="3"><span style="font-size:11px;color:var(--text-muted)">${n ? n+' achado'+(n>1?'s':'')+' detalhado'+(n>1?'s':'')+' — editar abaixo ↓' : 'Nenhum achado detalhado — editar abaixo ↓'}</span></td>`;
     },
     safena:           (sec,s,l) => {
       // Campos de medida em mm — croça/coxa/perna pra safena magna (vsm),
@@ -3249,6 +3288,25 @@ const EST = (() => {
       const ln = TEMPLATES[sec].ladoNomes[l];
       corpo += `\n\nCONCLUSÃO (${ln.toUpperCase()}):\n${conclusao.charAt(0).toUpperCase()+conclusao.slice(1)}.`;
       return corpo;
+    },
+    // Complemento fino por artéria (beta) — some quando não há achado
+    // registrado (as linhas normais de calibre/parede/fluxo já bastam);
+    // só aparece um parágrafo extra quando o médico detalha uma artéria
+    // específica com grau de estenose, PSV ou tipo de placa.
+    arterial_achados: (sec,s,l) => {
+      const achadosLado = (estado[sec].achados||[]).filter(a=>a.lado===l);
+      if (!achadosLado.length) return '';
+      const nomeArt = id => (ARTERIAS_MMII.find(([aid])=>aid===id)||[null,id])[1];
+      const frases = achadosLado.map(a => {
+        const segs = a.segmentos==='todos' ? ARTERIAS_MMII.map(([id])=>id) : (a.segmentos||[]);
+        const sujeito = a.segmentos==='todos' ? 'Todas as artérias avaliadas' : `Artéria${segs.length>1?'s':''} ${juntarComE(segs.map(nomeArt))}`;
+        const descFn = PATOLOGIA_ARTERIAL_DESC[a.tipo];
+        const desc = descFn ? descFn(a) : (a.tipo||'');
+        let f = `${sujeito}: ${desc}.`;
+        if (a.obs) f += ` ${a.obs}.`;
+        return f;
+      });
+      return 'ACHADOS ADICIONAIS:\n' + frases.join('\n');
     },
     safena: (sec,s,l,TX) => {
       const r=gv(sec,s.id,l,'refluxo'), c=gv(sec,s.id,l,'calibre'), tort=gv(sec,s.id,l,'tortuosa');
@@ -3375,9 +3433,9 @@ const EST = (() => {
   // ── Achados por segmento (beta) — CRUD dos cartões + render ──
   function achadoNovoId(){ return 'a'+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
 
-  function adicionarAchado(sec, lado){
+  function adicionarAchado(sec, lado, tipoDefault){
     estado[sec].achados = estado[sec].achados || [];
-    estado[sec].achados.push({ id: achadoNovoId(), lado: lado||'D', tipo: ACHADO_TIPOS[0], segmentos: [], naoAvaliados: [], obs: '' });
+    estado[sec].achados.push({ id: achadoNovoId(), lado: lado||'D', tipo: tipoDefault || ACHADO_TIPOS[0], segmentos: [], naoAvaliados: [], obs: '' });
     renderSec(sec);
   }
   function removerAchado(sec, id){
@@ -3449,11 +3507,74 @@ const EST = (() => {
     </div>`;
   }
 
+  function renderAchadosArteriais(sec){
+    const achados = estado[sec].achados || [];
+    const cardHtml = a => {
+      const segsMarcados = a.segmentos==='todos' ? new Set(ARTERIAS_MMII.map(([id])=>id)) : new Set(a.segmentos||[]);
+      return `<div class="est-achado-card">
+        <div class="est-achado-hdr">
+          <select onchange="EST.setAchadoCampo('${sec}','${a.id}','lado',this.value)">
+            <option value="D"${a.lado==='D'?' selected':''}>Direito</option>
+            <option value="E"${a.lado==='E'?' selected':''}>Esquerdo</option>
+          </select>
+          <select onchange="EST.setAchadoCampo('${sec}','${a.id}','tipo',this.value)">
+            ${PATOLOGIA_ARTERIAL.map(t=>`<option${t===a.tipo?' selected':''}>${t}</option>`).join('')}
+          </select>
+          <button type="button" class="btn btn-danger" style="width:auto;padding:4px 10px;font-size:11px;margin-left:auto" onclick="EST.removerAchado('${sec}','${a.id}')">🗑</button>
+        </div>
+        <div class="est-achado-label">Artéria(s) acometida(s)</div>
+        <label class="est-achado-check" style="font-weight:700">
+          <input type="checkbox" ${a.segmentos==='todos'?'checked':''} onchange="EST.toggleAchadoTodos('${sec}','${a.id}',this.checked)"> Todas
+        </label>
+        <div class="est-achado-segs">
+          ${ARTERIAS_MMII.map(([id,nome])=>`<label class="est-achado-check">
+            <input type="checkbox" ${segsMarcados.has(id)?'checked':''} ${a.segmentos==='todos'?'disabled':''} onchange="EST.toggleAchadoSegmento('${sec}','${a.id}','${id}',this.checked)"> ${nome}
+          </label>`).join('')}
+        </div>
+        <div class="form-row cols-2" style="margin-top:8px">
+          <div class="field"><label style="font-size:10.5px">Grau de estenose</label>
+            <select style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:8px;font-size:12px" onchange="EST.setAchadoCampo('${sec}','${a.id}','grauEstenose',this.value)">
+              ${GRAU_ESTENOSE_OPT.map(o=>`<option${o===a.grauEstenose?' selected':''}>${o}</option>`).join('')}
+            </select>
+          </div>
+          <div class="field"><label style="font-size:10.5px">Tipo de placa</label>
+            <select style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:8px;font-size:12px" onchange="EST.setAchadoCampo('${sec}','${a.id}','tipoPlaca',this.value)">
+              ${TIPO_PLACA_OPT.map(o=>`<option${o===a.tipoPlaca?' selected':''}>${o}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div class="form-row cols-2" style="margin-top:8px">
+          <div class="field"><label style="font-size:10.5px">PSV no ponto de estenose (cm/s)</label>
+            <input type="number" step="1" min="0" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:8px;font-size:12px" value="${esc(a.psvEstenose||'')}" onchange="EST.setAchadoCampo('${sec}','${a.id}','psvEstenose',this.value)">
+          </div>
+          <div class="field"><label style="font-size:10.5px">PSV proximal de referência (cm/s)</label>
+            <input type="number" step="1" min="0" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:8px;font-size:12px" value="${esc(a.psvProximal||'')}" onchange="EST.setAchadoCampo('${sec}','${a.id}','psvProximal',this.value)">
+          </div>
+        </div>
+        <div class="est-achado-label">Padrão espectral distal</div>
+        <select style="padding:6px 8px;border:1px solid var(--border);border-radius:8px;font-size:12px" onchange="EST.setAchadoCampo('${sec}','${a.id}','padraoEspectral',this.value)">
+          ${PADRAO_ESPECTRAL_OPT.map(o=>`<option${o===a.padraoEspectral?' selected':''}>${o}</option>`).join('')}
+        </select>
+        <input class="est-obs" style="margin-top:10px" placeholder="Observação adicional" value="${esc(a.obs||'')}" onchange="EST.setAchadoCampo('${sec}','${a.id}','obs',this.value)">
+      </div>`;
+    };
+    return `<div class="est-achados-wrap">
+      <div class="cfg-subhdr" style="margin-top:18px">Achados adicionais — detalhe por artéria (beta)</div>
+      <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px">Complementa as linhas acima — continue marcando o dropdown geral da artéria; use isso só quando precisar registrar grau de estenose, PSV ou tipo de placa específicos.</p>
+      ${achados.length ? achados.map(cardHtml).join('') : '<p style="font-size:12px;color:var(--text-muted)">Nenhum achado detalhado adicionado.</p>'}
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button type="button" class="btn btn-outline" style="width:auto;padding:7px 14px;font-size:12px" onclick="EST.adicionarAchado('${sec}','D','${PATOLOGIA_ARTERIAL[0]}')">+ Achado (Direito)</button>
+        <button type="button" class="btn btn-outline" style="width:auto;padding:7px 14px;font-size:12px" onclick="EST.adicionarAchado('${sec}','E','${PATOLOGIA_ARTERIAL[0]}')">+ Achado (Esquerdo)</button>
+      </div>
+    </div>`;
+  }
+
   function renderSec(sec){
     const lados=getLados(sec), wrap=document.getElementById('est-tables-'+sec);
     if(!wrap) return;
     let html=''; lados.forEach((l,i)=>{ html+=renderTabela(sec,l); if(lados.length>1&&i===0) html+='<hr style="border:none;border-top:1px solid var(--border);margin:12px 0">'; });
     if (TEMPLATES[sec].segmentos.some(s=>s.tipo==='venoso_achados')) html += renderAchados(sec);
+    if (TEMPLATES[sec].segmentos.some(s=>s.tipo==='arterial_achados')) html += renderAchadosArteriais(sec);
     wrap.innerHTML=html;
     ['D','E','B'].forEach(x=>{ const b=document.getElementById('est-lado-'+sec+'-'+x); if(b) b.classList.toggle('active', estado[sec].lado===x); });
   }
