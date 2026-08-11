@@ -2933,6 +2933,9 @@ const EST = (() => {
     achado_presente:['—','Não observado','Presente'],
     vaso_tronco_status:['—','Normal','Alterado — ver observação'],
     tortuosa:['—','Sim','Não'],
+    hipoplasica:['—','Sim','Não'],
+    refluxo_safena:['—','Sem refluxo','Refluxo leve','Refluxo moderado','Refluxo severo','Não avaliado','Safenectomia'],
+    juncao_status:['—','Pérvia e competente','Incompetente'],
   };
 
   // ── Achados por segmento — Sistema Venoso Profundo (beta) ──────────────
@@ -3126,8 +3129,8 @@ const EST = (() => {
   function pill(v){
     if(!v||v==='—') return '';
     if(['Pérvias (normal)','Sem refluxo','Normal','Não visualizadas','Trifásico (normal)','Regular, sem placas','Sem placas ateromatosas','Não observado'].includes(v)) return `<span class="est-pill est-pill-ok">${v}</span>`;
-    if(['Refluxo severo','Perfurante incompetente presente','Estenose > 70%','Ocluída','Ausente','Monofásico','Oclusão','Placas ateromatosas em bulbo carotídeo maior que 50%','Trombose venosa aguda','Trombose venosa subaguda','Trombose venosa antiga — recanalizada','Trombose venosa antiga — sem recanalização','Tromboflebite superficial subaguda','Incompetente na linha de Linton','Incompetente na face posterior da perna','Incompetente no canal de Hunter (face interna da coxa)','Incompetente na face lateral da coxa'].includes(v)) return `<span class="est-pill est-pill-danger">${v}</span>`;
-    if(['Aumentado','Estenose 50–70%','Placa 10–50%','Placa > 50%','Bifásico','Alterado — ver obs','Placas ateromatosas em bulbo carotídeo entre 10% e 50%','Presente','Refluxo moderado'].includes(v)) return `<span class="est-pill est-pill-warn">${v}</span>`;
+    if(['Refluxo severo','Perfurante incompetente presente','Estenose > 70%','Ocluída','Ausente','Monofásico','Oclusão','Placas ateromatosas em bulbo carotídeo maior que 50%','Trombose venosa aguda','Trombose venosa subaguda','Trombose venosa antiga — recanalizada','Trombose venosa antiga — sem recanalização','Tromboflebite superficial subaguda','Incompetente na linha de Linton','Incompetente na face posterior da perna','Incompetente no canal de Hunter (face interna da coxa)','Incompetente na face lateral da coxa','Safenectomia'].includes(v)) return `<span class="est-pill est-pill-danger">${v}</span>`;
+    if(['Aumentado','Estenose 50–70%','Placa 10–50%','Placa > 50%','Bifásico','Alterado — ver obs','Placas ateromatosas em bulbo carotídeo entre 10% e 50%','Presente','Refluxo moderado','Incompetente'].includes(v)) return `<span class="est-pill est-pill-warn">${v}</span>`;
     if(['Estenose < 50%','Placa < 10%','Reduzido','Pequenas placas ateromatosas em bulbo carotídeo menor que 10%','Refluxo leve'].includes(v)) return `<span class="est-pill est-pill-info">${v}</span>`;
     return `<span class="est-pill est-pill-gray">${v}</span>`;
   }
@@ -3194,9 +3197,16 @@ const EST = (() => {
         const v = gv(sec,s.id,l,campo);
         return `<input type="number" step="0.1" min="0" class="est-medida" placeholder="${ph}" value="${v!=='—'?esc(v):''}" style="width:64px;font-size:10px;margin:2px 2px 0 0;padding:2px 4px" onchange="EST.sv('${sec}','${s.id}','${l}','${campo}',this.value)">`;
       }).join('');
-      return `<td>${sel(sec,s.id,l,'refluxo',OPT.refluxo,gv(sec,s.id,l,'refluxo'))}</td>` +
+      // Junção safenofemoral (pérvia/incompetente + diâmetro em mm) só existe
+      // na safena magna (vsp/safena parva não tem esse conceito no laudo).
+      const juncaoDiam = gv(sec,s.id,l,'juncao_diametro');
+      const juncaoHtml = isParva ? '' : `
+        <div style="margin-top:4px">${sel(sec,s.id,l,'juncao',OPT.juncao_status,gv(sec,s.id,l,'juncao'))}</div>
+        <input type="number" step="0.1" min="0" class="est-medida" placeholder="Ø junção (mm)" value="${juncaoDiam!=='—'?esc(juncaoDiam):''}" style="width:100%;font-size:10px;margin-top:3px;padding:2px 4px" onchange="EST.sv('${sec}','${s.id}','${l}','juncao_diametro',this.value)">`;
+      return `<td>${sel(sec,s.id,l,'refluxo',OPT.refluxo_safena,gv(sec,s.id,l,'refluxo'))}${juncaoHtml}</td>` +
         `<td>${sel(sec,s.id,l,'calibre',OPT.calibre,gv(sec,s.id,l,'calibre'))}` +
         `<div style="margin-top:3px">${sel(sec,s.id,l,'tortuosa',OPT.tortuosa,gv(sec,s.id,l,'tortuosa'))}</div>` +
+        `<div style="margin-top:3px">${sel(sec,s.id,l,'hipoplasica',OPT.hipoplasica,gv(sec,s.id,l,'hipoplasica'))}</div>` +
         `<div style="display:flex;flex-wrap:wrap;margin-top:3px">${medidas}</div></td>`;
     },
     perfurantes:      (sec,s,l) => `<td colspan="2">${sel(sec,s.id,l,'status',OPT.perf,gv(sec,s.id,l,'status'))}</td>`,
@@ -3309,11 +3319,29 @@ const EST = (() => {
       return 'ACHADOS ADICIONAIS:\n' + frases.join('\n');
     },
     safena: (sec,s,l,TX) => {
-      const r=gv(sec,s.id,l,'refluxo'), c=gv(sec,s.id,l,'calibre'), tort=gv(sec,s.id,l,'tortuosa');
+      const r=gv(sec,s.id,l,'refluxo'), c=gv(sec,s.id,l,'calibre'), tort=gv(sec,s.id,l,'tortuosa'), hipo=gv(sec,s.id,l,'hipoplasica');
       const o=(estado[sec].dados[k(sec,s.id,l)]||{}).obs||'';
       const isParva = s.id==='vsp';
       // Vírgula decimal (padrão BR) em vez do ponto que o <input type=number> devolve.
       const numCampo = campo => { const v=gv(sec,s.id,l,campo); return (v&&v!=='—') ? String(v).replace('.',',') : ''; };
+
+      // Safenectomia é um status próprio — não faz sentido junto com calibre/
+      // medida/tortuosidade (o vaso não está mais lá).
+      if (r==='Safenectomia') {
+        let f = `${s.nomeCompleto} não foi observada em toda sua extensão, sugerindo safenectomia prévia.`;
+        if (o) f += ' '+o+'.';
+        return f;
+      }
+
+      // Junção safenofemoral — só existe na safena magna (vsm).
+      let juncaoTxt = '';
+      if (!isParva) {
+        const juncaoStatus = gv(sec,s.id,l,'juncao');
+        const juncaoDiam = numCampo('juncao_diametro');
+        if (juncaoStatus && juncaoStatus!=='—') {
+          juncaoTxt = `A junção safenofemoral está ${juncaoStatus==='Incompetente'?'incompetente':'pérvia e competente'}${juncaoDiam?`, medindo cerca de ${juncaoDiam} mm`:''}. `;
+        }
+      }
 
       // Frase de medida — croça/coxa/perna na magna, só o diâmetro na parva.
       // Só entra no texto quando o médico realmente preencheu algum valor.
@@ -3328,12 +3356,13 @@ const EST = (() => {
         if (numCampo('perna')) partes.push(`${numCampo('perna')} mm na perna`);
         if (partes.length) medida = `medindo cerca de ${juntarComE(partes)}, `;
       }
-      const temExtra = !!medida || tort==='Sim' || tort==='Não';
+      const temExtra = !!medida || tort==='Sim' || tort==='Não' || hipo==='Sim' || !!juncaoTxt;
 
       if(r==='—'&&c==='—'&&!temExtra) return '';
       if(r==='Sem refluxo'&&(c==='Normal'||c==='—')&&!temExtra) return TX.venoso_safena_normal.replace('{nome}',s.nomeCompleto);
 
-      let f = `${s.nomeCompleto} se apresenta de calibre ${(c&&c!=='—'?c:'normal').toLowerCase()}, ${medida}`;
+      let f = juncaoTxt + `${s.nomeCompleto} se apresenta de calibre ${(c&&c!=='—'?c:'normal').toLowerCase()}, ${medida}`;
+      if (hipo==='Sim') f += 'de aspecto hipoplásico, ';
       if (tort==='Sim') f += 'tortuosa, ';
       else if (tort==='Não') f += 'sem tortuosidades, ';
       if (r==='Não avaliado') f += 'com avaliação de refluxo prejudicada/não realizada ao Doppler espectral.';
