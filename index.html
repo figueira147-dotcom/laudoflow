@@ -1719,7 +1719,8 @@ async function afterLogin(session) {
     document.getElementById('sec-data-exame').value = todayISO();
   } else {
     document.getElementById('doctor-badge').textContent = medico.nome;
-    document.getElementById('welcome-title').textContent = 'Olá, ' + medico.nome.split(' ')[0] + ' 👋';
+    const primeiroNome = medico.nome.split(' ').find(p => !/^(dr|dra|dr\.|dra\.)$/i.test(p)) || medico.nome;
+    document.getElementById('welcome-title').textContent = 'Olá, ' + primeiroNome + ' 👋';
     showScreen('app');
     showTab('inicio', document.querySelector('#app-nav .tab'));
   }
@@ -2618,7 +2619,7 @@ async function loadConfigSecoes() {
 
   // Agrupa visualmente por tipo de exame (Doppler vs USG comum), pelo texto do label —
   // não altera a coluna `ordem` (que segue controlando a impressão e outras telas).
-  const isDoppler = s => /doppler/i.test(s.label);
+  const isDoppler = s => /doppler|venoso/i.test(s.label);
   const grupos = [
     { titulo: 'Ultrassonografia', itens: secoesClinica.filter(s => !isDoppler(s)) },
     { titulo: 'Ecocolor Doppler', itens: secoesClinica.filter(s => isDoppler(s)) }
@@ -3985,18 +3986,19 @@ function renderSecoesEditor(secoesData, presetMap = {}) {
     return;
   }
 
-  let html = '';
-  secoesClinica.forEach(s => {
+  // Agrupa visualmente por tipo de exame (Doppler/vascular vs. USG comum), pelo
+  // texto do label — mesmo critério usado na tela de Configurações → Seções.
+  const isDoppler = s => /doppler|venoso/i.test(s.label);
+  const grupos = [
+    { titulo: 'Ecocolor Doppler', itens: secoesClinica.filter(isDoppler) },
+    { titulo: 'Ultrassonografia', itens: secoesClinica.filter(s => !isDoppler(s)) },
+  ].filter(g => g.itens.length);
+  const usaGrupos = grupos.length > 1;
+
+  const secaoBlocoHtml = s => {
     const saved = secoesData[s.chave] || {};
     const ativo = saved.ativo !== undefined ? saved.ativo : false;
-
-    // Prioridade: texto já salvo no laudo → preset do médico → padrão da clínica → vazio
-    const textoSalvo   = saved.texto;
-    const textoPreset  = presetMap[s.id] || '';
-    const textoPadrao  = s.texto_padrao || '';
-    const texto = textoSalvo !== undefined ? textoSalvo : (textoPreset || textoPadrao);
-
-    html += `<div class="secao-bloco">
+    return `<div class="secao-bloco">
       <div class="secao-header" onclick="toggleSecao('${s.chave}')">
         <div class="secao-toggle${ativo ? ' on' : ''}" id="tog-${s.chave}"></div>
         <div class="secao-label">${s.label}</div>
@@ -4006,7 +4008,11 @@ function renderSecoesEditor(secoesData, presetMap = {}) {
         <div id="txt-${s.chave}"></div>
       </div>
     </div>`;
-  });
+  };
+
+  const html = usaGrupos
+    ? grupos.map(g => `<div class="saved-group-hdr">${g.titulo}</div>${g.itens.map(secaoBlocoHtml).join('')}`).join('')
+    : secoesClinica.map(secaoBlocoHtml).join('');
   container.innerHTML = html;
 
   // Inicializa Quill em cada seção após o HTML estar no DOM
