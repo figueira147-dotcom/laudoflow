@@ -2924,6 +2924,7 @@ const EST = (() => {
     carotida_placa:['—','Sem placas ateromatosas','Pequenas placas ateromatosas em bulbo carotídeo menor que 10%','Placas ateromatosas em bulbo carotídeo entre 10% e 50%','Placas ateromatosas em bulbo carotídeo maior que 50%','Oclusão'],
     achado_presente:['—','Não observado','Presente'],
     vaso_tronco_status:['—','Normal','Alterado — ver observação'],
+    tortuosa:['—','Sim','Não'],
   };
   // ══════════════════════════════════════════════════════
   // SCHEMA DE TEMPLATES (Fase A — motor; Fase B — vem do banco)
@@ -3096,7 +3097,22 @@ const EST = (() => {
   const TIPO_CELLS = {
     perv:             (sec,s,l) => `<td colspan="2">${sel(sec,s.id,l,'status',OPT.perv,gv(sec,s.id,l,'status'))}</td>`,
     refluxo_profundo: (sec,s,l) => `<td colspan="2">${sel(sec,s.id,l,'refluxo',OPT.refluxo,gv(sec,s.id,l,'refluxo'))}</td>`,
-    safena:           (sec,s,l) => `<td>${sel(sec,s.id,l,'refluxo',OPT.refluxo,gv(sec,s.id,l,'refluxo'))}</td><td>${sel(sec,s.id,l,'calibre',OPT.calibre,gv(sec,s.id,l,'calibre'))}</td>`,
+    safena:           (sec,s,l) => {
+      // Campos de medida em mm — croça/coxa/perna pra safena magna (vsm),
+      // só o diâmetro maior pra safena parva (vsp). Não passam pelo sel()
+      // genérico (não são dropdown) — por isso não usam EST.upd (não tem
+      // pill pra atualizar), só EST.sv pra salvar o valor digitado.
+      const isParva = s.id === 'vsp';
+      const camposMedida = isParva ? [['diametro','Ø (mm)']] : [['croca','Croça (mm)'],['coxa','Coxa (mm)'],['perna','Perna (mm)']];
+      const medidas = camposMedida.map(([campo,ph]) => {
+        const v = gv(sec,s.id,l,campo);
+        return `<input type="number" step="0.1" min="0" class="est-medida" placeholder="${ph}" value="${v!=='—'?esc(v):''}" style="width:64px;font-size:10px;margin:2px 2px 0 0;padding:2px 4px" onchange="EST.sv('${sec}','${s.id}','${l}','${campo}',this.value)">`;
+      }).join('');
+      return `<td>${sel(sec,s.id,l,'refluxo',OPT.refluxo,gv(sec,s.id,l,'refluxo'))}</td>` +
+        `<td>${sel(sec,s.id,l,'calibre',OPT.calibre,gv(sec,s.id,l,'calibre'))}` +
+        `<div style="margin-top:3px">${sel(sec,s.id,l,'tortuosa',OPT.tortuosa,gv(sec,s.id,l,'tortuosa'))}</div>` +
+        `<div style="display:flex;flex-wrap:wrap;margin-top:3px">${medidas}</div></td>`;
+    },
     perfurantes:      (sec,s,l) => `<td colspan="2">${sel(sec,s.id,l,'status',OPT.perf,gv(sec,s.id,l,'status'))}</td>`,
     varicosidades:    (sec,s,l) => `<td colspan="2">${sel(sec,s.id,l,'status',OPT.varic,gv(sec,s.id,l,'status'))}</td>`,
     arterial:         (sec,s,l) => `<td>${sel(sec,s.id,l,'calibre',OPT.art_cal,gv(sec,s.id,l,'calibre'))}</td><td>${sel(sec,s.id,l,'parede',OPT.art_parede,gv(sec,s.id,l,'parede'))}</td><td>${sel(sec,s.id,l,'fluxo',OPT.art_fluxo,gv(sec,s.id,l,'fluxo'))}</td>`,
@@ -3153,15 +3169,38 @@ const EST = (() => {
       return '';
     },
     safena: (sec,s,l,TX) => {
-      const r=gv(sec,s.id,l,'refluxo'), c=gv(sec,s.id,l,'calibre'), o=(estado[sec].dados[k(sec,s.id,l)]||{}).obs||'';
-      if(r==='—'&&c==='—') return '';
-      if(r==='Sem refluxo'&&(c==='Normal'||c==='—')) return TX.venoso_safena_normal.replace('{nome}',s.nomeCompleto);
-      let f=`${s.nomeCompleto} apresenta`;
-      if(c&&c!=='—'&&c!=='Normal') f+=` calibre ${c.toLowerCase()},`;
-      if(r==='Não avaliado') f+=' refluxo não avaliado ao Doppler espectral.';
-      else if(r&&r!=='—'&&r!=='Sem refluxo') f+=` ${r.toLowerCase()} ao Doppler espectral, com manobras provocativas.`;
-      else if(r&&r!=='—') f+=' sem refluxos significativos ao Doppler espectral.';
-      if(o) f+=' '+o+'.';
+      const r=gv(sec,s.id,l,'refluxo'), c=gv(sec,s.id,l,'calibre'), tort=gv(sec,s.id,l,'tortuosa');
+      const o=(estado[sec].dados[k(sec,s.id,l)]||{}).obs||'';
+      const isParva = s.id==='vsp';
+      // Vírgula decimal (padrão BR) em vez do ponto que o <input type=number> devolve.
+      const numCampo = campo => { const v=gv(sec,s.id,l,campo); return (v&&v!=='—') ? String(v).replace('.',',') : ''; };
+      const juntarComE = arr => arr.length>1 ? arr.slice(0,-1).join(', ')+' e '+arr[arr.length-1] : arr[0];
+
+      // Frase de medida — croça/coxa/perna na magna, só o diâmetro na parva.
+      // Só entra no texto quando o médico realmente preencheu algum valor.
+      let medida = '';
+      if (isParva) {
+        const d = numCampo('diametro');
+        if (d) medida = `medindo cerca de ${d} mm no seu maior diâmetro, `;
+      } else {
+        const partes = [];
+        if (numCampo('croca')) partes.push(`${numCampo('croca')} mm na croça`);
+        if (numCampo('coxa'))  partes.push(`${numCampo('coxa')} mm na coxa`);
+        if (numCampo('perna')) partes.push(`${numCampo('perna')} mm na perna`);
+        if (partes.length) medida = `medindo cerca de ${juntarComE(partes)}, `;
+      }
+      const temExtra = !!medida || tort==='Sim' || tort==='Não';
+
+      if(r==='—'&&c==='—'&&!temExtra) return '';
+      if(r==='Sem refluxo'&&(c==='Normal'||c==='—')&&!temExtra) return TX.venoso_safena_normal.replace('{nome}',s.nomeCompleto);
+
+      let f = `${s.nomeCompleto} se apresenta de calibre ${(c&&c!=='—'?c:'normal').toLowerCase()}, ${medida}`;
+      if (tort==='Sim') f += 'tortuosa, ';
+      else if (tort==='Não') f += 'sem tortuosidades, ';
+      if (r==='Não avaliado') f += 'com avaliação de refluxo prejudicada/não realizada ao Doppler espectral.';
+      else if (r&&r!=='—'&&r!=='Sem refluxo') f += `com ${r.toLowerCase()} detectável ao Doppler espectral, com manobras provocativas.`;
+      else f += 'sem refluxos significativos detectáveis ao Doppler espectral, com manobras provocativas.';
+      if (o) f += ' '+o+'.';
       return f;
     },
     perfurantes: (sec,s,l,TX) => {
