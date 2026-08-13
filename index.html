@@ -400,6 +400,13 @@
   .est-field-lbl { display:block; font-size:9.5px; font-weight:700; color:var(--text-muted); letter-spacing:.3px; text-transform:uppercase; margin-bottom:3px; white-space:nowrap; }
   .est-field-num { font-size:11px; padding:6px 8px; border:1px solid var(--border-dark); border-radius:7px; background:var(--white); color:var(--text); font-family:var(--font-ui); width:100%; outline:none; transition:border-color .15s; }
   .est-field-num:focus { border-color:var(--green); }
+  /* ── Laudo por códigos (banco de frases) ── */
+  .ab-secao { margin-bottom:16px; }
+  .ab-frase { margin-top:8px; padding:10px 12px; background:var(--off-white); border:1px solid var(--border); border-radius:var(--radius); font-size:13px; line-height:1.9; color:var(--text); }
+  .ab-var { font-size:12px; font-weight:700; padding:2px 6px; border:1px solid var(--green); border-radius:6px; background:var(--white); color:var(--green); font-family:var(--font-ui); margin:0 2px; }
+  .ab-membro { border:1px solid var(--border); border-radius:var(--radius); padding:16px; margin-bottom:16px; }
+  .ab-membro-hdr { font-size:11px; font-weight:800; color:var(--green); letter-spacing:1px; text-transform:uppercase; margin-bottom:14px; padding-bottom:8px; border-bottom:1px solid var(--border); }
+  .ab-extras { display:flex; flex-direction:column; gap:7px; margin-top:10px; padding-top:12px; border-top:1px dashed var(--border); }
   .est-seg-nome { font-size:12px; color:var(--text); font-weight:700; min-width:150px; }
   .est-seg-sub { font-size:10px; color:var(--text-muted); font-weight:500; margin-top:1px; }
   .est-mini, .est-obs { font-size:11px; padding:6px 8px; border:1px solid var(--border-dark); border-radius:7px; background:var(--white); color:var(--text); font-family:var(--font-ui); width:100%; outline:none; transition:border-color .15s; }
@@ -961,6 +968,9 @@
     <div class="tab" onclick="showTab('estruturado', this)" id="tab-estruturado-btn" style="display:none">
       <i class="ti ti-table"></i> Estruturado
     </div>
+    <div class="tab" onclick="showTab('frases', this)" id="tab-frases-btn" style="display:none">
+      <i class="ti ti-list-numbers"></i> Frases
+    </div>
     <div class="tab" onclick="showTab('producao', this)" id="tab-producao-btn" style="display:none">
       <i class="ti ti-chart-bar"></i> Produção
     </div>
@@ -1116,6 +1126,48 @@
         <button class="btn btn-outline" onclick="showTab('pendentes', document.querySelector('#app-nav .tab:nth-child(2)'))">
           Voltar à Fila
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB FRASES — gerador por códigos (banco do Dr. Ednei Abertoni) -->
+  <div id="tab-frases" class="app-main" style="display:none">
+    <div class="card">
+      <div class="card-hdr">
+        <div class="card-ico"><i class="ti ti-list-numbers"></i></div>
+        <div class="card-title">Laudo por Códigos — Doppler Venoso MMII</div>
+      </div>
+
+      <div class="est-patient">
+        <div class="field"><label>Paciente</label><input type="text" id="ab-nome" placeholder="Nome completo"></div>
+        <div class="field"><label>Data do exame</label><input type="date" id="ab-data"></div>
+        <div class="field"><label>Idade</label><input type="text" id="ab-idade" placeholder="Ex: 54 anos"></div>
+        <div class="field"><label>Convênio</label><input type="text" id="ab-convenio" placeholder="Unimed, Bradesco..."></div>
+      </div>
+
+      <div class="est-lado">
+        <button type="button" class="est-lado-btn" id="ab-lado-D" onclick="ABERT.setLado('D')">Direito</button>
+        <button type="button" class="est-lado-btn" id="ab-lado-E" onclick="ABERT.setLado('E')">Esquerdo</button>
+        <button type="button" class="est-lado-btn active" id="ab-lado-B" onclick="ABERT.setLado('B')">Bilateral</button>
+        <button type="button" class="est-lado-btn" style="margin-left:auto" onclick="ABERT.limpar()">↺ Limpar</button>
+      </div>
+
+      <div id="ab-secoes"></div>
+
+      <div class="est-actions">
+        <button class="btn btn-primary" style="width:auto;padding:11px 24px" onclick="ABERT.gerar()">Gerar texto</button>
+      </div>
+
+      <div id="ab-preview-wrap" style="display:none;border:1px solid var(--border);border-radius:var(--radius);margin-top:20px;overflow:hidden;box-shadow:var(--shadow)">
+        <div class="est-prev-hdr">
+          <span>Texto gerado do laudo</span>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-outline" style="width:auto;padding:7px 14px;font-size:12px" onclick="ABERT.copiar()">Copiar</button>
+            <button class="btn btn-outline" style="width:auto;padding:7px 14px;font-size:12px" onclick="ABERT.imprimir()">Imprimir</button>
+          </div>
+        </div>
+        <div class="est-prev-body" id="ab-preview"></div>
+        <div class="est-prev-hint">Clique no texto para editar antes de copiar ou imprimir.</div>
       </div>
     </div>
   </div>
@@ -1714,6 +1766,11 @@ async function afterLogin(session) {
   if (tabProducao) tabProducao.style.display = medico.papel === 'admin' ? '' : 'none';
   const tabLixeira = document.getElementById('tab-lixeira-btn');
   if (tabLixeira) tabLixeira.style.display = medico.papel === 'admin' ? '' : 'none';
+  // Gerador por códigos: o banco de frases é conteúdo próprio do Dr. Ednei
+  // Abertoni, então só aparece na clínica dele (outra clínica precisaria do
+  // seu próprio banco).
+  const tabFrases = document.getElementById('tab-frases-btn');
+  if (tabFrases) tabFrases.style.display = (currentClinica.slug === 'edneiabertoni' && medico.papel !== 'secretaria') ? '' : 'none';
 
   // Módulo estruturado (upsell) — gate por clínica (teste: CTDMI)
   const tabEst = document.getElementById('tab-estruturado-btn');
@@ -2905,7 +2962,7 @@ async function criarUsuario() {
 function showTab(name, el) {
   document.querySelectorAll('#app-nav .tab').forEach(t => t.classList.remove('active'));
   if (el) el.classList.add('active');
-  ['inicio','pendentes','novo','concluidos','estruturado','producao','lixeira','config'].forEach(t => {
+  ['inicio','pendentes','novo','concluidos','estruturado','frases','producao','lixeira','config'].forEach(t => {
     const div = document.getElementById('tab-' + t);
     if (div) div.style.display = t === name ? '' : 'none';
   });
@@ -2916,6 +2973,7 @@ function showTab(name, el) {
   if (name === 'estruturado') EST.init();
   if (name === 'producao')  initProducao();
   if (name === 'lixeira')   loadLixeira();
+  if (name === 'frases')    ABERT.init();
 }
 
 // ══════════════════════════════════════════════════════
@@ -3830,13 +3888,16 @@ const EST = (() => {
     }).join('');
   }
 
-  function imprimir(){
-    const unidades = lerUnidadesEditadas();
+  // unidadesExt/pacExt permitem que outro módulo (ex: ABERT, o gerador por
+  // códigos) reaproveite exatamente este pipeline de impressão em vez de
+  // duplicar o CSS/markup da folha. Sem argumentos, lê do próprio Estruturado.
+  function imprimir(unidadesExt, pacExt){
+    const unidades = unidadesExt || lerUnidadesEditadas();
     if(!unidades.length){ toast('Gere o texto primeiro.','err'); return; }
-    const nome = document.getElementById('est-nome').value || '';
-    const data = document.getElementById('est-data').value;
-    const idade = document.getElementById('est-idade').value || '';
-    const convenio = document.getElementById('est-convenio').value || '';
+    const nome = pacExt ? (pacExt.nome||'') : (document.getElementById('est-nome').value || '');
+    const data = pacExt ? pacExt.data : document.getElementById('est-data').value;
+    const idade = pacExt ? (pacExt.idade||'') : (document.getElementById('est-idade').value || '');
+    const convenio = pacExt ? (pacExt.convenio||'') : (document.getElementById('est-convenio').value || '');
     const dataFmt = data ? new Date(data+'T12:00:00').toLocaleDateString('pt-BR') : fmtDate(new Date().toISOString().slice(0,10));
     const clinica = currentClinica || {};
     const pcfg = clinica.pdf_config || {};
@@ -4178,6 +4239,319 @@ const EST = (() => {
     moverSegmentoTemplate, salvarMeuTemplate, editarMeuTemplate, cancelarEdicaoTemplate,
     toggleAtivoMeuTemplate, apagarMeuTemplate,
   };
+})();
+
+// ══════════════════════════════════════════════════════
+// MÓDULO: LAUDO POR CÓDIGOS (Doppler Venoso MMII)
+//
+// Transcrição do banco de frases próprio do Dr. Ednei Abertoni ("FORMULAS
+// DE FRASES - ATUALIZADAS.odt"), onde cada frase tem um código (I-A, II-C,
+// IV-B...). Aqui o código deixa de ser algo pra decorar e digitar: vira um
+// dropdown por seção, e os trechos entre parênteses com barra — ex.
+// "(direito/esquerdo)" — viram seleção inline dentro da própria frase.
+//
+// Parênteses SEM barra (ex. "(Hunter)", "(ligadura)") são texto literal do
+// laudo, não variável — por isso o parser só trata os que têm "/".
+//
+// Namespaced em ABERT.* pra não colidir com EST.* nem com o app.
+// ══════════════════════════════════════════════════════
+const ABERT = (() => {
+  const VP = 'femoral comum, femoral superficial, poplítea, tibiais anteriores, tibiais posteriores, fibulares, gastrocnêmicas e soleares';
+
+  const SECOES = [
+    { id:'perviedade', titulo:'I — Perviedade', porLado:false, opcoes:[
+      ['A','As veias do sistema superficial e profundo encontram-se de calibres normais, compressíveis, sem trombos visíveis ao mapeamento a cores, com fluxos fásicos à respiração, sendo suas paredes lisas e sem irregularidades parietais.'],
+      ['B','A veia tributária de safena (magna/parva) a cerca de 30 cm da região plantar apresenta-se incompressível, com material hipoecoico em sua luz e sem fluxo ao Doppler espectral, sugerindo tromboflebite superficial subaguda.'],
+      ['C','A veia safena magna no segmento infrapatelar, compreendido entre 20 cm e 40 cm da região plantar, apresenta-se ectasiada, incompressível, com material hipoecoico em sua luz e sem fluxo ao Doppler espectral, sugerindo tromboflebite superficial subaguda.'],
+      ['D','A veia safena magna no segmento compreendido entre 20 cm e 63 cm da região plantar, apresenta-se ectasiada, incompressível, sem fluxo ao Doppler espectral e com material hipoecoico em sua luz, sugerindo tromboflebite ascendente subaguda.'],
+      ['E','A veia safena magna no segmento infrapatelar, compreendido entre 20 cm e 40 cm da região plantar, apresenta-se ectasiada, incompressível, com material hipoecoico em sua luz e sem fluxo ao Doppler espectral, sugerindo tromboflebite superficial subaguda.'],
+      ['F','As veias '+VP+' do membro inferior (direito/esquerdo) apresentam-se ectasiadas, incompressíveis, com material (hipoecoico/anecoico) em sua luz e sem fluxo ao Doppler espectral, sugerindo trombose venosa (subaguda/aguda).'],
+      ['G','As veias '+VP+' do membro inferior (direito/esquerdo) apresentam-se ectasiadas, pouco compressíveis, com material hipoecoico em sua luz e com fluxo ao Doppler espectral, sugerindo trombose venosa recente com recanalização parcial (inferior a/em cerca de) 50%.'],
+      ['H','As veias '+VP+' do membro inferior (direito/esquerdo) apresentam irregularidades parietais, traves fibrosas em sua luz e com fluxo ao Doppler espectral, sugerindo trombose venosa antiga e recanalizada.'],
+      ['I','As veias '+VP+' do membro inferior (direito/esquerdo) apresentam calibres reduzidos e sem fluxo ao Doppler espectral, sugerindo trombose venosa antiga sem sinais de recanalização.'],
+    ]},
+
+    { id:'profundo', titulo:'Competência — Sistema Profundo', porLado:true, opcoes:[
+      ['1A','As veias '+VP+' não demonstram refluxos ao Doppler espectral, com manobras provocativas.'],
+      ['1B','(Ausência/Presença) de refluxos ao Doppler espectral com manobras provocativas nas veias '+VP+'.'],
+    ]},
+
+    { id:'magna', titulo:'II — Safena Magna', porLado:true, opcoes:[
+      ['A','A veia safena magna se apresenta de calibre normal, sem tortuosidades ou refluxos significativos detectáveis ao Doppler espectral, com manobras provocativas.'],
+      ['A-I','A veia safena magna se apresenta de calibre normal, sem tortuosidades ou refluxos significativos detectáveis ao Doppler espectral, com manobras provocativas, sendo observada tributária insuficiente a 30 cm da região plantar.'],
+      ['A-II','A veia safena magna se apresenta de calibre normal, sem tortuosidades ou refluxos significativos detectáveis ao Doppler espectral, com manobras provocativas, sendo observada longa e sinuosa tributária insuficiente com trajeto na face anterior e lateral da coxa e perna.'],
+      ['A-III','A veia safena magna se apresenta de calibre normal, sem tortuosidades ou refluxos significativos detectáveis ao Doppler espectral, com manobras provocativas, sendo observada longa e sinuosa tributária insuficiente na face anterior e lateral da coxa e perna, que se anastomosa com a magna a cerca de 54 cm e 60 cm da região plantar.'],
+      ['A-IV','A veia safena magna está duplicada no segmento compreendido entre 60 cm e 34 cm da região plantar e está de calibre normal, sem tortuosidades ou refluxos significativos detectáveis ao Doppler espectral, com manobras provocativas, sendo observada tributária insuficiente a 34 cm da região plantar.'],
+      ['A-V','A veia safena magna se apresenta de calibre normal, sem tortuosidades ou refluxos significativos detectáveis ao Doppler espectral, com manobras provocativas, sendo observada larga e sinuosa tributária insuficiente no segmento da coxa e perna e satélite de magna, que se anastomosa com esta a cerca de 41 cm da região plantar.'],
+      ['A-VI','A veia safena magna se apresenta de calibre (normal/aumentado), (tortuosa/sem tortuosidades) ou refluxos significativos detectáveis ao Doppler espectral, com manobras provocativas, sendo observada longa e sinuosa tributária insuficiente nas faces anterior e medial da coxa e posterior e lateral da perna, cujo refluxo se inicia na safena acessória anterior, que está insuficiente e mede cerca de 2,5 mm. A junção safenofemoral está incompetente, com 8,6 mm, e drena refluxo para a safena acessória anterior.'],
+      ['A-VII','A veia safena magna se apresenta de calibre (normal/aumentado), (tortuosa/sem tortuosidades) ou refluxos significativos detectáveis ao Doppler espectral, com manobras provocativas, sendo observada tributária insuficiente e satélite de magna a cerca de 74 cm da região plantar, que se anastomosa novamente com esta a cerca de 28 cm da região plantar.'],
+      ['A-VIII','A veia safena magna se apresenta de calibre (normal/aumentado), exceto na junção safenofemoral que está incompetente, medindo cerca de 20 mm, (tortuosa/sem tortuosidades) ou refluxos significativos detectáveis ao Doppler espectral, com manobras provocativas. Nos demais segmentos, é observada longa e sinuosa tributária insuficiente e satélite de magna na coxa e perna, cujo refluxo inicia-se na croça.'],
+      ['B','A veia safena magna se apresenta de calibre normal, medindo cerca de 5 mm na croça, 3,5 mm na coxa e 2 mm na perna, sem tortuosidades ou refluxos significativos detectáveis ao Doppler espectral, com manobras provocativas.'],
+      ['C','A veia safena magna se apresenta de calibre (normal/aumentado), medindo cerca de 5 mm na croça, 3,5 mm na coxa e 2 mm na perna, (tortuosa/sem tortuosidades), e com refluxo (leve/moderado/severo) e segmentar detectável ao Doppler espectral, com manobras provocativas, que se inicia e é drenado por tributárias insuficientes a cerca de 71 cm e 41 cm da região plantar. Também foram observadas tributárias insuficientes a cerca de 63 cm e 50 cm da região plantar.'],
+      ['D','A veia safena magna se apresenta de calibre (normal/aumentado), medindo cerca de 5 mm na croça, 3,5 mm na coxa e 2 mm na perna, (tortuosa/sem tortuosidades) e com refluxo (leve/moderado/severo) e infrapatelar, detectável ao Doppler espectral, com manobras provocativas, que se inicia em tributárias insuficientes a cerca de 35 cm da região plantar. Também foram observadas tributárias insuficientes a cerca de 22 cm da região plantar.'],
+      ['D-I','A veia safena magna se apresenta de calibre normal, medindo cerca de 5,2 mm na croça, 2,7 mm na coxa e 4,5 mm na perna, sem tortuosidades e com refluxo moderado e infrapatelar detectável ao Doppler espectral, com manobras provocativas, iniciando-se em longa e sinuosa tributária insuficiente e satélite de magna na coxa, que se anastomosa com esta a cerca de 56 cm e 30 cm da região plantar.'],
+      ['E','A veia safena magna se apresenta de calibre (normal/aumentado), medindo cerca de 5 mm na croça, 3,5 mm na coxa e 2 mm na perna, (tortuosa/sem tortuosidades) e com refluxo (leve/moderado/severo) e segmentar detectável ao Doppler espectral, com manobras provocativas, que se inicia na croça e é drenado por tributárias insuficientes a cerca de 42 cm da região plantar. Também foram observadas tributárias insuficientes a cerca de 63 cm da região plantar.'],
+      ['E-II','A veia safena magna se apresenta de calibre (normal/aumentado), medindo cerca de 5 mm na croça, 3,5 mm na coxa e 2 mm na perna, (tortuosa/sem tortuosidades) e com refluxo (leve/moderado/severo) e segmentar detectável ao Doppler espectral, com manobras provocativas, que se inicia na croça e é drenado por tributárias insuficientes a cerca de 42 cm da região plantar. Também foram observadas tributárias insuficientes a cerca de 63 cm da região plantar de trajeto paralelo à magna, que se anastomosa com esta a cerca de 31 cm da região plantar.'],
+      ['F','A veia safena magna se apresenta de calibre (normal/aumentado), medindo cerca de 5 mm na croça, 3,5 mm na coxa e 2 mm na perna, (tortuosa/sem tortuosidades) e com refluxo (leve/moderado/severo) e segmentar detectável ao Doppler espectral, com manobras provocativas, em toda sua extensão, sendo observadas tributárias insuficientes a cerca de 63 cm e 42 cm da região plantar.'],
+      ['G','A veia safena magna se apresenta de calibre aumentado, medindo cerca de 10,4 mm na croça, 7,4 mm na coxa e 3,4 mm na perna, sem tortuosidades ou refluxos significativos detectáveis ao Doppler espectral, com as manobras provocativas. A junção safenofemoral está incompetente e drena refluxo para a safena acessória anterior, que está tortuosa e insuficiente, com trajeto na região anterior e lateral da coxa e perna.'],
+      ['H','A veia safena magna se apresenta de calibre aumentado, medindo cerca de 10,4 mm na croça, 7,4 mm na coxa e 3,4 mm na perna, tortuosa, e com refluxo severo e segmentar detectável ao Doppler espectral, com manobras provocativas, que se inicia e é drenado por tributárias insuficientes a cerca de 54 cm e 30 cm da região plantar. Também foram observadas tributárias insuficientes a cerca de 33 cm da região plantar. A junção safenofemoral está incompetente e drena refluxo para a safena acessória anterior, que está tortuosa e insuficiente, com trajeto na região anterior e lateral da coxa e perna.'],
+      ['H-I','A veia safena magna se apresenta de calibre normal, medindo cerca de 7,2 mm na croça, 4,4 mm na coxa e 2,8 mm na perna, sem tortuosidades, e com refluxo leve e infrapatelar detectável ao Doppler espectral, com manobras provocativas, que se inicia em tributária insuficiente a cerca de 28 cm da região plantar. A junção safenofemoral está incompetente e drena refluxo para longa e sinuosa tributária insuficiente, com trajeto nas regiões anterior e lateral da coxa e posterior e lateral da perna.'],
+      ['J','A veia safena magna não foi observada em toda sua extensão, sugerindo safenectomia parcial prévia. Apresenta segmento residual incompetente compreendido entre 66 cm e 36 cm da região plantar, que drena refluxo para tributária insuficiente.'],
+      ['J-I','A veia safena magna não foi observada no segmento infrapatelar, sugerindo safenectomia parcial prévia. Apresenta segmento residual suprapatelar com refluxo, que se inicia e é drenado por tributárias insuficientes a cerca de 70 cm e 45 cm da região plantar, e mede cerca de 61 mm no seu maior diâmetro. A junção safenofemoral está competente.'],
+      ['J-I-II','A veia safena magna não foi observada na croça e no segmento infrapatelar, sugerindo safenectomia parcial prévia. Apresenta segmento residual suprapatelar com refluxo, que se inicia e é drenado por tributárias insuficientes a cerca de 68 cm e 44 cm da região plantar, e está medindo cerca de 4,3 mm no seu maior diâmetro.'],
+      ['J-I-III','A veia safena magna não foi observada na croça e no segmento infrapatelar, sugerindo safenectomia parcial prévia. Apresenta segmento residual suprapatelar com refluxo, que se inicia em tributária insuficiente da croça, e é drenado por tributárias insuficientes a cerca de 32 cm e 5 cm da região plantar.'],
+      ['J-II','A veia safena magna não foi identificada, sugerindo safenectomia total prévia.'],
+      ['J-II-I','A veia safena magna não foi identificada, sugerindo safenectomia total prévia. Observa-se longa e sinuosa tributária insuficiente no segmento da coxa e perna, ao longo do trajeto safeno, cujo refluxo inicia-se na junção safenofemoral, que está insuficiente.'],
+      ['J-III','A veia safena magna não foi observada no segmento infrapatelar, sugerindo safenectomia parcial prévia. O segmento residual encontra-se de calibre normal, sem tortuosidades ou refluxos significativos detectáveis ao Doppler espectral, com manobras provocativas.'],
+      ['J-III-A','A veia safena magna não foi observada no segmento infrapatelar, sugerindo safenectomia parcial prévia. O segmento residual encontra-se de calibre aumentado, medindo cerca de 10,6 mm na croça e 7,6 mm na coxa, tortuoso, e com refluxo severo detectável ao Doppler espectral, com as manobras provocativas, que é observado por tributárias insuficientes a cerca de 36 mm da região plantar.'],
+      ['J-IV','A veia safena magna não foi observada em toda sua extensão, sugerindo safenectomia parcial prévia. Observa-se segmento residual suprapatelar que mede cerca de 11,7 mm na croça e 7 mm na coxa, com refluxo que se inicia na croça e é drenado por tributárias insuficientes a cerca de 61 cm da região plantar.'],
+      ['J-V','A veia safena magna não foi observada na croça, sugerindo manipulação cirúrgica (ligadura). Encontra-se de calibre pouco aumentado, medindo cerca de 5,2 mm na coxa e 3,3 mm na perna, sem tortuosidades e com refluxo moderado detectável ao Doppler espectral, com manobras provocativas, em toda sua extensão, sendo observadas tributárias insuficientes a cerca de 42 cm da região plantar.'],
+      ['J-VI','A veia safena magna não foi observada no segmento suprapatelar, sugerindo safenectomia parcial prévia. O segmento residual infrapatelar encontra-se competente e de calibre normal.'],
+      ['J-VII','A veia safena magna não foi identificada no segmento compreendido entre 36 cm e 57 cm, sugerindo manipulação cirúrgica prévia. O segmento residual se apresenta de calibre normal, medindo cerca de 7,1 mm na croça, 3,5 mm na coxa e 2,3 mm na perna, sem tortuosidades e com refluxo leve detectável ao Doppler espectral, com manobras provocativas, que se inicia na croça e é drenado por tributárias insuficientes a cerca de 57 cm; novo refluxo leve e infrapatelar inicia-se a cerca de 36 cm da região plantar, por tributária insuficiente. A junção safenofemoral está competente.'],
+      ['J-VIII','A veia safena magna não foi identificada no segmento compreendido entre 36 cm e 57 cm, sugerindo amputação cirúrgica prévia. O segmento residual se apresenta de calibre normal, medindo cerca de 7,8 mm na croça, 3,4 mm na coxa e 2,5 mm na perna, sem tortuosidades, e com refluxo leve e infrapatelar detectável ao Doppler espectral, com manobras provocativas, que se inicia em tributárias insuficientes a cerca de 43 cm da região plantar.'],
+      ['J-IX','A veia safena magna não foi observada na croça, sugerindo manipulação cirúrgica prévia (ligadura). O segmento residual se apresenta de calibre normal, sem tortuosidades ou refluxos significativos detectáveis ao Doppler espectral, com manobras provocativas.'],
+      ['J-X','A veia safena magna não foi observada no segmento suprapatelar, sugerindo safenectomia parcial prévia. O segmento residual infrapatelar encontra-se incompetente e de calibre normal, medindo cerca de 3,6 mm.'],
+      ['K','A veia safena magna se apresenta de calibre aumentado, medindo cerca de 7,1 mm na croça, 6,4 mm na coxa e 4 mm na perna, tortuosa, e com refluxo severo e segmentar detectável ao Doppler espectral, com manobras provocativas, que se inicia na croça e é drenado por tributárias insuficientes a cerca de 60 cm da região plantar. Novo ponto de refluxo segmentar é observado em segmento compreendido entre 39 cm e 30 cm da região plantar, que se inicia e é drenado por tributárias insuficientes.'],
+      ['K-I','A veia safena magna se apresenta de calibre aumentado, medindo cerca de 5,9 mm na croça, 4,4 mm na coxa e 2,8 mm na perna, sem tortuosidades e com refluxo moderado e segmentar detectável ao Doppler espectral, com manobras provocativas, que se inicia e é drenado por tributárias insuficientes a cerca de 66 cm e 49 cm da região plantar, respectivamente. Novo ponto de refluxo infrapatelar se inicia em tributária insuficiente, a cerca de 36 cm da região plantar.'],
+      ['L','A veia safena magna se apresenta de calibre normal, medindo cerca de 6,2 mm na croça, 4,5 mm na coxa e 2,9 mm na perna, sem tortuosidades, e com refluxo leve e segmentar detectável ao Doppler espectral, com manobras provocativas, que se inicia e é drenado por tributárias insuficientes a cerca de 45 cm e 32 cm da região plantar, as quais apresentam trajeto sinuoso e paralelo à magna em segmento da coxa, e cujo refluxo inicia-se em varizes da região perineal (pélvicas?).'],
+      ['M','A veia safena magna se apresenta de calibre aumentado na croça, medindo cerca de 9,3 mm, 2,9 mm na coxa e 2,1 mm na perna, sem tortuosidades, e com refluxo moderado e segmentar detectável ao Doppler espectral, com as manobras provocativas, que se inicia e é drenado por tributárias insuficientes a cerca de 53 cm e 38 cm da região plantar. A junção safenofemoral está incompetente e drena refluxo para a safena acessória, que está tortuosa e insuficiente, e se anastomosa com a magna a cerca de 53 cm da região plantar.'],
+    ]},
+
+    { id:'parva', titulo:'III — Safena Parva', porLado:true, opcoes:[
+      ['A','A veia safena parva se apresenta de calibre normal, sem tortuosidades ou refluxos significativos detectáveis ao Doppler espectral, com manobras provocativas.'],
+      ['B','A veia safena parva se apresenta de calibre (normal/aumentado), medindo cerca de 5 mm no seu maior diâmetro, sem tortuosidades ou refluxos significativos detectáveis ao Doppler espectral, com manobras provocativas.'],
+      ['C','A veia safena parva se apresenta de calibre (normal/aumentado), medindo cerca de 5 mm no seu maior diâmetro, (tortuosa/sem tortuosidades) e com refluxo (leve/moderado/severo) detectável ao Doppler espectral, com manobras provocativas, que se inicia na croça a cerca de 44 cm da região plantar, e é drenado por tributárias insuficientes a cerca de 29 cm da região plantar.'],
+      ['D','A veia safena parva se apresenta de calibre (normal/aumentado), medindo cerca de 5 mm no seu maior diâmetro, (tortuosa/sem tortuosidades) e com refluxo (leve/moderado/severo) detectável ao Doppler espectral, com manobras provocativas, em toda sua extensão, que se inicia na croça a cerca de 44 cm da região plantar, sendo observadas tributárias insuficientes a cerca de 29 cm da região plantar.'],
+      ['E','A veia safena parva se apresenta de calibre (normal/aumentado), medindo cerca de 5 mm no seu maior diâmetro, (tortuosa/sem tortuosidades) e com refluxo (leve/moderado/severo) detectável ao Doppler espectral, com manobras provocativas, que se inicia e é drenado por tributárias insuficientes a cerca de 33 cm e 26 cm da região plantar. A croça está a cerca de 44 cm da região plantar.'],
+      ['F','A veia safena parva se apresenta de calibre (normal/aumentado), medindo cerca de 5 mm no seu maior diâmetro, (tortuosa/sem tortuosidades) e com refluxo (leve/moderado/severo) detectável ao Doppler espectral, com manobras provocativas, que se inicia em tributárias insuficientes a cerca de 33 cm e 26 cm da região plantar. A croça está a cerca de 44 cm da região plantar.'],
+      ['G','A veia safena parva se apresenta de calibre aumentado, medindo cerca de 8,9 mm no seu maior diâmetro, tortuosa, e com refluxo severo e segmentar detectável ao Doppler espectral, com manobras provocativas, que se inicia na veia de Giacomini e na face posterior medial da coxa, que está insuficiente, sendo observada tributária insuficiente a cerca de 51 cm e 43 cm, e este refluxo é drenado por tributárias insuficientes a cerca de 29 cm e 43 cm da região plantar.'],
+    ]},
+
+    { id:'perfurantes', titulo:'IV — Perfurantes Insuficientes', porLado:true, opcoes:[
+      ['A','Não foram visualizadas veias perfurantes incompetentes.'],
+      ['B','Foi visualizada veia perfurante incompetente localizada na linha de Linton, a cerca de 17 cm da região plantar, que drena refluxo de tributárias.'],
+      ['C','Foi visualizada veia perfurante incompetente localizada na face posterior da perna, a cerca de 29 cm da região plantar, que drena refluxo de tributárias.'],
+      ['D','Foram visualizadas veias perfurantes incompetentes localizadas na linha de Linton e na face posterior da perna, a cerca de 17 cm e 29 cm da região plantar, respectivamente, que drenam refluxos de tributárias.'],
+      ['E','Foram visualizadas veias perfurantes incompetentes localizadas na linha de Linton, a cerca de 17 cm e 29 cm da região plantar, e na face posterior da perna, a cerca de 29 cm da região plantar, que drenam refluxos de tributárias.'],
+      ['F','Foram visualizadas veias perfurantes incompetentes localizadas na linha de Linton, a cerca de 17 cm e 29 cm da região plantar, e na face posterior e lateral da perna, a cerca de 29 cm e 30 cm da região plantar, respectivamente, que drenam refluxos de tributárias.'],
+      ['G','Perfurante da face interna da coxa (Hunter).'],
+      ['H','Perfurante da face lateral da coxa.'],
+    ]},
+  ];
+
+  // Achados avulsos (marcar/desmarcar) — os por lado entram no bloco do membro,
+  // os globais entram no fim do laudo.
+  const EXTRAS = [
+    { id:'varicosidades', porLado:true,  label:'V — Há varicosidades conforme ectoscopia', texto:'Há varicosidades conforme ectoscopia.' },
+    { id:'giacomini',     porLado:true,  label:'Safena parva continua como veia de Giacomini', texto:'A veia safena parva continua na face posterior e medial da coxa como veia de Giacomini.' },
+    { id:'linfedema',     porLado:true,  label:'VI — Linfedema', texto:'Presença de imagem trabecular no subcutâneo, sugestiva de linfedema.' },
+    { id:'baker',         porLado:true,  label:'VII — Cisto de Baker', texto:'Presença de imagem hipoecoica no oco poplíteo, sugestiva de cisto de Baker.' },
+    { id:'nota_cockett',  porLado:false, label:'NOTA — Síndrome de Cockett/May-Thurner', texto:'NOTA: Sugerimos complementação diagnóstica para pesquisa da Síndrome de Cockett/May-Thurner com angiorressonância e Doppler de ilíacas.' },
+  ];
+
+  const LADO_NOME = { D:'Membro Inferior Direito', E:'Membro Inferior Esquerdo' };
+  const RX_VAR = /\(([^()]*\/[^()]*)\)/g;   // só parênteses COM barra são variáveis
+
+  let lado = 'B';
+  // estado[secaoId][lado] = { codigo, vars:{idx:valor} }; extras[id][lado] = bool
+  const estado = {};
+  const extras = {};
+  let ultimasUnidades = [];
+
+  const esc = s => (s||'').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const getLados = () => lado==='B' ? ['D','E'] : [lado];
+  const st = (secId,l) => { estado[secId] = estado[secId]||{}; return estado[secId][l] = estado[secId][l] || { codigo:'', vars:{} }; };
+  const textoDe = (sec,codigo) => (sec.opcoes.find(([c])=>c===codigo)||[])[1] || '';
+
+  // Substitui cada "(a/b)" pela alternativa escolhida. Sem escolha, mantém o
+  // trecho original entre parênteses — assim o médico vê que falta decidir
+  // em vez de sair uma frase com a opção errada escolhida por engano.
+  function aplicarVars(texto, vars){
+    let i = -1;
+    return texto.replace(RX_VAR, (m, inner) => {
+      i++;
+      const v = vars[i];
+      return (v!==undefined && v!=='') ? v : m;
+    });
+  }
+
+  function setCodigo(secId, l, codigo){
+    const s = st(secId,l);
+    s.codigo = codigo;
+    s.vars = {};
+    // (direito/esquerdo) já sai preenchido conforme o membro do bloco.
+    const sec = SECOES.find(x=>x.id===secId);
+    const txt = textoDe(sec, codigo);
+    let i = -1;
+    txt.replace(RX_VAR, (m, inner) => {
+      i++;
+      const alts = inner.split('/').map(a=>a.trim());
+      const nomeLado = l==='D' ? 'direito' : (l==='E' ? 'esquerdo' : null);
+      const auto = nomeLado ? alts.find(a => a.toLowerCase() === nomeLado) : undefined;
+      if (auto) s.vars[i] = auto;
+      return m;
+    });
+    render();
+  }
+  function setVar(secId, l, idx, valor){ st(secId,l).vars[idx] = valor; render(); }
+  function toggleExtra(id, l, on){ extras[id] = extras[id]||{}; extras[id][l] = on; }
+  function setLado(l){ lado = l; render(); }
+  function limpar(){
+    Object.keys(estado).forEach(k=>delete estado[k]);
+    Object.keys(extras).forEach(k=>delete extras[k]);
+    ultimasUnidades = [];
+    document.getElementById('ab-preview-wrap').style.display='none';
+    render();
+  }
+
+  // Frase com as variáveis viradas em <select> inline — o médico lê a frase
+  // inteira e escolhe a palavra no meio dela, em vez de preencher campos soltos.
+  function fraseInterativa(secId, l, texto){
+    const s = st(secId,l);
+    const rx = new RegExp(RX_VAR.source, 'g');
+    let out = '', last = 0, i = -1, m;
+    while ((m = rx.exec(texto)) !== null) {
+      i++;
+      out += esc(texto.slice(last, m.index));
+      const alts = m[1].split('/').map(a=>a.trim());
+      const cur = s.vars[i] || '';
+      const opts = ['<option value="">— escolher —</option>']
+        .concat(alts.map(a=>`<option${a===cur?' selected':''}>${esc(a)}</option>`)).join('');
+      out += `<select class="ab-var" onchange="ABERT.setVar('${secId}','${l}',${i},this.value)">${opts}</select>`;
+      last = m.index + m[0].length;
+    }
+    out += esc(texto.slice(last));
+    return out;
+  }
+
+  function render(){
+    const lados = getLados();
+    const cont = document.getElementById('ab-secoes');
+    if (!cont) return;
+
+    const dropdown = (sec, l) => {
+      const s = st(sec.id,l);
+      const opts = ['<option value="">— não incluir —</option>'].concat(
+        sec.opcoes.map(([c,t]) => `<option value="${c}"${c===s.codigo?' selected':''}>${c}) ${esc(t.slice(0,78))}${t.length>78?'…':''}</option>`)
+      ).join('');
+      const frase = s.codigo ? `<div class="ab-frase">${fraseInterativa(sec.id,l,textoDe(sec,s.codigo))}</div>` : '';
+      return `<div class="ab-secao">
+        <label class="est-field-lbl">${esc(sec.titulo)}</label>
+        <select class="est-mini" onchange="ABERT.setCodigo('${sec.id}','${l}',this.value)">${opts}</select>
+        ${frase}
+      </div>`;
+    };
+
+    let html = '';
+    // Seções globais primeiro (perviedade), depois um bloco por membro.
+    SECOES.filter(s=>!s.porLado).forEach(sec => { html += dropdown(sec, 'G'); });
+
+    lados.forEach(l => {
+      html += `<div class="ab-membro"><div class="ab-membro-hdr">${LADO_NOME[l]}</div>`;
+      SECOES.filter(s=>s.porLado).forEach(sec => { html += dropdown(sec, l); });
+      html += `<div class="ab-extras">`;
+      EXTRAS.filter(e=>e.porLado).forEach(e => {
+        const on = extras[e.id] && extras[e.id][l];
+        html += `<label class="est-achado-check"><input type="checkbox" ${on?'checked':''} onchange="ABERT.toggleExtra('${e.id}','${l}',this.checked)"> ${esc(e.label)}</label>`;
+      });
+      html += `</div></div>`;
+    });
+
+    html += `<div class="ab-extras" style="margin-top:14px">`;
+    EXTRAS.filter(e=>!e.porLado).forEach(e => {
+      const on = extras[e.id] && extras[e.id]['G'];
+      html += `<label class="est-achado-check"><input type="checkbox" ${on?'checked':''} onchange="ABERT.toggleExtra('${e.id}','G',this.checked)"> ${esc(e.label)}</label>`;
+    });
+    html += `</div>`;
+
+    cont.innerHTML = html;
+  }
+
+  // Monta o laudo no formato que ele já usa: PERVIEDADE global no topo,
+  // depois COMPETÊNCIA com um bloco por membro. Bilateral vira uma unidade
+  // (página) por membro, como no venoso do Estruturado.
+  function montarUnidades(){
+    const lados = getLados();
+    const TITULO = 'ECOCOLOR DOPPLER VENOSO DOS MEMBROS INFERIORES';
+    const linhaSecao = (sec,l) => {
+      const s = st(sec.id,l);
+      return s.codigo ? aplicarVars(textoDe(sec,s.codigo), s.vars) : '';
+    };
+
+    const pervSec = SECOES.find(s=>s.id==='perviedade');
+    const perv = linhaSecao(pervSec,'G');
+
+    const unidades = [];
+    lados.forEach((l,idx) => {
+      const partes = [];
+      if (perv && idx===0) partes.push('PERVIEDADE:\n'+perv);
+      const corpoMembro = [];
+      SECOES.filter(s=>s.porLado).forEach(sec => {
+        const t = linhaSecao(sec,l);
+        if (t) corpoMembro.push(t);
+      });
+      EXTRAS.filter(e=>e.porLado).forEach(e => {
+        if (extras[e.id] && extras[e.id][l]) corpoMembro.push(e.texto);
+      });
+      if (corpoMembro.length) {
+        partes.push('COMPETÊNCIA:\n'+LADO_NOME[l].toUpperCase()+'\n'+corpoMembro.join('\n'));
+      }
+      if (partes.length) unidades.push({ titulo: TITULO, corpo: partes.join('\n\n') });
+    });
+
+    const globais = EXTRAS.filter(e=>!e.porLado && extras[e.id] && extras[e.id]['G']).map(e=>e.texto);
+    if (globais.length && unidades.length) {
+      unidades[unidades.length-1].corpo += '\n\n' + globais.join('\n');
+    }
+    return unidades;
+  }
+
+  function gerar(){
+    const unidades = montarUnidades();
+    if(!unidades.length){ toast('Escolha pelo menos uma frase antes de gerar.','err'); return; }
+    ultimasUnidades = unidades;
+    document.getElementById('ab-preview').innerHTML = unidades.map((p,i)=>`
+      <div class="est-unit" data-idx="${i}">
+        <div class="est-unit-title" contenteditable="true">${esc(p.titulo)}</div>
+        <div class="est-unit-body" contenteditable="true">${esc(p.corpo)}</div>
+      </div>`).join('');
+    const wrap = document.getElementById('ab-preview-wrap');
+    wrap.style.display='block'; wrap.scrollIntoView({behavior:'smooth',block:'nearest'});
+  }
+
+  function lerEditado(){
+    return Array.from(document.querySelectorAll('#ab-preview .est-unit')).map(u => ({
+      titulo: u.querySelector('.est-unit-title').innerText.trim(),
+      corpo:  u.querySelector('.est-unit-body').innerText.trim(),
+    }));
+  }
+  function copiar(){
+    const u = lerEditado();
+    if(!u.length) return;
+    navigator.clipboard.writeText(u.map(x=>x.titulo+'\n\n'+x.corpo).join('\n\n\n'))
+      .then(()=>toast('Texto copiado.','ok')).catch(()=>toast('Não foi possível copiar.','err'));
+  }
+  function imprimir(){
+    const u = lerEditado();
+    if(!u.length){ toast('Gere o texto primeiro.','err'); return; }
+    // Reaproveita o pipeline de impressão do Estruturado (papel timbrado,
+    // assinatura/rubrica, disclaimer e rodapé já resolvidos lá).
+    EST.imprimir(u, {
+      nome: document.getElementById('ab-nome').value,
+      data: document.getElementById('ab-data').value,
+      idade: document.getElementById('ab-idade').value,
+      convenio: document.getElementById('ab-convenio').value,
+    });
+  }
+
+  function init(){
+    const d = document.getElementById('ab-data');
+    if (d && !d.value) d.value = todayISO();
+    ['D','E','B'].forEach(x=>{ const b=document.getElementById('ab-lado-'+x); if(b) b.classList.toggle('active', lado===x); });
+    render();
+  }
+
+  return { init, setLado, setCodigo, setVar, toggleExtra, limpar, gerar, copiar, imprimir };
 })();
 
 async function initNovoLaudo() {
