@@ -4292,7 +4292,7 @@ const ABERT = (() => {
       ['D-I','A veia safena magna se apresenta de calibre normal, medindo cerca de 5,2 mm na croça, 2,7 mm na coxa e 4,5 mm na perna, sem tortuosidades e com refluxo moderado e infrapatelar detectável ao Doppler espectral, com manobras provocativas, iniciando-se em longa e sinuosa tributária insuficiente e satélite de magna na coxa, que se anastomosa com esta a cerca de 56 cm e 30 cm da região plantar.'],
       ['E','A veia safena magna se apresenta de calibre (normal/aumentado), medindo cerca de 5 mm na croça, 3,5 mm na coxa e 2 mm na perna, (tortuosa/sem tortuosidades) e com refluxo (leve/moderado/severo) e segmentar detectável ao Doppler espectral, com manobras provocativas, que se inicia na croça e é drenado por tributárias insuficientes a cerca de 42 cm da região plantar. Também foram observadas tributárias insuficientes a cerca de 63 cm da região plantar.'],
       ['E-II','A veia safena magna se apresenta de calibre (normal/aumentado), medindo cerca de 5 mm na croça, 3,5 mm na coxa e 2 mm na perna, (tortuosa/sem tortuosidades) e com refluxo (leve/moderado/severo) e segmentar detectável ao Doppler espectral, com manobras provocativas, que se inicia na croça e é drenado por tributárias insuficientes a cerca de 42 cm da região plantar. Também foram observadas tributárias insuficientes a cerca de 63 cm da região plantar de trajeto paralelo à magna, que se anastomosa com esta a cerca de 31 cm da região plantar.'],
-      ['F','A veia safena magna se apresenta de calibre (normal/aumentado), medindo cerca de 5 mm na croça, 3,5 mm na coxa e 2 mm na perna, (tortuosa/sem tortuosidades) e com refluxo (leve/moderado/severo) e segmentar detectável ao Doppler espectral, com manobras provocativas, em toda sua extensão, sendo observadas tributárias insuficientes a cerca de 63 cm e 42 cm da região plantar.'],
+      ['F','A veia safena magna se apresenta de calibre (normal/aumentado), medindo cerca de 5 mm na croça, 3,5 mm na coxa e 2 mm na perna, (tortuosa/sem tortuosidades) e com refluxo (leve/moderado/severo), detectável ao Doppler espectral, com manobras provocativas, em toda sua extensão, sendo observadas tributárias insuficientes a cerca de 63 cm e 42 cm da região plantar.'],
       ['G','A veia safena magna se apresenta de calibre aumentado, medindo cerca de 10,4 mm na croça, 7,4 mm na coxa e 3,4 mm na perna, sem tortuosidades ou refluxos significativos detectáveis ao Doppler espectral, com as manobras provocativas. A junção safenofemoral está incompetente e drena refluxo para a safena acessória anterior, que está tortuosa e insuficiente, com trajeto na região anterior e lateral da coxa e perna.'],
       ['H','A veia safena magna se apresenta de calibre aumentado, medindo cerca de 10,4 mm na croça, 7,4 mm na coxa e 3,4 mm na perna, tortuosa, e com refluxo severo e segmentar detectável ao Doppler espectral, com manobras provocativas, que se inicia e é drenado por tributárias insuficientes a cerca de 54 cm e 30 cm da região plantar. Também foram observadas tributárias insuficientes a cerca de 33 cm da região plantar. A junção safenofemoral está incompetente e drena refluxo para a safena acessória anterior, que está tortuosa e insuficiente, com trajeto na região anterior e lateral da coxa e perna.'],
       ['H-I','A veia safena magna se apresenta de calibre normal, medindo cerca de 7,2 mm na croça, 4,4 mm na coxa e 2,8 mm na perna, sem tortuosidades, e com refluxo leve e infrapatelar detectável ao Doppler espectral, com manobras provocativas, que se inicia em tributária insuficiente a cerca de 28 cm da região plantar. A junção safenofemoral está incompetente e drena refluxo para longa e sinuosa tributária insuficiente, com trajeto nas regiões anterior e lateral da coxa e posterior e lateral da perna.'],
@@ -4379,6 +4379,7 @@ const ABERT = (() => {
     const s = st(secId,l);
     s.codigo = codigo;
     s.vars = {};
+    s.textoEditado = null;
     // (direito/esquerdo) já sai preenchido conforme o membro do bloco.
     const sec = SECOES.find(x=>x.id===secId);
     const txt = textoDe(sec, codigo);
@@ -4406,23 +4407,19 @@ const ABERT = (() => {
 
   // Frase com as variáveis viradas em <select> inline — o médico lê a frase
   // inteira e escolhe a palavra no meio dela, em vez de preencher campos soltos.
-  function fraseInterativa(secId, l, texto){
+  // O quadro da frase é editável direto (contenteditable) em vez de trocar
+  // cada "(a/b)" por um <select> — assim o médico ajusta qualquer parte do
+  // texto, inclusive números que não têm alternativa nenhuma pra escolher
+  // (ex: "63 cm e 42 cm"). O texto digitado fica em s.textoEditado; trocar
+  // o código no dropdown de cima descarta a edição e recomeça da frase-base.
+  function textoResolvido(secId, l){
     const s = st(secId,l);
-    const rx = new RegExp(RX_VAR.source, 'g');
-    let out = '', last = 0, i = -1, m;
-    while ((m = rx.exec(texto)) !== null) {
-      i++;
-      out += esc(texto.slice(last, m.index));
-      const alts = m[1].split('/').map(a=>a.trim());
-      const cur = s.vars[i] || '';
-      const opts = ['<option value="">— escolher —</option>']
-        .concat(alts.map(a=>`<option${a===cur?' selected':''}>${esc(a)}</option>`)).join('');
-      out += `<select class="ab-var" onchange="ABERT.setVar('${secId}','${l}',${i},this.value)">${opts}</select>`;
-      last = m.index + m[0].length;
-    }
-    out += esc(texto.slice(last));
-    return out;
+    if (!s.codigo) return '';
+    if (s.textoEditado != null) return s.textoEditado;
+    const sec = SECOES.find(x=>x.id===secId);
+    return aplicarVars(textoDe(sec,s.codigo), s.vars);
   }
+  function setTexto(secId, l, valor){ st(secId,l).textoEditado = valor; }
 
   function render(){
     const lados = getLados();
@@ -4434,7 +4431,9 @@ const ABERT = (() => {
       const opts = ['<option value="">— não incluir —</option>'].concat(
         sec.opcoes.map(([c,t]) => `<option value="${c}"${c===s.codigo?' selected':''}>${c}) ${esc(t.slice(0,78))}${t.length>78?'…':''}</option>`)
       ).join('');
-      const frase = s.codigo ? `<div class="ab-frase">${fraseInterativa(sec.id,l,textoDe(sec,s.codigo))}</div>` : '';
+      const frase = s.codigo
+        ? `<div class="ab-frase" contenteditable="true" oninput="ABERT.setTexto('${sec.id}','${l}',this.innerText)">${esc(textoResolvido(sec.id,l))}</div>`
+        : '';
       return `<div class="ab-secao">
         <label class="est-field-lbl">${esc(sec.titulo)}</label>
         <select class="est-mini" onchange="ABERT.setCodigo('${sec.id}','${l}',this.value)">${opts}</select>
@@ -4473,10 +4472,7 @@ const ABERT = (() => {
   function montarUnidades(){
     const lados = getLados();
     const TITULO = 'ECOCOLOR DOPPLER VENOSO DOS MEMBROS INFERIORES';
-    const linhaSecao = (sec,l) => {
-      const s = st(sec.id,l);
-      return s.codigo ? aplicarVars(textoDe(sec,s.codigo), s.vars) : '';
-    };
+    const linhaSecao = (sec,l) => textoResolvido(sec.id,l);
 
     const pervSec = SECOES.find(s=>s.id==='perviedade');
     const perv = linhaSecao(pervSec,'G');
@@ -4551,7 +4547,7 @@ const ABERT = (() => {
     render();
   }
 
-  return { init, setLado, setCodigo, setVar, toggleExtra, limpar, gerar, copiar, imprimir };
+  return { init, setLado, setCodigo, setVar, setTexto, toggleExtra, limpar, gerar, copiar, imprimir };
 })();
 
 async function initNovoLaudo() {
