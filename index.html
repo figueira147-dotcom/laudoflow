@@ -1170,6 +1170,40 @@
         <div class="est-prev-hint">Clique no texto para editar antes de copiar ou imprimir.</div>
       </div>
     </div>
+
+    <!-- Calculadora Ecocardiográfica -->
+    <div class="card">
+      <div class="card-hdr">
+        <div class="card-ico"><i class="ti ti-calculator"></i></div>
+        <div class="card-title">Calculadora Ecocardiográfica</div>
+      </div>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px">
+        Fórmulas padrão: volumes e fração de ejeção pelo <b>método de Teicholz</b>, massa ventricular pela <b>fórmula de Devereux (ASE)</b>, superfície corporal pela <b>fórmula de DuBois</b>. Confira os resultados antes de usar no laudo.
+      </p>
+
+      <div class="est-fieldgrid" style="grid-template-columns:repeat(auto-fit,minmax(130px,1fr))">
+        <div><label class="est-field-lbl">Altura (cm)</label><input type="number" step="0.1" min="0" class="est-field-num" id="eco-altura"></div>
+        <div><label class="est-field-lbl">Peso (kg)</label><input type="number" step="0.1" min="0" class="est-field-num" id="eco-peso"></div>
+        <div><label class="est-field-lbl">Aorta (mm)</label><input type="number" step="0.1" min="0" class="est-field-num" id="eco-aorta"></div>
+        <div><label class="est-field-lbl">Átrio esquerdo (mm)</label><input type="number" step="0.1" min="0" class="est-field-num" id="eco-ae"></div>
+        <div><label class="est-field-lbl">VD (mm)</label><input type="number" step="0.1" min="0" class="est-field-num" id="eco-vd"></div>
+        <div><label class="est-field-lbl">DDVE (mm)</label><input type="number" step="0.1" min="0" class="est-field-num" id="eco-ddve"></div>
+        <div><label class="est-field-lbl">DSVE (mm)</label><input type="number" step="0.1" min="0" class="est-field-num" id="eco-dsve"></div>
+        <div><label class="est-field-lbl">Septo (mm)</label><input type="number" step="0.1" min="0" class="est-field-num" id="eco-septo"></div>
+        <div><label class="est-field-lbl">PPVE (mm)</label><input type="number" step="0.1" min="0" class="est-field-num" id="eco-ppve"></div>
+      </div>
+
+      <div class="est-actions" style="margin-top:16px">
+        <button class="btn btn-primary" style="width:auto;padding:11px 24px" onclick="ECOCALC.calcular()">Calcular</button>
+        <button class="btn btn-outline" style="width:auto;padding:11px 20px" onclick="ECOCALC.limpar()">↺ Limpar</button>
+      </div>
+
+      <div id="eco-resultado-wrap" style="display:none;margin-top:18px">
+        <div class="cfg-subhdr">Resultado</div>
+        <div class="est-prev-body" id="eco-resultado" style="border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px"></div>
+        <button class="btn btn-outline" style="width:auto;padding:9px 20px;margin-top:10px" onclick="ECOCALC.copiar()"><i class="ti ti-copy"></i> Copiar</button>
+      </div>
+    </div>
   </div>
 
   <!-- TAB PRODUÇÃO (admin) -->
@@ -4548,6 +4582,107 @@ const ABERT = (() => {
   }
 
   return { init, setLado, setCodigo, setVar, setTexto, toggleExtra, limpar, gerar, copiar, imprimir };
+})();
+
+// ══════════════════════════════════════════════════════
+// CALCULADORA ECOCARDIOGRÁFICA
+//
+// Fórmulas padrão de ecocardiografia (nenhuma inventada — todas com nome
+// pra poder conferir/auditar):
+// - Volumes e FE: método de Teicholz — V = [7,0/(2,4+D)] × D³ (D em cm).
+// - Massa ventricular: fórmula de Devereux, corrigida pela ASE —
+//   MVE = 0,8 × {1,04 × [(DDVE+Septo+PPVE)³ − DDVE³]} + 0,6 (tudo em cm).
+// - Superfície corporal: fórmula de DuBois —
+//   SC = 0,007184 × altura(cm)^0,725 × peso(kg)^0,425.
+// Entradas em mm/cm/kg (mesma unidade da tela); saída sempre com "___"
+// quando faltar dado suficiente pra calcular aquele item, em vez de um
+// número errado por causa de dado ausente.
+// ══════════════════════════════════════════════════════
+const ECOCALC = (() => {
+  let ultimoTexto = '';
+
+  function num(id){
+    const v = parseFloat(document.getElementById(id).value);
+    return isNaN(v) ? null : v;
+  }
+  function fmt(v, dec){
+    return (v==null || isNaN(v)) ? '___' : v.toFixed(dec);
+  }
+  // Volume pelo método de Teicholz — recebe o diâmetro em mm, devolve mL.
+  function volTeicholz(diametroMm){
+    if (diametroMm==null) return null;
+    const d = diametroMm / 10; // mm -> cm
+    return (7.0 / (2.4 + d)) * Math.pow(d, 3);
+  }
+
+  function calcular(){
+    const altura = num('eco-altura'), peso = num('eco-peso');
+    const aorta = num('eco-aorta'), ae = num('eco-ae'), vd = num('eco-vd');
+    const ddve = num('eco-ddve'), dsve = num('eco-dsve');
+    const septo = num('eco-septo'), ppve = num('eco-ppve');
+
+    const bsa = (altura!=null && peso!=null)
+      ? 0.007184 * Math.pow(altura, 0.725) * Math.pow(peso, 0.425) : null;
+
+    const vdf = volTeicholz(ddve); // Volume Diastólico Final (mL)
+    const vsf = volTeicholz(dsve); // Volume Sistólico Final (mL)
+    const vs  = (vdf!=null && vsf!=null) ? (vdf - vsf) : null; // Volume Sistólico (ejetado)
+    const fe  = (vdf && vsf!=null) ? ((vdf - vsf) / vdf * 100) : null;
+    const percEncurt = (ddve!=null && dsve!=null && ddve) ? ((ddve - dsve) / ddve * 100) : null;
+
+    const mve = (ddve!=null && septo!=null && ppve!=null)
+      ? (0.8 * (1.04 * (Math.pow((ddve+septo+ppve)/10, 3) - Math.pow(ddve/10, 3))) + 0.6)
+      : null;
+
+    const relAeAorta   = (ae!=null && aorta) ? (ae/aorta) : null;
+    const relMassaSC   = (mve!=null && bsa) ? (mve/bsa) : null;
+    const relSeptoPPVE = (septo!=null && ppve) ? (septo/ppve) : null;
+    const relVolMassa  = (vdf!=null && mve) ? (vdf/mve) : null;
+
+    if ([altura,peso,aorta,ae,vd,ddve,dsve,septo,ppve].every(v=>v==null)) {
+      toast('Preencha pelo menos uma medida antes de calcular.', 'err');
+      return;
+    }
+
+    ultimoTexto =
+`DADOS DO PACIENTE:
+Altura: ${fmt(altura,1)} cm | Peso: ${fmt(peso,1)} kg
+Superfície corporal: ${fmt(bsa,2)} m²
+
+PARÂMETROS ESTRUTURAIS:
+Aorta (diâmetro da raiz): ${fmt(aorta,1)} mm | Átrio esquerdo: ${fmt(ae,1)} mm
+Diâmetro ventricular direito: ${fmt(vd,1)} mm | Diâmetro diastólico final do VE: ${fmt(ddve,1)} mm
+Diâmetro sistólico final do VE: ${fmt(dsve,1)} mm | Espessura diastólica do septo: ${fmt(septo,1)} mm
+Espessura diastólica da PPVE: ${fmt(ppve,1)} mm
+
+RELAÇÕES E FUNÇÕES VENTRICULARES:
+Relação átrio esquerdo/aorta: ${fmt(relAeAorta,2)} | Fração de ejeção (Teicholz): ${fmt(fe,1)} %
+Massa ventricular esquerda: ${fmt(mve,1)} g | Relação massa/superfície corporal: ${fmt(relMassaSC,1)} g/m²
+Percentual de encurtamento da cavidade: ${fmt(percEncurt,1)} % | Relação septo/PPVE: ${fmt(relSeptoPPVE,2)}
+Volume diastólico final: ${fmt(vdf,1)} mL | Volume sistólico: ${fmt(vs,1)} mL
+Relação volume/massa: ${fmt(relVolMassa,2)} | Volume sistólico final: ${fmt(vsf,1)} mL`;
+
+    const wrap = document.getElementById('eco-resultado-wrap');
+    document.getElementById('eco-resultado').innerText = ultimoTexto;
+    wrap.style.display = 'block';
+    wrap.scrollIntoView({ behavior:'smooth', block:'nearest' });
+  }
+
+  function copiar(){
+    if (!ultimoTexto) return;
+    navigator.clipboard.writeText(ultimoTexto)
+      .then(()=>toast('Resultado copiado.', 'ok'))
+      .catch(()=>toast('Não foi possível copiar.', 'err'));
+  }
+
+  function limpar(){
+    ['eco-altura','eco-peso','eco-aorta','eco-ae','eco-vd','eco-ddve','eco-dsve','eco-septo','eco-ppve']
+      .forEach(id => { document.getElementById(id).value = ''; });
+    ultimoTexto = '';
+    document.getElementById('eco-resultado-wrap').style.display = 'none';
+  }
+
+  return { calcular, copiar, limpar };
 })();
 
 async function initNovoLaudo() {
