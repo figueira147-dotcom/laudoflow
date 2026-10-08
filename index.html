@@ -5765,17 +5765,27 @@ function buildPrint(laudo, medico) {
   pc.style.display = 'block';
 
   const allImgs = Array.from(pc.querySelectorAll('img'));
-  const doPrint = () => setTimeout(() => {
-    window.print();
-    setTimeout(() => { pc.style.display = 'none'; pc.innerHTML = ''; }, 2000);
-  }, 200);
+  let printed = false;
+  const doPrint = () => {
+    if (printed) return;
+    printed = true;
+    setTimeout(() => {
+      window.print();
+      setTimeout(() => { pc.style.display = 'none'; pc.innerHTML = ''; }, 2000);
+    }, 200);
+  };
 
   if (!allImgs.length) {
     doPrint();
   } else {
     let loaded = 0;
     allImgs.forEach(img => {
-      const done = () => { if (++loaded >= allImgs.length) doPrint(); };
+      let counted = false;
+      const done = () => {
+        if (counted) return;
+        counted = true;
+        if (++loaded >= allImgs.length) doPrint();
+      };
       img.onload = done; img.onerror = done;
       if (img.complete) done();
     });
