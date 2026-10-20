@@ -496,7 +496,12 @@
     body { background: #fff !important; margin: 0 !important; padding: 0 !important; }
     #print-container { display: block !important; }
     @page { size: A4 portrait; margin: 0; }
-    .print-page { width: 210mm; min-height: 297mm; box-sizing: border-box; padding: 12mm 20mm 34mm 20mm; font-family: 'Garamond','Times New Roman',Times,serif; color: #000; page-break-after: always; break-after: page; background: #fff; position: relative; }
+  }
+  /* Layout da folha fora do @media print: o editor do laudo monta uma cópia
+     escondida da página com essas mesmas regras pra prever as quebras. */
+    /* clone: margens de topo/rodapé se repetem em cada folha quando o texto
+       transborda (sem isso a pág. 1 vai até a borda e a pág. 2 começa no topo). */
+    .print-page { width: 210mm; min-height: 297mm; box-sizing: border-box; padding: 12mm 20mm 34mm 20mm; font-family: 'Garamond','Times New Roman',Times,serif; color: #000; page-break-after: always; break-after: page; background: #fff; position: relative; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
     .print-page:last-child { page-break-after: avoid; break-after: avoid; }
     .print-body { display: block; position: relative; z-index: 1; }
     .pdf-watermark { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); max-width: 65%; max-height: 65%; opacity: .12; z-index: 0; }
@@ -536,7 +541,13 @@
     .pdf-foot { position: absolute; left: 20mm; right: 20mm; bottom: 8mm; font-family: 'Calibri','Segoe UI',Arial,sans-serif; font-size: 11pt; line-height: 1.35; }
     .pdf-foot-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
     .pdf-foot b { font-weight: bold; }
-  }
+  #pb-measure { position: absolute; left: -99999px; top: 0; visibility: hidden; pointer-events: none; }
+
+  /* ── QUEBRA DE PÁGINA PREVISTA NO EDITOR DO LAUDO ── */
+  .pb-marker { position: absolute; left: 0; right: 0; height: 0; border-top: 2px dashed #c0392b; pointer-events: none; z-index: 2; }
+  .pb-marker span { position: absolute; right: 8px; top: -9px; background: #c0392b; color: #fff; font: 700 10px/16px var(--font-ui); padding: 0 6px; border-radius: 8px; letter-spacing: .3px; }
+  .pb-status { font-size: 11.5px; color: var(--text-muted); margin-top: 5px; display: flex; align-items: center; gap: 6px; }
+  .pb-status.pb-warn { color: #b9770e; font-weight: 600; }
 
   /* ── QUILL RICH EDITOR ── */
   .ql-toolbar.ql-snow { background: var(--off-white); border: 1.5px solid var(--border) !important; border-bottom: none !important; border-radius: 8px 8px 0 0; padding: 6px 8px; flex-wrap: wrap; }
@@ -3997,7 +4008,7 @@ const EST = (() => {
     w.document.write(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Laudo</title><style>
       *{box-sizing:border-box;margin:0;padding:0}
       body{background:#888;font-family:'Garamond','Times New Roman',Times,serif;color:#000}
-      .print-page{width:210mm;min-height:297mm;box-sizing:border-box;padding:12mm 20mm 34mm 20mm;background:#fff;position:relative;margin:0 auto 16px;box-shadow:0 2px 14px rgba(0,0,0,.35);page-break-after:always}
+      .print-page{width:210mm;min-height:297mm;box-sizing:border-box;padding:12mm 20mm 34mm 20mm;background:#fff;position:relative;margin:0 auto 16px;box-shadow:0 2px 14px rgba(0,0,0,.35);page-break-after:always;box-decoration-break:clone;-webkit-box-decoration-break:clone}
       .print-page:last-child{page-break-after:avoid}
       .print-body{position:relative;z-index:1}
       .pdf-watermark{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);max-width:65%;max-height:65%;opacity:.12;z-index:0}
@@ -4908,7 +4919,9 @@ function renderSecoesEditor(secoesData, presetMap = {}) {
       const textoPreset  = presetMap[s.id] || '';
       const textoPadrao  = s.texto_padrao || '';
       const texto = saved.texto !== undefined ? saved.texto : (textoPreset || textoPadrao);
-      initQuill('txt-' + s.chave, el, texto, laudoConcluido);
+      const q = initQuill('txt-' + s.chave, el, texto, laudoConcluido);
+      q.on('text-change', () => agendarQuebras(s.chave));
+      agendarQuebras(s.chave);
     }
   });
 }
@@ -4921,7 +4934,109 @@ function toggleSecao(chave) {
   tog.classList.toggle('on', on);
   body.classList.toggle('open', on);
   scheduleAutosave();
+  agendarQuebras(chave);
 }
+
+// ══════════════════════════════════════════════════════
+// PREVISÃO DE QUEBRA DE PÁGINA NO EDITOR DO LAUDO
+// O editor não tem a fonte/largura da folha impressa, então monta uma cópia
+// escondida da página (mesmo CSS, cabeçalho e caixa do paciente), simula o
+// fluxo — parágrafo não se parte (break-inside: avoid) — e marca no editor
+// o parágrafo que abre cada página nova.
+// ══════════════════════════════════════════════════════
+const MM_PX = 96 / 25.4;
+const pbTimers = {};
+
+function laudoDoFormulario() {
+  const v = id => (document.getElementById(id)?.value || '').trim();
+  return { paciente_nome: v('doc-pac-nome'), data_exame: v('doc-data-exame'), convenio: v('doc-convenio'), solicitante: v('doc-solicitante') };
+}
+
+function medirPaginasSecao(label, html) {
+  const parts = printLayoutParts(laudoDoFormulario());
+  let box = document.getElementById('pb-measure');
+  if (!box) { box = document.createElement('div'); box.id = 'pb-measure'; document.body.appendChild(box); }
+  box.innerHTML = `<div class="print-page" style="${parts.PAGE_STYLE}"><div class="print-body">${parts.HEADER}${parts.PAT}<div class="pdf-sec-title">${escHtml(label)}</div><div class="pdf-body">${html}</div></div></div>`;
+  const pageTop = box.firstElementChild.getBoundingClientRect().top;
+  const corpo = box.querySelector('.pdf-body');
+  const lineH = parseFloat(getComputedStyle(corpo).lineHeight) || 19;
+  const T = parts.padTop * MM_PX;
+  const limite = 297 * MM_PX - parts.padBottom * MM_PX;
+
+  const quebras = [];
+  let y = 0, prevMb = 0;
+  Array.from(corpo.children).forEach((b, i) => {
+    const cs = getComputedStyle(b);
+    const r = b.getBoundingClientRect();
+    if (i === 0) {
+      y = r.top - pageTop + r.height;
+    } else {
+      const topo = y + Math.max(prevMb, parseFloat(cs.marginTop) || 0);
+      if (topo + r.height > limite) { quebras.push(i); y = T + r.height; }
+      else y = topo + r.height;
+    }
+    prevMb = parseFloat(cs.marginBottom) || 0;
+  });
+  box.innerHTML = '';
+  return {
+    paginas: quebras.length + 1,
+    quebras,
+    linhasLivres: Math.max(0, Math.floor((limite - y) / lineH)),
+    linhasUltima: Math.max(1, Math.round((y - T) / lineH)),
+  };
+}
+
+function atualizarQuebrasSecao(chave) {
+  const q = quillInstances['txt-' + chave];
+  const s = secoesClinica.find(x => x.chave === chave);
+  const body = document.getElementById('body-' + chave);
+  if (!q || !s || !body) return;
+  const cont = q.root.parentElement;
+  cont.querySelectorAll('.pb-marker').forEach(m => m.remove());
+  let st = document.getElementById('pbs-' + chave);
+  if (!st) { st = document.createElement('div'); st.id = 'pbs-' + chave; body.appendChild(st); }
+  st.className = 'pb-status';
+  st.innerHTML = '';
+
+  const html = getQuillHtml('txt-' + chave);
+  if (!html || !body.classList.contains('open')) return;
+
+  const r = medirPaginasSecao(s.label, html);
+  const contTop = cont.getBoundingClientRect().top;
+  r.quebras.forEach((idx, n) => {
+    const alvo = q.root.children[idx];
+    if (!alvo) return;
+    const m = document.createElement('div');
+    m.className = 'pb-marker';
+    m.style.top = (alvo.getBoundingClientRect().top - contTop - 1) + 'px';
+    m.innerHTML = `<span>Página ${n + 2}</span>`;
+    cont.appendChild(m);
+  });
+
+  if (r.paginas === 1) {
+    st.innerHTML = `<i class="ti ti-file-text"></i> Cabe em 1 página · espaço para ~${r.linhasLivres} linha${r.linhasLivres === 1 ? '' : 's'}`;
+  } else {
+    const poucas = r.linhasUltima <= 3;
+    st.classList.toggle('pb-warn', poucas);
+    st.innerHTML = `<i class="ti ti-${poucas ? 'alert-triangle' : 'files'}"></i> ${r.paginas} páginas · a página ${r.paginas} fica com ~${r.linhasUltima} linha${r.linhasUltima === 1 ? '' : 's'}`
+      + (poucas ? ` — enxugue um pouco o texto para caber em ${r.paginas - 1}` : '');
+  }
+}
+
+function agendarQuebras(chave) {
+  clearTimeout(pbTimers[chave]);
+  pbTimers[chave] = setTimeout(() => document.fonts.ready.then(() => atualizarQuebrasSecao(chave)), 350);
+}
+
+function agendarTodasQuebras() {
+  secoesClinica.forEach(s => agendarQuebras(s.chave));
+}
+
+// O cabeçalho da folha muda de altura com o nome do paciente/solicitante, e
+// a largura da tela muda a posição das marcas no editor.
+['doc-pac-nome','doc-convenio','doc-solicitante'].forEach(id =>
+  document.getElementById(id)?.addEventListener('input', agendarTodasQuebras));
+window.addEventListener('resize', agendarTodasQuebras);
 
 function coletarSecoes() {
   const result = {};
@@ -5658,7 +5773,9 @@ function escHtml(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-function buildPrint(laudo, medico) {
+// Margens, cabeçalho e caixa do paciente da folha impressa — compartilhado
+// entre buildPrint() e a previsão de quebra de página no editor.
+function printLayoutParts(laudo) {
   const clinica = currentClinica || {};
   const pcfg = clinica.pdf_config || {};
   const dateEx = laudo.data_exame ? fmtDate(laudo.data_exame) : fmtDate(new Date().toISOString().slice(0,10));
@@ -5696,6 +5813,12 @@ function buildPrint(laudo, medico) {
       <div class="pp-cell"><div class="pp-label">Médico Solicitante</div><div class="pp-value">${escHtml(laudo.solicitante.toUpperCase())}</div></div>
     </div>` : ''}
   </div>`;
+
+  return { clinica, pcfg, dateEx, papelTimbrado, padTop, padBottom, signBottom, discBottom, PAGE_STYLE, HEADER, PAT };
+}
+
+function buildPrint(laudo, medico) {
+  const { clinica, pcfg, dateEx, papelTimbrado, signBottom, discBottom, PAGE_STYLE, HEADER, PAT } = printLayoutParts(laudo);
 
   // ── Assinatura (texto padrão, ou rubrica escaneada + data se a clínica usar esse modo) ──
   const signNome = (medico?.nome || '').toUpperCase();
