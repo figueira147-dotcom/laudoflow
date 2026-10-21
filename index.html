@@ -4952,37 +4952,40 @@ function laudoDoFormulario() {
   return { paciente_nome: v('doc-pac-nome'), data_exame: v('doc-data-exame'), convenio: v('doc-convenio'), solicitante: v('doc-solicitante') };
 }
 
-function medirPaginasSecao(label, html) {
-  const parts = printLayoutParts(laudoDoFormulario());
+// Cada página de continuação repete cabeçalho + caixa do paciente + título,
+// então o texto de toda página começa na mesma altura que na página 1.
+function medirPaginasSecao(label, html, laudo) {
+  const parts = printLayoutParts(laudo || laudoDoFormulario());
   let box = document.getElementById('pb-measure');
   if (!box) { box = document.createElement('div'); box.id = 'pb-measure'; document.body.appendChild(box); }
   box.innerHTML = `<div class="print-page" style="${parts.PAGE_STYLE}"><div class="print-body">${parts.HEADER}${parts.PAT}<div class="pdf-sec-title">${escHtml(label)}</div><div class="pdf-body">${html}</div></div></div>`;
   const pageTop = box.firstElementChild.getBoundingClientRect().top;
   const corpo = box.querySelector('.pdf-body');
   const lineH = parseFloat(getComputedStyle(corpo).lineHeight) || 19;
-  const T = parts.padTop * MM_PX;
+  const inicio = corpo.getBoundingClientRect().top - pageTop;
   const limite = 297 * MM_PX - parts.padBottom * MM_PX;
+  // Texto solto fora de <p> não dá pra repartir entre folhas com segurança.
+  const divisivel = Array.from(corpo.childNodes).every(n => n.nodeType === 1 || !n.textContent.trim());
+  const blocos = Array.from(corpo.children).map(b => b.outerHTML);
 
   const quebras = [];
-  let y = 0, prevMb = 0;
+  let y = inicio, prevMb = 0;
   Array.from(corpo.children).forEach((b, i) => {
     const cs = getComputedStyle(b);
-    const r = b.getBoundingClientRect();
-    if (i === 0) {
-      y = r.top - pageTop + r.height;
-    } else {
-      const topo = y + Math.max(prevMb, parseFloat(cs.marginTop) || 0);
-      if (topo + r.height > limite) { quebras.push(i); y = T + r.height; }
-      else y = topo + r.height;
-    }
+    const h = b.getBoundingClientRect().height;
+    const topo = i === 0 ? y : y + Math.max(prevMb, parseFloat(cs.marginTop) || 0);
+    if (i > 0 && topo + h > limite) { quebras.push(i); y = inicio + h; }
+    else y = topo + h;
     prevMb = parseFloat(cs.marginBottom) || 0;
   });
   box.innerHTML = '';
   return {
     paginas: quebras.length + 1,
     quebras,
+    blocos,
+    divisivel,
     linhasLivres: Math.max(0, Math.floor((limite - y) / lineH)),
-    linhasUltima: Math.max(1, Math.round((y - T) / lineH)),
+    linhasUltima: Math.max(1, Math.round((y - inicio) / lineH)),
   };
 }
 
@@ -5858,15 +5861,25 @@ function buildPrint(laudo, medico) {
   secoesClinica.forEach(s => {
     const sec = secoes[s.chave];
     if (!sec || !sec.ativo || !sec.texto) return;
-    pagesHtml += `<div class="print-page" style="${PAGE_STYLE}">
-      ${WATERMARK}
-      <div class="print-body">
-        ${HEADER}${PAT}
-        <div class="pdf-sec-title">${escHtml(s.label)}</div>
-        <div class="pdf-body">${sec.texto}</div>
-      </div>
-      ${SIGN}${DISC}${FOOT}
-    </div>`;
+    const med = medirPaginasSecao(s.label, sec.texto, laudo);
+    const fatias = [];
+    if (med.divisivel && med.quebras.length) {
+      [0, ...med.quebras].forEach((ini, n, arr) => fatias.push(med.blocos.slice(ini, arr[n + 1]).join('')));
+    } else {
+      fatias.push(sec.texto);
+    }
+    fatias.forEach((texto, n) => {
+      const titulo = n === 0 ? escHtml(s.label) : `${escHtml(s.label)} (continuação)`;
+      pagesHtml += `<div class="print-page" style="${PAGE_STYLE}">
+        ${WATERMARK}
+        <div class="print-body">
+          ${HEADER}${PAT}
+          <div class="pdf-sec-title">${titulo}</div>
+          <div class="pdf-body">${texto}</div>
+        </div>
+        ${SIGN}${DISC}${FOOT}
+      </div>`;
+    });
   });
 
   const imgs = laudo.imagens || [];
