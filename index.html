@@ -1647,6 +1647,12 @@ function getQuillHtml(key) {
 const SUPABASE_URL = 'https://msgckzazywarrgotkexi.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1zZ2NremF6eXdhcnJnb3RrZXhpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4NDg4NzgsImV4cCI6MjA5ODQyNDg3OH0.FpnGqaoKZeIDQBIL7DVC5wcoQ8O9VBRyyReR3BS7QoY';
 const supa = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// Cliente só para criar contas (portal do paciente, novo usuário). O signUp
+// no cliente principal entraria como a conta nova e derrubaria a sessão de
+// quem está usando o app — aí o RLS recusa o que for gravado em seguida.
+const supaCadastro = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, storageKey: 'laudar-cadastro' },
+});
 
 // ══════════════════════════════════════════════════════
 // ESTADO GLOBAL
@@ -2060,12 +2066,8 @@ async function savePendente(concluir = false) {
       if (nasc) {
         const fakeEmail = `${cpfLimpo}@${currentClinica.slug}.pac`;
         const senha = cpfLimpo + nasc.replace(/-/g,'');
-        const sessaoOriginal = (await supa.auth.getSession()).data.session;
-        const { data: authData } = await supa.auth.signUp({ email: fakeEmail, password: senha });
+        const { data: authData } = await supaCadastro.auth.signUp({ email: fakeEmail, password: senha });
         authId = authData?.user?.id || null;
-        if (sessaoOriginal?.access_token) {
-          await supa.auth.setSession({ access_token: sessaoOriginal.access_token, refresh_token: sessaoOriginal.refresh_token });
-        }
       }
 
       const { data: novo } = await supa.from('pacientes').insert({
@@ -3028,12 +3030,7 @@ async function criarUsuario() {
 
   loading(true, 'Criando usuário...');
 
-  const sessaoOriginal = (await supa.auth.getSession()).data.session;
-  const { data: authData, error: authErr } = await supa.auth.signUp({ email, password: senha });
-
-  if (sessaoOriginal?.access_token) {
-    await supa.auth.setSession({ access_token: sessaoOriginal.access_token, refresh_token: sessaoOriginal.refresh_token });
-  }
+  const { data: authData, error: authErr } = await supaCadastro.auth.signUp({ email, password: senha });
 
   if (authErr) { loading(false); toast('Erro ao criar conta: ' + authErr.message, 'err'); return; }
 
@@ -5167,12 +5164,8 @@ async function salvarLaudo(concluir = false) {
         if (nasc) {
           const fakeEmail = `${cpfLimpo}@${currentClinica.slug}.pac`;
           const senha = cpfLimpo + nasc.replace(/-/g,'');
-          const sessaoOriginal = (await supa.auth.getSession()).data.session;
-          const { data: authData } = await supa.auth.signUp({ email: fakeEmail, password: senha });
+          const { data: authData } = await supaCadastro.auth.signUp({ email: fakeEmail, password: senha });
           authId = authData?.user?.id || null;
-          if (sessaoOriginal?.access_token) {
-            await supa.auth.setSession({ access_token: sessaoOriginal.access_token, refresh_token: sessaoOriginal.refresh_token });
-          }
         }
 
         const { data: novoPac } = await supa.from('pacientes').insert({
