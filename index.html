@@ -864,7 +864,7 @@
       <div class="form-row cols-2">
         <div class="field">
           <label>Médico responsável *</label>
-          <select id="sec-medico-id">
+          <select id="sec-medico-id" onchange="onSecMedicoChange()">
             <option value="">Selecione...</option>
           </select>
         </div>
@@ -883,9 +883,25 @@
           <input type="text" id="sec-solicitante" placeholder="Dr(a). nome">
         </div>
       </div>
-      <div style="display:flex;gap:10px;margin-top:8px">
-        <button class="btn btn-primary" id="sec-save-btn" onclick="savePendente()" style="flex:1">
+    </div>
+
+    <!-- Digitação do laudo -->
+    <div class="card">
+      <div class="card-hdr">
+        <div class="card-ico"><i class="ti ti-file-text"></i></div>
+        <div class="card-title">Laudo</div>
+      </div>
+      <p style="font-size:12.5px;color:var(--text-muted);margin:-4px 0 12px">Opcional: ative as seções do exame e digite o laudo. Sem texto, o laudo vai só para a fila do médico.</p>
+      <div id="sec-secoes-container"></div>
+    </div>
+
+    <div class="card">
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-primary" id="sec-save-btn" onclick="savePendente(false)" style="flex:1;min-width:200px">
           Salvar na Fila do Médico
+        </button>
+        <button class="btn" id="sec-concluir-btn" onclick="savePendente(true)" style="flex:1;min-width:200px;background:var(--green-mid);color:#fff">
+          <i class="ti ti-check"></i> Concluir Laudo
         </button>
         <button class="btn btn-outline" onclick="resetSecForm()">Limpar</button>
       </div>
@@ -1830,9 +1846,10 @@ async function afterLogin(session) {
     document.getElementById('sec-badge').textContent = medico.nome;
     document.getElementById('sec-clinic-name').textContent = currentClinica.nome;
     showScreen('sec');
+    editingLaudoId = null;
     await loadSecMedicos();
     showSecTab('nova-fila', document.querySelector('#sec-nav .tab'));
-    document.getElementById('sec-data-exame').value = todayISO();
+    resetSecForm();
   } else {
     document.getElementById('doctor-badge').textContent = medico.nome;
     const primeiroNome = medico.nome.split(' ').find(p => !/^(dr|dra|dr\.|dra\.)$/i.test(p)) || medico.nome;
@@ -1980,7 +1997,28 @@ async function loadSecMedicos() {
 // ══════════════════════════════════════════════════════
 let secEditingId = null;
 
-async function savePendente() {
+// Editor de seções na tela da secretária. Ao trocar o médico responsável num
+// laudo ainda não digitado, recarrega com os textos-modelo desse médico.
+async function renderSecEditor(secoes = {}) {
+  if (!secoesClinica.length) await loadSecoesClinica();
+  const medicoId = document.getElementById('sec-medico-id').value;
+  const presetMap = {};
+  if (medicoId) {
+    const { data: presets } = await supa.from('medico_secao_presets').select('secao_id,texto').eq('medico_id', medicoId);
+    (presets || []).forEach(p => { presetMap[p.secao_id] = p.texto; });
+  }
+  laudoConcluido = false;
+  renderSecoesEditor(secoes, presetMap, 'sec-secoes-container');
+}
+
+function onSecMedicoChange() {
+  if (secoesDigitadas) return;
+  renderSecEditor(secEditingSecoes || {});
+}
+
+let secEditingSecoes = null;
+
+async function savePendente(concluir = false) {
   const nome     = document.getElementById('sec-pac-nome').value.trim();
   const cpf      = document.getElementById('sec-pac-cpf').value.trim();
   const nasc     = document.getElementById('sec-pac-nasc').value;
@@ -1995,7 +2033,15 @@ async function savePendente() {
   if (!medicoId) { toast('Selecione o médico responsável.', 'err'); return; }
   if (!data) { toast('Informe a data do exame.', 'err'); return; }
 
-  loading(true, secEditingId ? 'Atualizando...' : 'Salvando na fila...');
+  const secoes = coletarSecoes();
+  if (concluir) {
+    const temTexto = Object.values(secoes).some(s => s.ativo && s.texto);
+    if (!temTexto) { toast('Ative ao menos uma seção com texto para concluir o laudo.', 'err'); return; }
+    const medNome = document.getElementById('sec-medico-id').selectedOptions[0]?.textContent || 'médico responsável';
+    if (!confirm(`Concluir este laudo? Ele sai assinado por ${medNome} e fica somente leitura.`)) return;
+  }
+
+  loading(true, concluir ? 'Concluindo...' : (secEditingId ? 'Atualizando...' : 'Salvando na fila...'));
 
   // Upsert paciente se tiver CPF
   let pacienteId = null;
@@ -2040,7 +2086,9 @@ async function savePendente() {
     data_exame: data,
     convenio: convenio||null,
     solicitante: solic||null,
-    status: 'pendente',
+    secoes,
+    status: concluir ? 'concluido' : 'pendente',
+    atualizado_em: new Date().toISOString(),
   };
 
   let error;
@@ -2053,7 +2101,7 @@ async function savePendente() {
   loading(false);
   if (error) { toast('Erro ao salvar: ' + error.message, 'err'); return; }
 
-  toast(secEditingId ? 'Laudo atualizado.' : 'Adicionado à fila do médico.', 'ok');
+  toast(concluir ? 'Laudo concluído.' : (secEditingId ? 'Laudo atualizado.' : 'Adicionado à fila do médico.'), 'ok');
   resetSecForm();
   await updateSecBadge();
 }
@@ -2068,6 +2116,8 @@ function resetSecForm() {
   document.getElementById('sec-edit-banner').style.display = 'none';
   document.getElementById('sec-save-btn').textContent = 'Salvar na Fila do Médico';
   secEditingId = null;
+  secEditingSecoes = null;
+  renderSecEditor({});
 }
 
 // ══════════════════════════════════════════════════════
@@ -2119,7 +2169,7 @@ function renderSecFila(list) {
           <button class="btn btn-outline" style="padding:5px 10px;font-size:12px" onclick="secAbrirImagens('${r.id}','${r.paciente_nome.replace(/'/g,"\\'")}')">
             <i class="ti ti-photo"></i> ${(r.imagens||[]).length > 0 ? (r.imagens.length) + ' img' : 'Imagens'}
           </button>
-          <button class="btn btn-outline" style="padding:5px 10px;font-size:12px" onclick="editSecFila('${r.id}')">✏️ Editar</button>
+          <button class="btn btn-outline" style="padding:5px 10px;font-size:12px" onclick="editSecFila('${r.id}')">✏️ Digitar / Editar</button>
           <button class="btn btn-danger" style="padding:5px 10px;font-size:12px" onclick="deleteSecFila('${r.id}')">🗑</button>
         </div>
       </div>`;
@@ -2142,12 +2192,14 @@ async function editSecFila(id) {
   const r = secFilaAll.find(x => x.id === id);
   if (!r) return;
 
-  // Buscar dados completos do paciente
+  loading(true, 'Abrindo...');
+  const { data: laudoFull } = await supa.from('laudos').select('paciente_id,secoes').eq('id', id).single();
   let pac = null;
-  if (r.paciente_id) {
-    const { data } = await supa.from('pacientes').select('*').eq('id', r.paciente_id).single();
+  if (laudoFull?.paciente_id) {
+    const { data } = await supa.from('pacientes').select('*').eq('id', laudoFull.paciente_id).single();
     pac = data;
   }
+  loading(false);
 
   document.getElementById('sec-pac-nome').value    = r.paciente_nome || '';
   document.getElementById('sec-pac-cpf').value     = r.cpf_paciente  ? r.cpf_paciente.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4') : '';
@@ -2163,6 +2215,8 @@ async function editSecFila(id) {
   document.getElementById('sec-edit-banner-nome').textContent = r.paciente_nome;
   document.getElementById('sec-edit-banner').style.display = 'flex';
   document.getElementById('sec-save-btn').textContent = 'Atualizar na Fila';
+  secEditingSecoes = laudoFull?.secoes || {};
+  await renderSecEditor(secEditingSecoes);
 
   showSecTab('nova-fila', document.querySelector('#sec-nav .tab'));
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -4730,7 +4784,7 @@ let docPendingAll = [];
 async function loadDocPending() {
   loading(true, 'Carregando fila...');
   const q = supa.from('laudos')
-    .select('id,paciente_nome,cpf_paciente,data_exame,convenio,solicitante')
+    .select('id,paciente_nome,cpf_paciente,data_exame,convenio,solicitante,secoes')
     .eq('clinica_id', currentClinica.id)
     .eq('status', 'pendente')
     .is('deleted_at', null)
@@ -4769,13 +4823,14 @@ function renderDocPending(list) {
       📅 ${g.label}${isToday ? ' — HOJE' : ''} <span class="tab-badge" style="background:#d97706">${g.items.length}</span>
     </div>`;
     g.items.forEach(r => {
+      const digitado = Object.values(r.secoes || {}).some(s => s && s.ativo && s.texto);
       html += `<div class="saved-row" style="border-left:3px solid #d97706;padding-left:12px">
         <div>
-          <div class="saved-name">${r.paciente_nome}</div>
+          <div class="saved-name">${r.paciente_nome}${digitado ? ' <span class="badge-papel badge-secretaria" style="margin-left:6px;vertical-align:middle">📝 Digitado</span>' : ''}</div>
           <div class="saved-meta">🏥 ${r.convenio || '—'}${r.solicitante ? ' &nbsp;|&nbsp; Solic: ' + r.solicitante : ''}</div>
         </div>
         <div class="saved-actions">
-          <button class="btn btn-primary" style="padding:7px 16px;font-size:12px" onclick="abrirLaudo('${r.id}')">✍️ Laudar</button>
+          <button class="btn btn-primary" style="padding:7px 16px;font-size:12px" onclick="abrirLaudo('${r.id}')">${digitado ? '👁 Revisar' : '✍️ Laudar'}</button>
           ${currentDoctor.papel === 'admin' ? `<button class="btn btn-danger" style="padding:7px 12px;font-size:12px" onclick="excluirLaudo('${r.id}', '${escHtml(r.paciente_nome||'').replace(/'/g,"\\'")}')">🗑</button>` : ''}
         </div>
       </div>`;
@@ -4875,8 +4930,16 @@ async function loadSecoesClinica() {
   secoesClinica = data || [];
 }
 
-function renderSecoesEditor(secoesData, presetMap = {}) {
-  const container = document.getElementById('secoes-container');
+// Mesmo editor na tela do médico (secoes-container) e na da secretária
+// (sec-secoes-container). Os IDs dos editores são globais (txt-/tog-/body-),
+// então só um dos dois containers pode estar preenchido por vez.
+const SECOES_CONTAINERS = ['secoes-container', 'sec-secoes-container'];
+let secoesDigitadas = false;
+
+function renderSecoesEditor(secoesData, presetMap = {}, containerId = 'secoes-container') {
+  SECOES_CONTAINERS.forEach(id => { if (id !== containerId) { const c = document.getElementById(id); if (c) c.innerHTML = ''; } });
+  secoesDigitadas = false;
+  const container = document.getElementById(containerId);
   if (!secoesClinica.length) {
     container.innerHTML = '<div class="empty"><div class="ei">⚙️</div><p>Nenhuma seção configurada para esta clínica.</p></div>';
     return;
@@ -4920,7 +4983,13 @@ function renderSecoesEditor(secoesData, presetMap = {}) {
       const textoPadrao  = s.texto_padrao || '';
       const texto = saved.texto !== undefined ? saved.texto : (textoPreset || textoPadrao);
       const q = initQuill('txt-' + s.chave, el, texto, laudoConcluido);
-      q.on('text-change', () => agendarQuebras(s.chave));
+      // Consome agora a mudança do innerHTML inicial; senão o Quill a reporta
+      // depois como digitação do usuário.
+      q.update('silent');
+      q.on('text-change', (_d, _o, origem) => {
+        if (origem === 'user') secoesDigitadas = true;
+        agendarQuebras(s.chave);
+      });
       agendarQuebras(s.chave);
     }
   });
@@ -4933,7 +5002,8 @@ function toggleSecao(chave) {
   const on   = !tog.classList.contains('on');
   tog.classList.toggle('on', on);
   body.classList.toggle('open', on);
-  scheduleAutosave();
+  secoesDigitadas = true;
+  if (currentDoctor?.papel !== 'secretaria') scheduleAutosave();
   agendarQuebras(chave);
 }
 
@@ -4948,8 +5018,9 @@ const MM_PX = 96 / 25.4;
 const pbTimers = {};
 
 function laudoDoFormulario() {
-  const v = id => (document.getElementById(id)?.value || '').trim();
-  return { paciente_nome: v('doc-pac-nome'), data_exame: v('doc-data-exame'), convenio: v('doc-convenio'), solicitante: v('doc-solicitante') };
+  const p = currentDoctor?.papel === 'secretaria' ? 'sec-' : 'doc-';
+  const v = id => (document.getElementById(p + id)?.value || '').trim();
+  return { paciente_nome: v('pac-nome'), data_exame: v('data-exame'), convenio: v('convenio'), solicitante: v('solicitante') };
 }
 
 // Cada página de continuação repete cabeçalho + caixa do paciente + título,
@@ -5037,7 +5108,7 @@ function agendarTodasQuebras() {
 
 // O cabeçalho da folha muda de altura com o nome do paciente/solicitante, e
 // a largura da tela muda a posição das marcas no editor.
-['doc-pac-nome','doc-convenio','doc-solicitante'].forEach(id =>
+['doc-pac-nome','doc-convenio','doc-solicitante','sec-pac-nome','sec-convenio','sec-solicitante'].forEach(id =>
   document.getElementById(id)?.addEventListener('input', agendarTodasQuebras));
 window.addEventListener('resize', agendarTodasQuebras);
 
